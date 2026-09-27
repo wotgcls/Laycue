@@ -83,6 +83,7 @@ Laycue is a **native OBS plugin**. The user runs the installer for their system 
 - **Two ways to add a pushback:**
   - **Upload a design** in Laycue: the operator chooses an image file (PNG with a see-through window, or an image with a green window). Laycue shows the window it found straight away, outlined on the image, with a preview of the camera placed inside it. The operator names it, picks the camera and the fill mode, and adds it. Laycue then offers to add the image to the scenes the operator chooses (asking first) and it becomes a **shot** in Shots view.
   - **Use an existing source**: the operator marks a source already in OBS as a **frame** and picks its **subject** (usually a camera).
+- **Green windows are keyed automatically** for pushbacks uploaded in Laycue: a "Remove green automatically" switch (on by default) adds OBS's Chroma Key filter to the image Laycue created, with the key colour taken from the green actually measured in the image. For a graphic already in the operator's scenes, Laycue asks once before adding the filter, and reuses an existing key filter if there is one.
 - If no clean window is found, Laycue says so in plain language ("No window found" or "Check the edges") and the operator can switch between see-through and green, or adjust the edges by hand.
 - The operator chooses **which scenes** this pairing is active in (default: all scenes containing both the frame and the subject).
 - The operator says how the window is defined: **transparent** (alpha) or **green screen** (chroma). For green, Laycue offers to add OBS's Chroma Key filter to the frame, and asks before adding it. Detection always measures the frame *after* its filters, so Laycue measures exactly the hole viewers see.
@@ -140,7 +141,11 @@ Run the show like a hardware vision mixer (ATEM, Roland) instead of building one
 **How it works**
 - When the operator turns Switcher mode on, Laycue asks permission, then creates two scenes of its own: **"Laycue A"** and **"Laycue B"**. It only ever changes these two scenes, never the operator's own.
 - The operator chooses which sources the switcher uses (cameras, slides, graphics, overlays). Laycue adds them to both of its scenes. The sources are shared, not copied, so their settings and audio stay the same.
-- One Laycue scene is on air (**Program**). Laycue builds the next shot in the other one (**Preview**), using studio mode.
+- One Laycue scene is on air (**Live**). Laycue builds the next shot in the other one (**Next**).
+- **Works with or without OBS studio mode; the operator chooses:**
+  - *Studio mode off* (simplest): OBS's big view shows Live; the Laycue panel shows Next and the controls.
+  - *Studio mode on*: OBS's two big views show Next (Preview) and Live (Program); the Laycue panel mirrors them small.
+  - For a separate Live screen, OBS's own projector is used (right-click the view → Windowed/Fullscreen Projector). Laycue does not add its own pop-out window.
 - The panel shows mixer-style controls:
   - **Preview row:** pick the source for the next shot.
   - **Program row:** shows what's on air. Clicking a Program button cuts to that source immediately.
