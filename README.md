@@ -15,9 +15,9 @@ Every push to GitHub builds Laycue for Windows, macOS and Linux automatically.
 1. On GitHub, open the **Actions** tab.
 2. Click the latest **Push** run with a green tick.
 3. Scroll down to **Artifacts** and download the one for your system:
-   - Windows: `Laycue-…-windows-x64-…`
-   - macOS: `Laycue-…-macos-universal-…`
-   - Linux: `Laycue-…-ubuntu-24.04-x86_64-…`
+   - Windows: `laycue-0.1.0-windows-x64-…`
+   - macOS: `laycue-0.1.0-macos-universal-…`
+   - Linux: `laycue-0.1.0-ubuntu-24.04-x86_64-…` (not the `-dbgsym` or `-sources` ones)
 
 ## Installing
 
