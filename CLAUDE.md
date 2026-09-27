@@ -110,7 +110,7 @@ A crash here takes down a live stream.
 
 ### Hole detection (`core/detect`)
 1. Input: RGBA pixels of the frame source, rendered by OBS *after* its filters.
-2. Binary mask: pixel is "hole" if alpha < threshold (default 16). For green frames, OBS's Chroma Key filter makes the green transparent first. A raw chroma-distance mode (in a chroma space such as YCbCr, adjustable tolerance) exists only as a fallback.
+2. Binary mask: pixel is "hole" if alpha < threshold (default 16). For green frames, OBS's Chroma Key filter makes the green transparent first. A raw chroma-distance mode (CbCr distance, default tolerance 28) exists as a fallback and for the upload preview. **Never assume pure green**: sample the key colour as the most common strongly-green colour in the image (g > r+60 and g > b+60), and use that same colour for the Chroma Key filter Laycue adds. Real designs use e.g. `#00B13F`, which pure-green matching misses entirely (verified on the owner's pushbacks). On upload, try see-through first and fall back to green automatically.
 3. Find the largest connected region of hole pixels.
 4. Return its bounding rectangle and fill ratio (hole pixels ÷ rectangle area). Under 0.9 → low-confidence flag.
 5. Detect on a downscaled copy (~640px wide), scale the rectangle back, refine edges at full size.
