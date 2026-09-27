@@ -22,7 +22,7 @@ The operator is in control. Every automation is opt-in, scoped and pausable. Lay
 
 - **C++17**, **CMake**, built from the official **obs-plugintemplate** (its `cmake/`, `.github/` and `buildspec.json` came from it).
 - **libobs** + **obs-frontend-api** for everything OBS.
-- **Qt 6 Widgets** for the dock UI. It inherits OBS's theme; don't hardcode colours.
+- **Qt 6 Widgets** for the dock UI, styled with Laycue's own design tokens (see PRD §7a and the mockup linked there): dark surfaces close to OBS's, system font, one meaning per colour (red = live, green = next, blue = setup). Keep all colours, radii and spacing in one tokens file in `src/ui/`; never scatter hex values through widgets. No translucency/blur (Qt docks can't do it reliably).
 - **Tests:** pure C++ in `tests/`, a standalone CMake project with a tiny in-repo check helper (`tests/check.hpp`). No test library.
 - Target OBS version is pinned in `buildspec.json` (currently 31.1.1). Only use APIs available in that version.
 - No network, no backend, no accounts.

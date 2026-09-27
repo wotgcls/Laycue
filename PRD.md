@@ -1,10 +1,12 @@
 # Laycue — Product Requirements Document (MVP)
 
-**Status:** Draft v0.3 · **Owner:** Laycue founder · **Last updated:** 27 Sep 2026
+**Status:** Draft v0.4 · **Owner:** Laycue founder · **Last updated:** 27 Sep 2026
 
 **Changes from v0.1:** Laycue is now a native OBS plugin (was a browser dock). Added the operator-control principle. Exclusivity scope is now chosen per group. Smart fit is instant and can be limited to chosen scenes. Studio mode, hotkeys, the "Reset all" button and scene-collection storage are now covered. The done-when criteria are rewritten so they can be tested.
 
 **Changes in v0.3:** Added F6 Switcher mode (vision-mixer style Preview/Program buttons with Cut and Auto, no scene building) as milestone M3.5.
+
+**Changes in v0.4:** Switcher mode has two views, **Shots** (default, for volunteers) and **Mixer** (for experienced operators), plus per-view customisation. Operators can upload a pushback design straight into Laycue (F1). Added a design direction (section 7a) and a clickable mockup link.
 
 ---
 
@@ -78,7 +80,10 @@ Laycue is a **native OBS plugin**. The user runs the installer for their system 
 **Done when:** a first-time user installs and sees the Laycue panel in under five minutes, and the panel's scene/source list stays correct when scenes and sources are added, renamed, removed or the scene collection is switched.
 
 ### F1 — Smart fit (frame graphics) · *build first*
-- The operator marks a source as a **frame** (the pushback graphic) and picks its **subject** (usually a camera).
+- **Two ways to add a pushback:**
+  - **Upload a design** in Laycue: the operator chooses an image file (PNG with a see-through window, or an image with a green window). Laycue shows the window it found straight away, outlined on the image, with a preview of the camera placed inside it. The operator names it, picks the camera and the fill mode, and adds it. Laycue then offers to add the image to the scenes the operator chooses (asking first) and it becomes a **shot** in Shots view.
+  - **Use an existing source**: the operator marks a source already in OBS as a **frame** and picks its **subject** (usually a camera).
+- If no clean window is found, Laycue says so in plain language ("No window found" or "Check the edges") and the operator can switch between see-through and green, or adjust the edges by hand.
 - The operator chooses **which scenes** this pairing is active in (default: all scenes containing both the frame and the subject).
 - The operator says how the window is defined: **transparent** (alpha) or **green screen** (chroma). For green, Laycue offers to add OBS's Chroma Key filter to the frame, and asks before adding it. Detection always measures the frame *after* its filters, so Laycue measures exactly the hole viewers see.
 - Laycue finds the largest window in the frame and fits the subject into it.
@@ -143,6 +148,11 @@ Run the show like a hardware vision mixer (ATEM, Roland) instead of building one
   - **Slot picker:** for multi-box layouts, choose which source fills which slot (A, B, C, D).
   - **Overlays row:** toggles for lyrics, scripture, lower thirds and so on, following exclusivity groups (F3).
   - **Cut:** switches instantly. **Auto:** switches using the transition selected in OBS (fade, stinger, wipe…), with its duration.
+- **Two views of the same switcher**, switched with one click at the top of the panel:
+  - **Shots** (default): the operator taps a ready-made shot ("Pastor + slides", "Sermon pushback", "Band close") to cue it as Next, then presses Cut or Auto. Shots are set up in advance (a shot = layout + sources, or a pushback + camera), each with a small picture of how it looks and its hotkey. Built for volunteers: no slots or layouts to think about live.
+  - **Mixer**: Next and Live rows of source buttons, layout picker, slot picker and swap, for experienced operators.
+  - Both views share the same Live picture, Next picture, Cut, Auto and Overlays, so switching views never changes what's on air.
+- **Customisation** (per scene collection): which sources appear and in what order, show or hide sections (for example hide Overlays), normal or large buttons (touchscreens), rename and reorder shots.
 - After each Cut or Auto, the two scenes swap roles and Laycue prepares the next shot in the one now off air.
 - Every button can be triggered by an OBS hotkey (and so by a Stream Deck or keyboard).
 - The operator's own scenes keep working. They can be switched to directly (for a countdown or pre-service loop), and Switcher mode picks up again when a Laycue scene is next taken.
@@ -153,6 +163,15 @@ Run the show like a hardware vision mixer (ATEM, Roland) instead of building one
 - Overlays toggled while a transition is running apply to the incoming shot.
 
 **Done when:** a four-camera service with slides, one pushback frame and three overlays can be run entirely from the Laycue panel (or hotkeys), without the operator building any scene. Cut is instant, Auto uses the OBS transition, and the on-air picture never shows a half-built shot.
+
+## 7a. Design direction
+
+- **Premium, calm, fast.** The panel should feel better made than OBS itself while clearly belonging inside it: same dark family, quieter chrome, more deliberate spacing and type.
+- **The hero is the Live picture and the Next shot.** Everything else is quiet and near-monochrome.
+- **Colour has meaning only:** red = on air, green = next (broadcast tally convention), blue = setup actions. No decorative colour.
+- **Follows Apple's Human Interface principles:** system font, clear hierarchy, rounded surfaces, instant press feedback, grouped settings lists, plain-language labels, and reduced-motion support.
+- **Keyboard-first:** every shot and button shows its hotkey.
+- **Clickable mockup:** https://claude.ai/artifact/RnVjdtYU11GCujsmbVrb7x (Shots view, Mixer view, pushback upload, and the panel docked in OBS).
 
 ## 8. Technical approach (summary)
 
