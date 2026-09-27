@@ -126,7 +126,12 @@ Smart fit is **instant** (no animation) and is applied ahead of time in every sc
 Interpolate position, bounds and crop between start and end with ease-in-out, one step per rendered frame (tick callback), default 400ms. Always apply the exact final transform last. A new animation on the same item replaces the old one, starting from where it currently is.
 
 ### Exclusivity (`core/exclusivity`)
-Given "source X became visible in scene S" and the group config (members, scope: same scene / chosen scenes / all scenes, paused flag), return the items to hide. Never return items outside the scope. Ignore changes Laycue caused itself (reentrancy guard around Laycue's own `set_visible` calls).
+Pure function. Input: "item X (source S) became visible in scene N", every group containing S (members, scope: same scene / chosen scenes / all scenes, paused flag, strict flag), and each in-scope visible member's **spot** (a canvas rect). Output: the items to hide.
+- Non-strict (default): hide a member only if its spot overlaps X's spot. Ignore overlaps smaller than 2% of the smaller spot's area or under 8 px in either direction.
+- Strict ("only one at a time, wherever they are"): hide every other visible member in scope.
+- Never return items outside the scope. Paused groups return nothing.
+- A **spot** = the source's visible-pixel bounding box (measured with the same readback as hole detection, alpha > threshold) mapped to canvas through that scene item's transform, or the operator's manual rect if set. Rect intersection and the tolerance rule live in `core/geometry` with tests.
+- Ignore changes Laycue caused itself (reentrancy guard around Laycue's own `set_visible` calls).
 
 ## Coding rules
 
