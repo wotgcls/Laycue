@@ -1,8 +1,10 @@
 # Laycue — Product Requirements Document (MVP)
 
-**Status:** Draft v0.2 · **Owner:** Laycue founder · **Last updated:** 27 Sep 2026
+**Status:** Draft v0.3 · **Owner:** Laycue founder · **Last updated:** 27 Sep 2026
 
 **Changes from v0.1:** Laycue is now a native OBS plugin (was a browser dock). Added the operator-control principle. Exclusivity scope is now chosen per group. Smart fit is instant and can be limited to chosen scenes. Studio mode, hotkeys, the "Reset all" button and scene-collection storage are now covered. The done-when criteria are rewritten so they can be tested.
+
+**Changes in v0.3:** Added F6 Switcher mode (vision-mixer style Preview/Program buttons with Cut and Auto, no scene building) as milestone M3.5.
 
 ---
 
@@ -51,6 +53,7 @@ Laycue automates what the operator asks for, and nothing else.
 2. Let operators tag sources as mutually exclusive, with a scope they choose, so showing one hides the others automatically.
 3. Drop in a frame graphic and have the camera appear in its window instantly.
 4. Install in under five minutes with a normal installer.
+5. Optionally, run a whole show from Laycue like a hardware vision mixer (pick the next shot, press Cut or Auto) without building a scene for every combination.
 
 ### Non-goals (MVP)
 - Building a video engine or replacing OBS. OBS does the pixels.
@@ -125,6 +128,32 @@ Laycue is a **native OBS plugin**. The user runs the installer for their system 
 ### F5 — Reset all (safety)
 - A clearly visible **Reset all** button puts every source Laycue has moved back to its saved original position, and cancels running animations.
 
+### F6 — Switcher mode (optional, operator turns it on)
+
+Run the show like a hardware vision mixer (ATEM, Roland) instead of building one scene per shot.
+
+**How it works**
+- When the operator turns Switcher mode on, Laycue asks permission, then creates two scenes of its own: **"Laycue A"** and **"Laycue B"**. It only ever changes these two scenes, never the operator's own.
+- The operator chooses which sources the switcher uses (cameras, slides, graphics, overlays). Laycue adds them to both of its scenes. The sources are shared, not copied, so their settings and audio stay the same.
+- One Laycue scene is on air (**Program**). Laycue builds the next shot in the other one (**Preview**), using studio mode.
+- The panel shows mixer-style controls:
+  - **Preview row:** pick the source for the next shot.
+  - **Program row:** shows what's on air. Clicking a Program button cuts to that source immediately.
+  - **Layout row:** Full, PIP, Side-by-side, Two-box, Quad, and pushback frames (F1 smart fit).
+  - **Slot picker:** for multi-box layouts, choose which source fills which slot (A, B, C, D).
+  - **Overlays row:** toggles for lyrics, scripture, lower thirds and so on, following exclusivity groups (F3).
+  - **Cut:** switches instantly. **Auto:** switches using the transition selected in OBS (fade, stinger, wipe…), with its duration.
+- After each Cut or Auto, the two scenes swap roles and Laycue prepares the next shot in the one now off air.
+- Every button can be triggered by an OBS hotkey (and so by a Stream Deck or keyboard).
+- The operator's own scenes keep working. They can be switched to directly (for a countdown or pre-service loop), and Switcher mode picks up again when a Laycue scene is next taken.
+- Turning Switcher mode off leaves the two Laycue scenes in place (the operator can delete them).
+
+**Known limitations**
+- Media sources set to "restart when becomes active" restart when switched in. Normal scenes behave the same way.
+- Overlays toggled while a transition is running apply to the incoming shot.
+
+**Done when:** a four-camera service with slides, one pushback frame and three overlays can be run entirely from the Laycue panel (or hotkeys), without the operator building any scene. Cut is instant, Auto uses the OBS transition, and the on-air picture never shows a half-built shot.
+
 ## 8. Technical approach (summary)
 
 Full detail lives in `CLAUDE.md`.
@@ -158,6 +187,7 @@ Full detail lives in `CLAUDE.md`.
 | M1 | Detection lab | In the panel, pick a frame source (or an image file) and see the detected window drawn over it; confirms detection runs after filters |
 | M2 | Smart fit + saving | Frame/subject pairings with scene choice; instant fit; restore on hide; config saved with the scene collection; Reset all |
 | M3 | Layouts | Presets, slots, animated switching, swap, studio-mode Preview, hotkeys |
+| M3.5 | Switcher mode | Laycue A/B scenes, Preview/Program/Layout/Overlay rows, Cut and Auto, hotkeys (overlay buttons follow exclusivity groups once M4 lands) |
 | M4 | Exclusivity | Groups with scope options and pause switch, enforced across all toggle methods; export/import |
 | M5 | Sunday test | Used live for four services; bugs logged and fixed |
 | M6 | Public beta | Free release on OBS forums; measure downloads and feedback |

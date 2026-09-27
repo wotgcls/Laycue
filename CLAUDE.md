@@ -55,7 +55,7 @@ src/
     (later) layouts.*    # preset definitions and slot → transform maths
     (later) exclusivity.*# group rules + scope: given a change, which items to hide
     (later) tween.*      # easing and interpolation of transforms
-  features/              # glue core logic to OBS (smartFit, layoutEngine, exclusivityEngine)
+  features/              # glue core logic to OBS (smartFit, layoutEngine, switcher, exclusivityEngine)
   store/                 # config types, version number, migrations, save/load
   ui/                    # Qt widgets: the dock and its panels
 tests/                   # standalone CMake project testing src/core
@@ -138,7 +138,7 @@ Given "source X became visible in scene S" and the group config (members, scope:
 
 ## Working process
 
-- Work milestone by milestone, in order: M0 → M1 → M2 → M3 → M4 (see PRD).
+- Work milestone by milestone, in order: M0 → M1 → M2 → M3 → M3.5 → M4 (see PRD).
 - At the start of a task, state which milestone and requirement it serves.
 - For new core logic, write tests first or alongside.
 - After finishing, give: what changed, how to install the build and test it in OBS step by step, and anything that still isn't done.
