@@ -143,7 +143,7 @@ Pure function. Input: "item X (source S) became visible in scene N", every group
 
 ## Working process
 
-- Work milestone by milestone, in order: M0 → M1 → M2 → M3 → M3.5 → M4 (see PRD).
+- Work milestone by milestone, in the order of PRD section 10: M0 → M1 → M2 → M3 → M4 → Sunday test 1 → M5 → M6 → Sunday test 2 → M7 → M8. Each milestone ends with a Windows build and a test checklist for the owner.
 - At the start of a task, state which milestone and requirement it serves.
 - For new core logic, write tests first or alongside.
 - After finishing, give: what changed, how to install the build and test it in OBS step by step, and anything that still isn't done.

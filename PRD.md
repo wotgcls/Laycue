@@ -1,6 +1,6 @@
 # Laycue — Product Requirements Document (MVP)
 
-**Status:** Draft v0.5 · **Owner:** Laycue founder · **Last updated:** 27 Sep 2026
+**Status:** Draft v0.6 · **Owner:** Laycue founder · **Last updated:** 27 Sep 2026
 
 **Changes from v0.1:** Laycue is now a native OBS plugin (was a browser dock). Added the operator-control principle. Exclusivity scope is now chosen per group. Smart fit is instant and can be limited to chosen scenes. Studio mode, hotkeys, the "Reset all" button and scene-collection storage are now covered. The done-when criteria are rewritten so they can be tested.
 
@@ -9,6 +9,8 @@
 **Changes in v0.4:** Switcher mode has two views, **Shots** (default, for volunteers) and **Mixer** (for experienced operators), plus per-view customisation. Operators can upload a pushback design straight into Laycue (F1). Added a design direction (section 7a) and a clickable mockup link.
 
 **Changes in v0.5:** F3 rewritten: overlay tags and position-aware exclusivity ("spots"). New-shot flow defined. Added section 3a (two roles: set-up person and Sunday operator) and section 10a (release plan: a smaller first release).
+
+**Changes in v0.6:** Release plan approved and written into section 10. Shots view refined after a first-time-operator critique (Go Live/Cut, Up next clears after going live, still thumbnails for shots, overlay spot icons, explanations when overlays switch off, starter shots).
 
 ---
 
@@ -185,6 +187,15 @@ Run the show like a hardware vision mixer (ATEM, Roland) instead of building one
   - **Mixer**: Next and Live rows of source buttons, layout picker, slot picker and swap, for experienced operators.
   - Both views share the same Live picture, Next picture, Cut, Auto and Overlays, so switching views never changes what's on air.
 - **New shot** (three steps, no blank canvas): (1) pick a layout (Full, Picture-in-picture, Side by side, Two-box, Quad, Pushback); (2) tap each box and choose its source, with a live preview; (3) save — Laycue names it from its contents ("Pastor + Slides") and assigns the next hotkey. **Adjust** lets the operator drag and resize boxes (saved as their own version); **Duplicate** copies a shot to change one thing. A free-form layout editor is out of scope.
+- **Shots view details (from the first-time-operator critique):**
+  - The main button is **Go Live** (fades, using the OBS transition) with **Cut** (instant) beside it. No "Auto"/"Program"/"Preview" jargon in the Shots view.
+  - Tapping a shot only puts it in **Up next**; nothing changes on the stream until Go Live. The panel says so ("Tap to get ready · nothing goes live until Go Live").
+  - After Go Live, Up next **clears** (rather than swapping the old shot back in), so pressing Go Live twice can never jump back by accident. Go Live and Cut are disabled until a shot is cued.
+  - **Thumbnails:** the Live and Up next pictures are live video. Each shot card shows a real still picture built from the actual sources, refreshed every few seconds and when the shot is edited. Not live video, to save computer power during the stream.
+  - Overlay buttons show a tiny screen with the overlay's spot and say "On Live" or "Off". When one overlay switches another off, a short message explains it ("Scripture replaced Lyrics · same spot").
+  - Every shot card shows its hotkey; Space = Go Live.
+  - When setup is locked, the Mixer switch, New shot and all editing are hidden; a Locked pill in the header unlocks it.
+- **Starter shots:** on first run, Laycue makes one full-screen shot per camera plus Slides, and guesses overlay tags from source names (Lyrics, Scripture, Name, Logo), so the panel is useful before any setup.
 - **Customisation** (per scene collection): which sources appear and in what order, show or hide sections (for example hide Overlays), normal or large buttons (touchscreens), rename and reorder shots.
 - After each Cut or Auto, the two scenes swap roles and Laycue prepares the next shot in the one now off air.
 - Every button can be triggered by an OBS hotkey (and so by a Stream Deck or keyboard).
@@ -231,30 +242,35 @@ Full detail lives in `CLAUDE.md`.
 | Slower build/test loop than a web app | Slower development | Pure logic tested without OBS; GitHub builds installers automatically |
 | Low willingness to pay | No revenue | Release free first, measure adoption before pricing |
 
-## 10. Milestones
+## 10. Release plan and milestones (approved)
+
+Every milestone ends with a **Windows build** the owner installs, plus a short test checklist. Windows is the primary test platform (the owner's church PC); macOS and Linux builds are produced by CI but tested less often.
+
+**Release 1 · Sunday-ready core** (works inside the operator's existing scenes)
 
 | # | Milestone | Outcome |
 |---|---|---|
-| M0 | Plugin skeleton | Installers build on GitHub; plugin loads in OBS; Laycue panel lists scenes and sources and stays up to date |
-| M1 | Detection lab | In the panel, pick a frame source (or an image file) and see the detected window drawn over it; confirms detection runs after filters |
-| M2 | Smart fit + saving | Frame/subject pairings with scene choice; instant fit; restore on hide; config saved with the scene collection; Reset all |
-| M3 | Layouts | Presets, slots, animated switching, swap, studio-mode Preview, hotkeys |
-| M3.5 | Switcher mode | Laycue A/B scenes, Preview/Program/Layout/Overlay rows, Cut and Auto, hotkeys (overlay buttons follow exclusivity groups once M4 lands) |
-| M4 | Overlays | Tags, position-aware exclusivity (spots), scope options and pause switch, enforced across all toggle methods; export/import |
-| M5 | Sunday test | Used live for four services; bugs logged and fixed |
-| M6 | Public beta | Free release on OBS forums; measure downloads and feedback |
+| M0 | Plugin skeleton ✓ | Installers build on GitHub; plugin loads in OBS; panel lists scenes and sources |
+| M1 | Window finder | In the panel, pick a pushback image or an OBS source and see the detected window. Passes on the three real pushbacks in `tests/fixtures/pushbacks`. Confirms detection works after OBS's Chroma Key |
+| M2 | Smart fit | Pushback upload with auto chroma key (measured green), camera and scene choice, instant fit, restore on hide, saved with the scene collection, Reset all |
+| M3 | Overlays | Tags, spots and position-aware exclusivity, scope, pause (F3) |
+| M4 | Setup and safety | Guided first-run checklist, Lock setup, plain-language errors; Windows installer if approved |
+| S1 | Sunday test 1 | Used live for 2 services; bugs fixed before Release 2 |
 
-## 10a. Proposed release plan (for the owner to confirm)
+**Release 2 · Switcher**
 
-The feature set has grown. To reach a live Sunday quickly and prove the unique value first, release in three steps:
-
-| Release | Contains | Solves |
+| # | Milestone | Outcome |
 |---|---|---|
-| **1 · Sunday-ready core** | F0 install, F1 smart fit with pushback upload and auto chroma key, F3 overlays (tags, spots, scope), F4 saving, F5 Reset all, guided setup, Lock setup. Works inside the operator's **existing scenes**; no new way of running the show to learn. | Pushback resizing (unique to Laycue) and overlay collisions: two of the three problems, with zero change to the operator's workflow |
-| **2 · Switcher** | F2 layouts, F6 Switcher mode with the Shots view, New shot flow, hotkeys | "Every layout is a separate scene" |
-| **3 · Pro** | Mixer view, customisation options, wide bottom-dock layout | Experienced operators |
+| M5 | Layouts | Presets, slots, animated moves, swap (F2) |
+| M6 | Shots view | Switcher mode, Shots view, starter shots, New shot flow, hotkeys (F6) |
+| S2 | Sunday test 2 | Used live for 2 services |
 
-This means building overlays (currently M4) before layouts (M3) and running a first Sunday test after Release 1, rather than after everything.
+**Release 3 · Pro and public beta**
+
+| # | Milestone | Outcome |
+|---|---|---|
+| M7 | Mixer and customisation | Mixer view, customisation options, wide bottom-dock layout |
+| M8 | Beta | 3–5 other churches test it, then a free public beta on the OBS forums |
 
 ## 11. Success metrics
 
