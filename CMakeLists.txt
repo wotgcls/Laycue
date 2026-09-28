@@ -41,17 +41,21 @@ target_sources(
   PRIVATE
     src/plugin-main.cpp
     src/core/cue-state.cpp
+    src/core/detect.cpp
     src/core/scene-model.cpp
     src/core/source-kinds.cpp
     src/obs/scene-reader.cpp
     src/obs/scene-watcher.cpp
     src/obs/frame-grabber.cpp
     src/obs/switcher.cpp
+    src/obs/pixel-reader.cpp
     src/ui/laycue-dock.cpp
     src/ui/laycue-dock.hpp
     src/ui/tokens.cpp
     src/ui/widgets.cpp
     src/ui/widgets.hpp
+    src/ui/window-finder.cpp
+    src/ui/window-finder.hpp
 )
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})

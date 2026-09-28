@@ -8,4 +8,4 @@ If this repo is ever made public, delete this folder first.
 |---|---|---|
 | `give-cheerfully-green.jpg` (1320×1020 screenshot with dark bars) | green `#00B13F` | 414, 174, 872, 490 |
 | `daily-prayers-green.jpg` (1320×1020 screenshot with dark bars) | green `#00B13F` | 414, 174, 872, 490 |
-| `announcement-transparent.webp` (1920×1080) | see-through | 316, 0, 1604, 820 |
+| `announcement-transparent.webp` (1920×1080) | see-through | 314, 0, 1606, 824 (measured from the alpha channel) |

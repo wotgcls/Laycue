@@ -72,6 +72,14 @@ QFont monoFont(int pixelSize)
 	return font;
 }
 
+QString labelStyle(const QColor &color, const QFont &font)
+{
+	return QStringLiteral("color: %1; background: transparent; font-size: %2px; font-weight: %3;")
+		.arg(hex(color))
+		.arg(font.pixelSize() > 0 ? font.pixelSize() : 13)
+		.arg(static_cast<int>(font.weight()));
+}
+
 QString hex(const QColor &color)
 {
 	return color.name(QColor::HexRgb);

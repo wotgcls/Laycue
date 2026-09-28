@@ -56,6 +56,7 @@ private:
 	void refreshNow();      // UI thread only
 	void rebuildCards();
 	void layoutCards();
+	void arrangePictures(bool wide);
 	void updateStateUi();
 	void updateTransitionLabel();
 	void updatePictureTargets();
@@ -71,6 +72,10 @@ private:
 	QLabel *studioLabel_ = nullptr;
 	ui::PictureView *liveView_ = nullptr;
 	ui::PictureView *nextView_ = nullptr;
+	QGridLayout *picturesGrid_ = nullptr;
+	QWidget *nextTextBox_ = nullptr;
+	bool wideLayout_ = false;
+	bool picturesArranged_ = false;
 	QLabel *nextEyebrow_ = nullptr;
 	QLabel *nextDot_ = nullptr;
 	QLabel *nextName_ = nullptr;

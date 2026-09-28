@@ -51,7 +51,7 @@ src/
   core/                  # PURE C++17. No libobs, no Qt. Fully unit tested.
     source-kinds.*       # friendly names for OBS source types
     (later) geometry.*   # rects, fit/fill math, crop calculation, coordinate mapping
-    (later) detect.*     # hole detection on an RGBA pixel buffer
+    detect.*             # hole detection on an RGBA pixel buffer
     (later) layouts.*    # preset definitions and slot → transform maths
     (later) exclusivity.*# group rules + scope: given a change, which items to hide
     (later) tween.*      # easing and interpolation of transforms
@@ -89,7 +89,7 @@ data/locale/en-US.ini    # all user-visible text
 - Per-frame work (animations) uses `obs_add_tick_callback`; remove it on unload.
 
 **Pixels (M1+)**
-- Detection renders the frame source *with its filters* into a `gs_texrender` via `obs_source_video_render`, then reads it back through a `gs_stagesurface`. Graphics calls only inside `obs_enter_graphics()/obs_leave_graphics()` or a graphics-thread task. Verify in M1 that filters (chroma key) are included.
+- Detection renders the frame source *with its filters* into a `gs_texrender` via `obs_source_video_render`, then reads it back through a `gs_stagesurface`. Graphics calls only inside `obs_enter_graphics()/obs_leave_graphics()`, even in a graphics-thread task (`obs_queue_task(OBS_TASK_GRAPHICS)` does not enter the context for you; `gs_texrender_create` returns null without it). Clear to transparent and use separate alpha blending so see-through areas stay see-through. Verified in M1: filters (Chroma Key) are included. Image files are decoded with OBS's own `gs_image_file_init` (PNG, JPG, WebP on every platform), not QImage.
 
 **Saving**
 - Config is saved with the scene collection via `obs_frontend_add_save_callback` (an `obs_data_t` under key `laycue`). One JSON object with a `version` number. Write a migration whenever the schema changes.
@@ -111,6 +111,7 @@ A crash here takes down a live stream.
 ### Hole detection (`core/detect`)
 1. Input: RGBA pixels of the frame source, rendered by OBS *after* its filters.
 2. Binary mask: pixel is "hole" if alpha < threshold (default 16). For green frames, OBS's Chroma Key filter makes the green transparent first. A raw chroma-distance mode (CbCr distance, default tolerance 28) exists as a fallback and for the upload preview. **Never assume pure green**: sample the key colour as the most common strongly-green colour in the image (g > r+60 and g > b+60), and use that same colour for the Chroma Key filter Laycue adds. Real designs use e.g. `#00B13F`, which pure-green matching misses entirely (verified on the owner's pushbacks). On upload, try see-through first and fall back to green automatically.
+   **Chroma Key strength:** OBS's default Similarity (400) keys out far more than the green for darker greens like `#00B13F`: on a dark navy design it made the *whole* image transparent (found in M1). When Laycue adds a Chroma Key filter (M2), it must choose a lower Similarity (about 150 worked) and verify with detection that the window is not ≥95% of the image.
 3. Find the largest connected region of hole pixels.
 4. Return its bounding rectangle and fill ratio (hole pixels ÷ rectangle area). Under 0.9 → low-confidence flag.
 5. Detect on a downscaled copy (~640px wide), scale the rectangle back, refine edges at full size.

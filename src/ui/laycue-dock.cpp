@@ -4,6 +4,7 @@
 #include "obs/switcher.hpp"
 #include "ui/tokens.hpp"
 #include "ui/widgets.hpp"
+#include "ui/window-finder.hpp"
 
 #include <obs-module.h>
 #include <plugin-support.h>
@@ -39,6 +40,8 @@ constexpr int kRefreshDelayMs = 50;       // coalesce bursts of OBS changes into
 constexpr int kPictureTickMs = 100;       // how often the panel asks for fresh pictures
 constexpr int kToastMs = 2600;            // how long a notice stays up
 constexpr int kSuppressFallbackMs = 5000; // safety net if OBS never reports the transition ending
+constexpr int kCardMinWidth = 190;        // shot cards never get narrower than this (except at 2 across)
+constexpr int kWideLayoutWidth = 640;     // from here on, Live and Up next sit side by side
 constexpr int kRestoreFallbackMs = 1000;  // same, for putting the transition back after a Cut
 constexpr int kLiveIntervalMs = 100;      // Live picture: ~10 fps
 constexpr int kNextIntervalMs = 250;      // Up next picture: ~4 fps
@@ -77,13 +80,13 @@ QLabel *makeLabel(QWidget *parent, const QFont &font, const QColor &colorValue, 
 {
 	auto *label = new QLabel(value, parent);
 	label->setFont(font);
-	label->setStyleSheet(QStringLiteral("color: %1; background: transparent;").arg(ui::hex(colorValue)));
+	label->setStyleSheet(ui::labelStyle(colorValue, font));
 	return label;
 }
 
 void setLabelColor(QLabel *label, const QColor &colorValue)
 {
-	label->setStyleSheet(QStringLiteral("color: %1; background: transparent;").arg(ui::hex(colorValue)));
+	label->setStyleSheet(ui::labelStyle(colorValue, label->font()));
 }
 
 QString panelStyleSheet()
@@ -105,12 +108,16 @@ QPushButton#laycueCut:hover { background: %8; }
 QPushButton#laycueCut:pressed { background: %2; }
 QPushButton#laycueCut:disabled { border-color: %2; }
 QPushButton#laycueCut:focus { border: 2px solid %6; }
+QPushButton#laycueSetupLink { background: transparent; color: %6; border: none; border-radius: %4px; padding: 0 8px; text-align: left; font-size: 13px; font-weight: 600; }
+QPushButton#laycueSetupLink:hover { background: %8; }
+QPushButton#laycueSetupLink:focus { border: 2px solid %6; }
 )")
 		       .arg(hex(color::ink), hex(color::line), hex(color::live), QString::number(size::radius),
 			    hex(color::livePressed), hex(color::setup), hex(color::lineStrong), hex(color::graphite)) +
 	       (uiFamily().isEmpty()
 			? QString()
-			: QStringLiteral("#LaycueContent QLabel { font-family: \"%1\"; }").arg(uiFamily()));
+			: QStringLiteral("#LaycueContent QLabel, #LaycueContent QPushButton { font-family: \"%1\"; }")
+				  .arg(uiFamily()));
 }
 
 // A button with a title and a small detail line under it (Go Live / Cut).
@@ -220,40 +227,40 @@ void LaycueDock::buildUi()
 	header->addWidget(studioLabel_);
 	root->addLayout(header);
 
-	// Live picture
+	// Live and Up next pictures. Narrow panel: big Live, with Up next small beside its name.
+	// Wide panel: the two side by side at equal size, Up next on the left like OBS's Preview.
+	picturesGrid_ = new QGridLayout();
+	picturesGrid_->setHorizontalSpacing(size::gap);
+	picturesGrid_->setVerticalSpacing(size::gap);
 	liveView_ = new PictureView(content);
 	liveView_->setRing(color::live, 1.5);
 	liveView_->setPlaceholder(text("Laycue.WaitingForPicture"));
 	liveView_->setAccessibleName(text("Laycue.LiveAccessible"));
-	root->addWidget(liveView_);
-
-	// Up next: small picture + what's cued
-	auto *nextRow = new QHBoxLayout();
-	nextRow->setSpacing(size::gap);
 	nextView_ = new PictureView(content);
 	nextView_->setAccessibleName(text("Laycue.NextAccessible"));
-	nextRow->addWidget(nextView_, 0, Qt::AlignTop);
 
-	auto *nextText = new QVBoxLayout();
+	nextTextBox_ = new QWidget(content);
+	auto *nextText = new QVBoxLayout(nextTextBox_);
+	nextText->setContentsMargins(0, 0, 0, 0);
 	nextText->setSpacing(3);
 	auto *eyebrowRow = new QHBoxLayout();
 	eyebrowRow->setSpacing(6);
-	nextDot_ = new QLabel(content);
+	nextDot_ = new QLabel(nextTextBox_);
 	nextDot_->setFixedSize(7, 7);
 	eyebrowRow->addWidget(nextDot_, 0, Qt::AlignVCenter);
-	nextEyebrow_ = makeLabel(content, uiFont(11, 700), color::textSecondary, text("Laycue.UpNext"));
+	nextEyebrow_ = makeLabel(nextTextBox_, uiFont(11, 700), color::textSecondary, text("Laycue.UpNext"));
 	eyebrowRow->addWidget(nextEyebrow_);
 	eyebrowRow->addStretch(1);
 	nextText->addLayout(eyebrowRow);
-	nextName_ = makeLabel(content, uiFont(15, 600), color::cream);
+	nextName_ = makeLabel(nextTextBox_, uiFont(15, 600), color::cream);
 	nextName_->setWordWrap(true);
 	nextText->addWidget(nextName_);
-	nextHint_ = makeLabel(content, uiFont(12, 400), color::textSecondary);
+	nextHint_ = makeLabel(nextTextBox_, uiFont(12, 400), color::textSecondary);
 	nextHint_->setWordWrap(true);
 	nextText->addWidget(nextHint_);
 	nextText->addStretch(1);
-	nextRow->addLayout(nextText, 1);
-	root->addLayout(nextRow);
+	root->addLayout(picturesGrid_);
+	arrangePictures(false);
 
 	// Cut (instant) and Go Live (OBS transition)
 	auto *buttons = new QHBoxLayout();
@@ -262,6 +269,7 @@ void LaycueDock::buildUi()
 	QLabel *cutDetail = nullptr;
 	cutButton_ = makeTwoLineButton(content, "laycueCut", cutTitle, cutDetail, color::cream, color::textSecondary);
 	cutTitle->setFont(uiFont(15, 600));
+	setLabelColor(cutTitle, color::cream); // re-applies the style sheet with the new size
 	cutTitle->setText(text("Laycue.Cut"));
 	cutDetail->setText(text("Laycue.Instant"));
 	cutButton_->setToolTip(text("Laycue.CutTip"));
@@ -305,6 +313,19 @@ void LaycueDock::buildUi()
 	emptyLabel_->hide();
 	root->addWidget(emptyLabel_);
 
+	// Setup tool (Signal Blue = setup): check where Laycue finds a pushback's window.
+	auto *findWindow = new QPushButton(text("Laycue.FindWindow"), content);
+	findWindow->setObjectName("laycueSetupLink");
+	findWindow->setToolTip(text("Laycue.FindWindowTip"));
+	findWindow->setCursor(Qt::PointingHandCursor);
+	findWindow->setFont(uiFont(13, 600));
+	findWindow->setMinimumHeight(size::touch);
+	connect(findWindow, &QPushButton::clicked, this, [this]() {
+		auto *dialog = new ui::WindowFinderDialog(this);
+		dialog->show();
+	});
+	root->addWidget(findWindow, 0, Qt::AlignLeft);
+
 	// Notice (amber marker + one line), shown briefly after something happens.
 	toast_ = new QWidget(content);
 	toast_->setObjectName("laycueToast");
@@ -329,10 +350,37 @@ void LaycueDock::resizeEvent(QResizeEvent *event)
 {
 	QWidget::resizeEvent(event);
 	const int contentWidth = width() - 2 * ui::size::margin;
-	liveView_->setFixedHeight(contentWidth * 9 / 16);
-	const int nextWidth = (contentWidth - ui::size::gap) * 45 / 100;
-	nextView_->setFixedSize(nextWidth, nextWidth * 9 / 16);
+	const bool wide = contentWidth >= kWideLayoutWidth;
+	arrangePictures(wide);
+	if (wide) {
+		const int half = (contentWidth - ui::size::gap) / 2;
+		liveView_->setFixedSize(half, half * 9 / 16);
+		nextView_->setFixedSize(half, half * 9 / 16);
+	} else {
+		liveView_->setFixedSize(contentWidth, contentWidth * 9 / 16);
+		const int nextWidth = (contentWidth - ui::size::gap) * 45 / 100;
+		nextView_->setFixedSize(nextWidth, nextWidth * 9 / 16);
+	}
 	layoutCards();
+}
+
+void LaycueDock::arrangePictures(bool wide)
+{
+	if (picturesArranged_ && wide == wideLayout_)
+		return;
+	picturesArranged_ = true;
+	wideLayout_ = wide;
+	for (QWidget *w : {static_cast<QWidget *>(liveView_), static_cast<QWidget *>(nextView_), nextTextBox_})
+		picturesGrid_->removeWidget(w);
+	if (wide) {
+		picturesGrid_->addWidget(nextView_, 0, 0, Qt::AlignTop);
+		picturesGrid_->addWidget(liveView_, 0, 1, Qt::AlignTop);
+		picturesGrid_->addWidget(nextTextBox_, 1, 0, Qt::AlignTop);
+	} else {
+		picturesGrid_->addWidget(liveView_, 0, 0, 1, 2, Qt::AlignTop);
+		picturesGrid_->addWidget(nextView_, 1, 0, Qt::AlignTop);
+		picturesGrid_->addWidget(nextTextBox_, 1, 1, Qt::AlignTop);
+	}
 }
 
 bool LaycueDock::eventFilter(QObject *watched, QEvent *event)
@@ -493,8 +541,9 @@ void LaycueDock::layoutCards()
 	while (shotsGrid_->count() > 0)
 		delete shotsGrid_->takeAt(0); // removes the layout item only; the card stays
 
-	const int columns = 2;
 	const int available = shotsScroll_->viewport()->width();
+	// Two cards across in a normal panel; more when the panel is wide, so cards stay small.
+	const int columns = std::clamp(available / kCardMinWidth, 2, 6);
 	const int columnWidth = std::max((available - shotsGrid_->horizontalSpacing()) / columns, 80);
 	int index = 0;
 	for (const Shot &shot : shots_) {

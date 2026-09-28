@@ -252,7 +252,7 @@ Every milestone ends with a **Windows build** the owner installs, plus a short t
 | # | Milestone | Outcome |
 |---|---|---|
 | M0 | Plugin skeleton ✓ | Installers build on GitHub; plugin loads in OBS; panel lists scenes and sources |
-| M1 | Window finder | In the panel, pick a pushback image or an OBS source and see the detected window. Passes on the three real pushbacks in `tests/fixtures/pushbacks`. Confirms detection works after OBS's Chroma Key |
+| M1 | Window finder ✓ | In the panel, pick a pushback image or an OBS source and see the detected window. Passes on the three real pushbacks in `tests/fixtures/pushbacks`. Confirms detection works after OBS's Chroma Key |
 | M2 | Smart fit | Pushback upload with auto chroma key (measured green), camera and scene choice, instant fit, restore on hide, saved with the scene collection, Reset all |
 | M3 | Overlays | Tags, spots and position-aware exclusivity, scope, pause (F3) |
 | M4 | Setup and safety | Guided first-run checklist, Lock setup, plain-language errors; Windows installer if approved |

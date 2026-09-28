@@ -51,6 +51,10 @@ QString uiFamily();
 // JetBrains Mono, for hotkeys and technical details.
 QFont monoFont(int pixelSize);
 
+// Style sheet for a label: its colour plus its font size and weight. OBS themes set font
+// sizes in their style sheets, which would otherwise win over setFont().
+QString labelStyle(const QColor &color, const QFont &font);
+
 // "#RRGGBB" for use in the few Qt style sheets the dock needs.
 QString hex(const QColor &color);
 
