@@ -210,12 +210,13 @@ Run the show like a hardware vision mixer (ATEM, Roland) instead of building one
 
 ## 7a. Design direction
 
-- **Premium, calm, fast.** The panel should feel better made than OBS itself while clearly belonging inside it: same dark family, quieter chrome, more deliberate spacing and type.
-- **The hero is the Live picture and the Next shot.** Everything else is quiet and near-monochrome.
-- **Colour has meaning only:** red = on air, green = next (broadcast tally convention), blue = setup actions. No decorative colour.
-- **Follows Apple's Human Interface principles:** system font, clear hierarchy, rounded surfaces, instant press feedback, grouped settings lists, plain-language labels, and reduced-motion support.
+- **Brand:** the Laycue Brand System v1.0 (https://claude.ai/artifact/H435m1pPCfoLBUsLWPA1rj; summary and logo files in `assets/brand/`). Mark: four coloured source bands merging into one cream output screen. Tagline: "Layers in. One picture out."
+- **Premium, calm, fast.** The panel should feel better made than OBS itself while clearly belonging inside it: Ink and Graphite surfaces, Cream text, deliberate spacing and type (Archivo, JetBrains Mono for hotkeys).
+- **"Quiet everywhere except Live and Up next."** The Live picture and the Up next shot are the heroes; everything else is near-monochrome.
+- **Colour has one job each:** Tally Red = on air only; Cue Green = up next; Overlay Amber = overlays and notices; Signal Blue = setup and edit; Cream = output and primary actions. Go Live is the only filled colour control.
+- **Follows Apple's Human Interface principles:** clear hierarchy, instant press feedback (98% scale in 80 ms), grouped settings lists, plain-language labels, reduced-motion support.
 - **Keyboard-first:** every shot and button shows its hotkey.
-- **Clickable mockup:** https://claude.ai/artifact/RnVjdtYU11GCujsmbVrb7x (Shots view, Mixer view, pushback upload, and the panel docked in OBS).
+- **Clickable mockup:** https://claude.ai/artifact/RnVjdtYU11GCujsmbVrb7x (first-run setup, Shots view, pushback upload, Mixer view, docked in OBS). The brand system's section 06 is the reference for the final panel styling.
 
 ## 8. Technical approach (summary)
 

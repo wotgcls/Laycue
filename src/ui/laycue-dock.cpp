@@ -6,7 +6,10 @@
 #include <plugin-support.h>
 
 #include <QFont>
+#include <QGuiApplication>
 #include <QLabel>
+#include <QPalette>
+#include <QPixmap>
 #include <QScrollBar>
 #include <QTreeWidget>
 #include <QVBoxLayout>
@@ -40,6 +43,34 @@ void expandGroups(QTreeWidgetItem *row)
 	}
 }
 
+constexpr int kLogoHeight = 18; // logical pixels
+
+// The Laycue logo for the panel header, picked for the current OBS theme (cream on dark, ink on light).
+// Returns an empty label if the image is missing, so a broken install never breaks the panel.
+QLabel *makeLogo(QWidget *parent)
+{
+	auto *logo = new QLabel(parent);
+	const bool darkTheme = parent->palette().color(QPalette::Window).lightness() < 128;
+	const char *file = darkTheme ? "brand/laycue-lockup-on-dark.png" : "brand/laycue-lockup-on-light.png";
+
+	char *path = obs_module_file(file);
+	if (!path) {
+		obs_log(LOG_WARNING, "Logo image not found: %s", file);
+		return logo;
+	}
+	QPixmap image(QString::fromUtf8(path));
+	bfree(path);
+	if (image.isNull())
+		return logo;
+
+	const qreal ratio = qGuiApp ? qGuiApp->devicePixelRatio() : 1.0;
+	QPixmap scaled = image.scaledToHeight(qRound(kLogoHeight * ratio), Qt::SmoothTransformation);
+	scaled.setDevicePixelRatio(ratio);
+	logo->setPixmap(scaled);
+	logo->setAccessibleName(QStringLiteral("Laycue"));
+	return logo;
+}
+
 } // namespace
 
 LaycueDock::LaycueDock(QWidget *parent) : QWidget(parent)
@@ -50,6 +81,8 @@ LaycueDock::LaycueDock(QWidget *parent) : QWidget(parent)
 	auto *layout = new QVBoxLayout(this);
 	layout->setContentsMargins(6, 6, 6, 6);
 	layout->setSpacing(6);
+
+	layout->addWidget(makeLogo(this));
 
 	summaryLabel_ = new QLabel(this);
 	summaryLabel_->setWordWrap(true);

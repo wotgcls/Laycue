@@ -22,7 +22,7 @@ The operator is in control. Every automation is opt-in, scoped and pausable. Lay
 
 - **C++17**, **CMake**, built from the official **obs-plugintemplate** (its `cmake/`, `.github/` and `buildspec.json` came from it).
 - **libobs** + **obs-frontend-api** for everything OBS.
-- **Qt 6 Widgets** for the dock UI, styled with Laycue's own design tokens (see PRD §7a and the mockup linked there): dark surfaces close to OBS's, system font, one meaning per colour (red = live, green = next, blue = setup). Keep all colours, radii and spacing in one tokens file in `src/ui/`; never scatter hex values through widgets. No translucency/blur (Qt docks can't do it reliably).
+- **Qt 6 Widgets** for the dock UI, styled to the **Laycue brand system** (`assets/brand/README.md`, source https://claude.ai/artifact/H435m1pPCfoLBUsLWPA1rj): Ink `#111110` base, Graphite `#1C1B19`/`#2C2A27`, Cream `#F1EBDD` for text, output and primary actions; one job per colour: Tally Red `#FF4D2E` = on air only, Cue Green `#2FD18B` = up next, Overlay Amber `#FFB31A` = overlays and notices, Signal Blue `#2E8BFF` = setup/edit. Archivo (bundled, OFL) with system UI font fallback; JetBrains Mono for hotkeys. Controls: 8 px radius, 36 px default / 44 px touch, spacing 4/8/14/24, motion 120 ms ease-out. Keep all tokens in one tokens file in `src/ui/`; never scatter hex values through widgets. Logo images live in `data/brand/` (loaded with `obs_module_file`). No translucency/blur (Qt docks can't do it reliably).
 - **Tests:** pure C++ in `tests/`, a standalone CMake project with a tiny in-repo check helper (`tests/check.hpp`). No test library.
 - Target OBS version is pinned in `buildspec.json` (currently 31.1.1). Only use APIs available in that version.
 - No network, no backend, no accounts.

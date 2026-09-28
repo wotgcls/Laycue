@@ -29,6 +29,9 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName=Laycue for OBS Studio
+; Laycue brand icon (assets/brand/laycue.ico); the uninstaller shows the copy installed under data\brand.
+SetupIconFile=..\assets\brand\laycue.ico
+UninstallDisplayIcon={app}\data\brand\laycue.ico
 ; If OBS is open, the installer offers to close it (OBS keeps laycue.dll locked while running).
 CloseApplications=yes
 RestartApplications=no
