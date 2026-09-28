@@ -13,6 +13,8 @@ add_executable(
   laycue-tests
   test-main.cpp
   test-source-kinds.cpp
+  test-cue-state.cpp
+  "${LAYCUE_SRC}/core/cue-state.cpp"
   "${LAYCUE_SRC}/core/scene-model.cpp"
   "${LAYCUE_SRC}/core/source-kinds.cpp"
 )

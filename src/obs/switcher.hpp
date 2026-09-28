@@ -1,0 +1,38 @@
+// Switching scenes in OBS for the Shots view: cue a scene, take it live with the OBS
+// transition (Go Live) or instantly (Cut). UI thread only.
+#pragma once
+
+#include <string>
+
+namespace laycue {
+
+bool studioModeActive();
+
+// UUIDs of the scene on air and (in studio mode) the preview scene. Empty if none.
+std::string programSceneUuid();
+std::string previewSceneUuid();
+
+// Studio mode only: show the scene in OBS's Preview. Returns false if the scene is gone.
+bool showInPreview(const std::string &sceneUuid);
+
+// Put the scene on air. `instant` = Cut (no transition); otherwise the OBS transition
+// currently selected is used. Returns false if the scene no longer exists.
+//
+// For Cut, OBS's Cut transition is selected just for this switch. OBS finishes the switch
+// on a later frame, so the operator's own transition can't be put back straight away:
+// `transitionToRestore` gets its name, and the caller passes it to restoreTransition()
+// once OBS reports the transition has stopped.
+bool takeLive(const std::string &sceneUuid, bool instant, std::string &transitionToRestore);
+
+// Selects the OBS transition with this name again (does nothing if it no longer exists).
+void restoreTransition(const std::string &name);
+
+// The transition Go Live will use, e.g. "Fade" and its duration in milliseconds.
+// durationMs is 0 for transitions without a duration (Cut, stingers).
+struct TransitionInfo {
+	std::string name;
+	int durationMs = 0;
+};
+TransitionInfo currentTransition();
+
+} // namespace laycue
