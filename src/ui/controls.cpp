@@ -463,6 +463,98 @@ void ActionButton::paintEvent(QPaintEvent *)
 	}
 }
 
+// ----- StageButton -----
+
+StageButton::StageButton(Kind kind, QWidget *parent) : QAbstractButton(parent), kind_(kind)
+{
+	setCursor(Qt::PointingHandCursor);
+	setFocusPolicy(Qt::TabFocus);
+	setFixedHeight(size::bigButton);
+	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+}
+
+void StageButton::setTitle(const QString &title)
+{
+	title_ = title;
+	setAccessibleName(title);
+	update();
+}
+
+void StageButton::setDetail(const QString &detail)
+{
+	detail_ = detail;
+	update();
+}
+
+QSize StageButton::sizeHint() const
+{
+	return {96, size::bigButton};
+}
+
+void StageButton::enterEvent(QEnterEvent *event)
+{
+	hovered_ = true;
+	update();
+	QAbstractButton::enterEvent(event);
+}
+
+void StageButton::leaveEvent(QEvent *event)
+{
+	hovered_ = false;
+	update();
+	QAbstractButton::leaveEvent(event);
+}
+
+void StageButton::paintEvent(QPaintEvent *)
+{
+	QPainter p(this);
+	p.setRenderHint(QPainter::Antialiasing);
+	QRectF box = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+	if (isDown() && isEnabled()) {
+		const QPointF c = box.center();
+		box = QRectF(c.x() - box.width() * 0.49, c.y() - box.height() * 0.49, box.width() * 0.98,
+			     box.height() * 0.98);
+	}
+
+	const bool goLive = kind_ == Kind::GoLive;
+	QColor fill;
+	QColor border = Qt::transparent;
+	QColor titleColour;
+	QColor detailColour;
+	if (!isEnabled()) {
+		fill = goLive ? color::control : color::graphite;
+		border = goLive ? Qt::transparent : QColor(255, 255, 255, 10);
+		titleColour = detailColour = color::textDisabled;
+	} else if (goLive) {
+		fill = hovered_ || isDown() ? color::livePressed : color::live;
+		titleColour = detailColour = color::ink;
+	} else {
+		fill = hovered_ ? QColor(0x36, 0x34, 0x30) : color::control;
+		border = QColor(255, 255, 255, 26);
+		titleColour = color::cream;
+		detailColour = color::textSecondary;
+	}
+	p.setPen(border.alpha() ? QPen(border, 1) : Qt::NoPen);
+	p.setBrush(fill);
+	p.drawRoundedRect(box, size::radius, size::radius);
+
+	const QRectF top(box.left(), box.top() + 6, box.width(), box.height() / 2 - 4);
+	const QRectF bottom(box.left(), box.center().y() + 1, box.width(), box.height() / 2 - 6);
+	p.setPen(titleColour);
+	p.setFont(uiFont(goLive ? 16 : 15, goLive ? 700 : 600));
+	p.drawText(top, Qt::AlignHCenter | Qt::AlignBottom, title_);
+	p.setPen(detailColour);
+	p.setFont(uiFont(11, 500));
+	p.drawText(bottom, Qt::AlignHCenter | Qt::AlignTop,
+		   QFontMetrics(p.font()).elidedText(detail_, Qt::ElideRight, int(box.width()) - 12));
+
+	if (hasFocus()) {
+		p.setBrush(Qt::NoBrush);
+		p.setPen(QPen(color::setup, 2));
+		p.drawRoundedRect(QRectF(rect()).adjusted(1, 1, -1, -1), size::radius, size::radius);
+	}
+}
+
 // ----- GearButton -----
 
 GearButton::GearButton(QWidget *parent) : QAbstractButton(parent)

@@ -63,6 +63,7 @@ OBSData configToData(const Config &config)
 	OBSData root = obs_data_create();
 	obs_data_set_int(root, "version", config.version);
 	obs_data_set_bool(root, "rulesInitialised", config.rulesInitialised);
+	obs_data_set_bool(root, "wentLive", config.wentLive);
 	putStrings(root, "dismissedTips", config.dismissedTips);
 
 	{
@@ -71,7 +72,6 @@ OBSData configToData(const Config &config)
 		obs_data_set_bool(s, "insideFade", v.insideFade);
 		obs_data_set_int(s, "insideFadeMs", v.insideFadeMs);
 		obs_data_set_bool(s, "largeButtons", v.largeButtons);
-		obs_data_set_bool(s, "showHotkeys", v.showHotkeys);
 		obs_data_set_bool(s, "locked", v.locked);
 		obs_data_set_bool(s, "showTips", v.showTips);
 		obs_data_set_bool(s, "autoKey", v.autoKey);
@@ -150,6 +150,7 @@ Config configFromData(obs_data_t *data)
 		return config;
 
 	config.rulesInitialised = obs_data_get_bool(data, "rulesInitialised");
+	config.wentLive = obs_data_get_bool(data, "wentLive");
 	config.dismissedTips = getStrings(data, "dismissedTips");
 
 	{
@@ -160,14 +161,12 @@ Config configFromData(obs_data_t *data)
 			obs_data_set_default_bool(s, "insideFade", v.insideFade);
 			obs_data_set_default_int(s, "insideFadeMs", v.insideFadeMs);
 			obs_data_set_default_bool(s, "largeButtons", v.largeButtons);
-			obs_data_set_default_bool(s, "showHotkeys", v.showHotkeys);
 			obs_data_set_default_bool(s, "locked", v.locked);
 			obs_data_set_default_bool(s, "showTips", v.showTips);
 			obs_data_set_default_bool(s, "autoKey", v.autoKey);
 			v.insideFade = obs_data_get_bool(s, "insideFade");
 			v.insideFadeMs = static_cast<int>(obs_data_get_int(s, "insideFadeMs"));
 			v.largeButtons = obs_data_get_bool(s, "largeButtons");
-			v.showHotkeys = obs_data_get_bool(s, "showHotkeys");
 			v.locked = obs_data_get_bool(s, "locked");
 			v.showTips = obs_data_get_bool(s, "showTips");
 			v.autoKey = obs_data_get_bool(s, "autoKey");

@@ -17,6 +17,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 */
 
 #include "features/app.hpp"
+#include "features/hotkeys.hpp"
 #include "ui/laycue-dock.hpp"
 
 #include <obs-frontend-api.h>
@@ -41,6 +42,7 @@ QPointer<laycue::LaycueDock> g_dock;
 
 // The one top-level object. Created first, destroyed last, so the dock never outlives it.
 std::unique_ptr<laycue::App> g_app;
+std::unique_ptr<laycue::Hotkeys> g_hotkeys; // destroyed first, before the app
 
 void onFrontendEvent(enum obs_frontend_event event, void *)
 {
@@ -71,6 +73,10 @@ bool obs_module_load(void)
 			return true; // stay loaded; OBS keeps working without the dock
 		}
 		g_dock = dock;
+		g_hotkeys = std::make_unique<laycue::Hotkeys>(dock, [](laycue::HotkeyAction action) {
+			if (g_dock)
+				g_dock->runHotkey(action);
+		});
 
 		obs_frontend_add_event_callback(onFrontendEvent, nullptr);
 		obs_log(LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
@@ -85,6 +91,7 @@ bool obs_module_load(void)
 void obs_module_unload(void)
 {
 	obs_frontend_remove_event_callback(onFrontendEvent, nullptr);
+	g_hotkeys.reset();
 	g_app.reset();
 	obs_log(LOG_INFO, "plugin unloaded");
 }

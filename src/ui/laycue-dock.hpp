@@ -6,6 +6,7 @@
 
 #include "core/cue-state.hpp"
 #include "obs/frame-grabber.hpp"
+#include "features/hotkeys.hpp"
 #include "features/overlay-engine.hpp"
 #include "obs/scene-watcher.hpp"
 
@@ -37,6 +38,7 @@ namespace ui {
 class OverlaysTab;
 class PictureView;
 class Segmented;
+class StageButton;
 class ShotCard;
 class Surface;
 } // namespace ui
@@ -50,6 +52,9 @@ public:
 
 	// Called on the UI thread for every OBS frontend event.
 	void handleFrontendEvent(enum obs_frontend_event event);
+
+	// A Laycue hotkey was pressed (UI thread).
+	void runHotkey(HotkeyAction action);
 
 protected:
 	void resizeEvent(QResizeEvent *event) override;
@@ -77,8 +82,10 @@ private:
 	void updateInsideBar();
 	void switchInside(const std::string &pushbackId, const std::string &feedUuid);
 	void unpin();
+	void stepCamera(int direction);
 	void pushbackMenu(const std::string &pushbackId, const QPoint &globalPos);
 	void openAddPushback();
+	void updateGuide();
 	void openSettings();
 	void openOverlaySetup();
 	void repairPushbacks();
@@ -127,10 +134,8 @@ private:
 	QLabel *nextDot_ = nullptr;
 	QLabel *nextName_ = nullptr;
 	QLabel *nextHint_ = nullptr;
-	QPushButton *cutButton_ = nullptr;
-	QPushButton *goLiveButton_ = nullptr;
-	QLabel *goLiveTitle_ = nullptr;
-	QLabel *goLiveDetail_ = nullptr;
+	ui::StageButton *cutButton_ = nullptr;
+	ui::StageButton *goLiveButton_ = nullptr;
 
 	// The live pushback's "camera inside" controls
 	QWidget *insideBar_ = nullptr;
@@ -141,6 +146,7 @@ private:
 	QScrollArea *tabScroll_ = nullptr;
 	QWidget *shotsTab_ = nullptr;
 	QVBoxLayout *shotsTabLayout_ = nullptr;
+	QWidget *shotsGuideHost_ = nullptr;
 	QWidget *shotsTipHost_ = nullptr;
 	QWidget *shotsGridHost_ = nullptr;
 	QGridLayout *shotsGrid_ = nullptr;

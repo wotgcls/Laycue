@@ -49,6 +49,8 @@ target_sources(
     src/core/scene-model.cpp
     src/core/source-kinds.cpp
     src/features/app.cpp
+    src/features/hotkeys.cpp
+    src/features/hotkeys.hpp
     src/features/overlay-engine.cpp
     src/features/profiles.cpp
     src/features/profiles.hpp

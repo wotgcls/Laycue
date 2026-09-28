@@ -135,6 +135,33 @@ private:
 	bool hovered_ = false;
 };
 
+// The two big buttons on the stage (Go Live, Cut): a title and a small line under it, drawn by Laycue.
+// Go Live is the one filled red control; Cut is quiet.
+class StageButton : public QAbstractButton {
+	Q_OBJECT
+
+public:
+	enum class Kind { GoLive, Cut };
+
+	StageButton(Kind kind, QWidget *parent = nullptr);
+
+	void setTitle(const QString &title);
+	void setDetail(const QString &detail);
+
+	QSize sizeHint() const override;
+
+protected:
+	void paintEvent(QPaintEvent *event) override;
+	void enterEvent(QEnterEvent *event) override;
+	void leaveEvent(QEvent *event) override;
+
+private:
+	Kind kind_;
+	QString title_;
+	QString detail_;
+	bool hovered_ = false;
+};
+
 // The Settings button: a gear, drawn by Laycue.
 class GearButton : public QAbstractButton {
 	Q_OBJECT

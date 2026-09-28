@@ -43,22 +43,37 @@ Always build the plugin, run the tests and run both formatters before saying a t
 
 ```
 src/
-  plugin-main.cpp        # module load/unload: creates the dock, hooks OBS events
+  plugin-main.cpp        # module load/unload: creates the App, hotkeys and the dock, hooks OBS events
   plugin-support.*       # from template: PLUGIN_NAME, PLUGIN_VERSION, obs_log()
   obs/                   # the ONLY place that talks to libobs directly
-    scene-watcher.*      # subscribes to scene/source signals, reports "something changed"
+    scene-watcher.*      # subscribes to scene/source signals (incl. item_visible, groups)
     scene-reader.*       # reads scenes, items and canvas into core structs
+    overlay-items.*      # overlay items: read, show/hide, measure the visible-pixel spot
+    pixel-reader.*       # image files (OBS's decoder) and sources drawn WITH their filters
+    pushback-scene.*     # builds/drives a pushback's own scene, camera fit, Chroma Key tuning
+    frame-grabber.*      # Live/Up next/shot pictures on the graphics thread
+    switcher.*           # Go Live / Cut, studio mode
   core/                  # PURE C++17. No libobs, no Qt. Fully unit tested.
+    detect.*             # window detection on an RGBA pixel buffer
+    geometry.*           # rects, overlap rule, spot mapping, fill/fit, picture placement
+    autotag.*            # suggests an overlay label from name and position
+    exclusivity.*        # overlay rules: which items to hide (scope, strict, pause)
+    config.*             # everything Laycue remembers (tags, rules, pushbacks, settings)
+    cue-state.*          # Live / Up next rules
     source-kinds.*       # friendly names for OBS source types
-    (later) geometry.*   # rects, fit/fill math, crop calculation, coordinate mapping
-    detect.*             # hole detection on an RGBA pixel buffer
-    (later) layouts.*    # preset definitions and slot → transform maths
-    (later) exclusivity.*# group rules + scope: given a change, which items to hide
-    (later) tween.*      # easing and interpolation of transforms
-  features/              # glue core logic to OBS (smartFit, layoutEngine, switcher, exclusivityEngine)
-  store/                 # config types, version number, migrations, save/load
-  ui/                    # Qt widgets: the dock and its panels
-tests/                   # standalone CMake project testing src/core
+  features/              # glue core logic to OBS
+    app.*                # the one top-level object: owns the Config, saves it with the collection
+    overlay-engine.*     # applies the overlay rules when an item is shown
+    profiles.*           # named setups, matched by name, export/import
+    hotkeys.*            # OBS hotkeys (hotkey thread -> UI thread)
+  store/config-io.*      # Config <-> obs_data (saved under modules.laycue) and JSON
+  ui/                    # Qt widgets: the dock, controls, pages, tabs
+    laycue-dock.*        # the panel: header tabs, stage, tabs, pages
+    controls.*           # Surface (depth), Segmented, Switch, ActionButton, GearButton, TipCard
+    widgets.*            # PictureView, ShotCard, FeedButton
+    pages/               # Set up overlays, Add pushback, Settings, PageFrame
+    tabs/                # Overlays tab
+tests/                   # standalone CMake project testing src/core (+ the real pushback fixtures)
 data/locale/en-US.ini    # all user-visible text
 ```
 
@@ -133,6 +148,17 @@ Pure function. Input: "item X (source S) became visible in scene N", every group
 - Never return items outside the scope. Paused groups return nothing.
 - A **spot** = the source's visible-pixel bounding box (measured with the same readback as hole detection, alpha > threshold) mapped to canvas through that scene item's transform, or the operator's manual rect if set. Rect intersection and the tolerance rule live in `core/geometry` with tests.
 - Ignore changes Laycue caused itself (reentrancy guard around Laycue's own `set_visible` calls).
+
+## Lessons that cost time (read before touching the UI)
+
+- **Never call `tr()` inside a QObject class for Laycue text.** It resolves to Qt's `QObject::tr` and returns the key. Use `ui::lt("Laycue.Key")` (`ui/labels.hpp`).
+- **OBS's theme distorts QSS-styled `QPushButton`s** (height, offset inside their cell, clipping). Laycue draws its own buttons (`ActionButton`, `FeedButton`, `GearButton`, `Segmented`, `Switch`, `ShotCard`). Do not add new QSS-styled buttons. Labels are fine.
+- **Qt ignores zero margins on nested layouts** here; prefer separate widgets that each own a top-level layout.
+- **`obs_queue_task(OBS_TASK_GRAPHICS)` does not enter the graphics context.** Wrap graphics work in `obs_enter_graphics()/obs_leave_graphics()`.
+- **A source nothing references is destroyed when you release it.** Hold it (`SourceHold`) until a scene has it.
+- **Frontend save data lands under `modules` in the collection file.** Laycue's config is `modules.laycue`, hotkeys `modules.laycue_hotkeys`.
+- **OBS swaps Preview and Program after a transition.** After Go Live the panel ignores Preview changes for a moment (`kSuppressGraceMs`), so that swap isn't read as the operator cueing something.
+- **Hotkey callbacks run on OBS's hotkey thread**; post to the UI thread. Signals can fire on any thread too.
 
 ## Coding rules
 

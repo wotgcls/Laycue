@@ -49,10 +49,9 @@ struct Settings {
 	bool insideFade = true; // switching the camera inside a pushback: fade (true) or cut
 	int insideFadeMs = 400;
 	bool largeButtons = false; // touchscreen sizes
-	bool showHotkeys = true;
-	bool locked = false;  // hides everything that edits setup
-	bool showTips = true; // guide cards and hints
-	bool autoKey = true;  // "Remove the background colour for me" is on by default in Add pushback
+	bool locked = false;       // hides everything that edits setup
+	bool showTips = true;      // guide cards and hints
+	bool autoKey = true;       // "Remove the background colour for me" is on by default in Add pushback
 };
 
 struct Config {
@@ -63,6 +62,7 @@ struct Config {
 	std::vector<Pushback> pushbacks;
 	std::vector<std::string> dismissedTips; // guide cards the operator has closed
 	bool rulesInitialised = false;          // the starter rule has been offered once
+	bool wentLive = false;                  // Go Live or Cut has been used (ticks off the getting-started guide)
 };
 
 // Brings a config read from an older or damaged file to the current shape: fills in the

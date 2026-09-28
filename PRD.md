@@ -1,6 +1,6 @@
 # Laycue — Product Requirements Document (MVP)
 
-**Status:** Draft v0.6 · **Owner:** Laycue founder · **Last updated:** 27 Sep 2026
+**Status:** Draft v0.7 · **Owner:** Laycue founder · **Last updated:** 28 Sep 2026
 
 **Changes from v0.1:** Laycue is now a native OBS plugin (was a browser dock). Added the operator-control principle. Exclusivity scope is now chosen per group. Smart fit is instant and can be limited to chosen scenes. Studio mode, hotkeys, the "Reset all" button and scene-collection storage are now covered. The done-when criteria are rewritten so they can be tested.
 
@@ -11,6 +11,15 @@
 **Changes in v0.5:** F3 rewritten: overlay tags and position-aware exclusivity ("spots"). New-shot flow defined. Added section 3a (two roles: set-up person and Sunday operator) and section 10a (release plan: a smaller first release).
 
 **Changes in v0.6:** Release plan approved and written into section 10. Shots view refined after a first-time-operator critique (Go Live/Cut, Up next clears after going live, still thumbnails for shots, overlay spot icons, explanations when overlays switch off, starter shots).
+
+**Changes in v0.7 (what was built, and what changed on the way):**
+- The flow the owner described is now the product: **label your overlays → (optional) overlay rules → pushbacks → run the service**. Every step is optional and the panel guides a first-time operator ("Getting started", tips).
+- **Pushbacks are Laycue-owned scenes.** Adding a pushback makes one scene ("Laycue · <name>") holding the graphic on top and the chosen cameras (or scenes) beneath it, each fitted to the graphic's window. While it is live the operator switches the camera *inside* the window (cut or fade) without the graphic moving, or **Unpins** back to what was on. Laycue never edits the operator's own scenes or sources; the only change to a source is the Chroma Key it adds to the pushback picture, which the operator switches on in the flow.
+- **Window colour is a choice.** A see-through window, or "a colour": the colour Laycue measured in the picture (for example `#00B13F`) or one the operator picks. Laycue tunes the Chroma Key strength by checking what OBS draws, so it never removes more than the window.
+- **Normal | Studio** replaces the planned Laycue A/B "Switcher mode" scenes: one switch turns OBS's Studio Mode on or off, and in Studio Laycue runs OBS's Preview (Up next) and Program (Live). A plugin cannot replace OBS's own Preview and Program screens; this drives them.
+- **Settings and profiles.** A Settings page (cut or fade inside pushbacks, large buttons, tips, Lock) and **profiles**: a whole setup (labels, rules, preferences) saved under a name, shared by every scene collection and matched by name. Export and import by file.
+- **Hotkeys** in OBS: Go Live, Cut, Unpin, next/previous camera inside the pushback, clear Up next.
+- Not built yet: layout presets (F2: PIP, side-by-side, quad), the Mixer view, per-shot hotkeys, animation between layouts.
 
 ---
 
@@ -80,6 +89,13 @@ Laycue automates what the operator asks for, and nothing else.
 ## 6. How it works (user view)
 
 Laycue is a **native OBS plugin**. The user runs the installer for their system (Windows, macOS or Linux) and restarts OBS. A **Laycue panel** appears (Docks → Laycue) and Laycue's actions appear in **Settings → Hotkeys**. There's nothing to connect and no password to enter, because Laycue runs inside OBS.
+
+**The flow.**
+1. **Open the panel.** Choose **Normal** (Go Live sends a scene straight to the stream) or **Studio** (Laycue runs OBS's Preview and Program).
+2. **Label your overlays** (Overlays tab → Set up overlays): tell Laycue which sources are Scripture, Lyrics, Lower third, Logo or your own kind. Right-click a source to label it, or press Auto-label. Then choose which overlays replace each other (rules: same scene, all scenes or chosen scenes; only if they overlap or strictly one at a time; pause).
+3. **Add pushbacks** (Pushbacks tab → Add pushback): choose the graphic, say whether the window is see-through or a colour, choose the cameras, name it.
+4. **Run the service.** Tap a shot to get it ready, then Go Live (or Cut). Put a pushback live, then switch the camera inside it, or Unpin. Toggle overlays on the Overlays tab.
+5. **Lock setup** for the service so nothing can be changed by accident; **profiles** keep a setup for next time.
 
 ## 7. Features and requirements
 
@@ -253,9 +269,9 @@ Every milestone ends with a **Windows build** the owner installs, plus a short t
 |---|---|---|
 | M0 | Plugin skeleton ✓ | Installers build on GitHub; plugin loads in OBS; panel lists scenes and sources |
 | M1 | Window finder ✓ | In the panel, pick a pushback image or an OBS source and see the detected window. Passes on the three real pushbacks in `tests/fixtures/pushbacks`. Confirms detection works after OBS's Chroma Key |
-| M2 | Smart fit | Pushback upload with auto chroma key (measured green), camera and scene choice, instant fit, restore on hide, saved with the scene collection, Reset all |
-| M3 | Overlays | Tags, spots and position-aware exclusivity, scope, pause (F3) |
-| M4 | Setup and safety | Guided first-run checklist, Lock setup, plain-language errors; Windows installer if approved |
+| M2 | Pushbacks ✓ | Add pushback (file or OBS source), window finder with see-through or a colour, gentle automatic Chroma Key, cameras and scenes as feeds, fitted instantly, switch inside (cut/fade), Unpin, saved with the scene collection (built as Laycue-owned scenes, not edits to the operator's scenes) |
+| M3 | Overlays ✓ | Labels, spots measured from drawn pixels, position-aware rules, scope, strict, pause (F3) |
+| M4 | Setup and safety ✓ | Getting-started guide and tips, Lock setup, Settings, profiles, hotkeys, Windows installer |
 | S1 | Sunday test 1 | Used live for 2 services; bugs fixed before Release 2 |
 
 **Release 2 · Switcher**

@@ -106,27 +106,6 @@ void setLabelColor(QLabel *label, const QColor &colorValue)
 	label->setStyleSheet(ui::labelStyle(colorValue, label->font()));
 }
 
-// A button with a title and a small detail line under it (Go Live / Cut).
-QPushButton *makeTwoLineButton(QWidget *parent, const char *objectName, QLabel *&title, QLabel *&detail,
-			       const QColor &titleColor, const QColor &detailColor)
-{
-	auto *button = new QPushButton(parent);
-	button->setObjectName(objectName);
-	button->setMinimumHeight(ui::size::bigButton);
-	button->setCursor(Qt::PointingHandCursor);
-	auto *layout = new QVBoxLayout(button);
-	layout->setContentsMargins(8, 6, 8, 6);
-	layout->setSpacing(0);
-	title = makeLabel(button, ui::uiFont(16, 700), titleColor);
-	detail = makeLabel(button, ui::uiFont(11, 500), detailColor);
-	for (QLabel *l : {title, detail}) {
-		l->setAlignment(Qt::AlignCenter);
-		l->setAttribute(Qt::WA_TransparentForMouseEvents);
-		layout->addWidget(l);
-	}
-	return button;
-}
-
 } // namespace
 
 LaycueDock::LaycueDock(App &app, QWidget *parent) : QWidget(parent), app_(app), overlayEngine_(app)
@@ -348,23 +327,17 @@ QWidget *LaycueDock::buildHome()
 	// Cut (instant) and Go Live (OBS transition)
 	auto *buttons = new QHBoxLayout();
 	buttons->setSpacing(size::gapSmall);
-	QLabel *cutTitle = nullptr;
-	QLabel *cutDetail = nullptr;
-	cutButton_ = makeTwoLineButton(stage_, "laycueCut", cutTitle, cutDetail, color::cream, color::textSecondary);
-	cutTitle->setFont(uiFont(15, 600));
-	setLabelColor(cutTitle, color::cream); // re-applies the style sheet with the new size
-	cutTitle->setText(text("Laycue.Cut"));
-	cutDetail->setText(text("Laycue.Instant"));
+	cutButton_ = new StageButton(StageButton::Kind::Cut, stage_);
+	cutButton_->setTitle(text("Laycue.Cut"));
+	cutButton_->setDetail(text("Laycue.Instant"));
 	cutButton_->setToolTip(text("Laycue.CutTip"));
-	cutButton_->setAccessibleName(text("Laycue.Cut"));
-	connect(cutButton_, &QPushButton::clicked, this, [this]() { goLive(true); });
+	connect(cutButton_, &QAbstractButton::clicked, this, [this]() { goLive(true); });
 	buttons->addWidget(cutButton_, 2);
 
-	goLiveButton_ = makeTwoLineButton(stage_, "laycueGoLive", goLiveTitle_, goLiveDetail_, color::ink, color::ink);
-	goLiveTitle_->setText(text("Laycue.GoLive"));
+	goLiveButton_ = new StageButton(StageButton::Kind::GoLive, stage_);
+	goLiveButton_->setTitle(text("Laycue.GoLive"));
 	goLiveButton_->setToolTip(text("Laycue.GoLiveTip"));
-	goLiveButton_->setAccessibleName(text("Laycue.GoLive"));
-	connect(goLiveButton_, &QPushButton::clicked, this, [this]() { goLive(false); });
+	connect(goLiveButton_, &QAbstractButton::clicked, this, [this]() { goLive(false); });
 	buttons->addWidget(goLiveButton_, 3);
 	stageLayout->addLayout(buttons);
 	root->addWidget(stage_);
@@ -393,6 +366,10 @@ QWidget *LaycueDock::buildHome()
 	shotsHint->setWordWrap(true);
 	shotsHeader->addWidget(shotsHint);
 	shotsTabLayout_->addLayout(shotsHeader);
+	shotsGuideHost_ = new QWidget(shotsTab_);
+	auto *guideLayout = new QVBoxLayout(shotsGuideHost_);
+	guideLayout->setContentsMargins(0, 0, 0, 0);
+	shotsTabLayout_->addWidget(shotsGuideHost_);
 	shotsTipHost_ = new QWidget(shotsTab_);
 	auto *tipLayout = new QVBoxLayout(shotsTipHost_);
 	tipLayout->setContentsMargins(0, 0, 0, 0);
@@ -528,8 +505,14 @@ void LaycueDock::onConfigChanged()
 				item->widget()->deleteLater();
 			delete item;
 		}
-		if (QWidget *tip = tipFor("shots", "Laycue.Tip.Shots.Title", "Laycue.Tip.Shots.Body"))
-			layout->addWidget(tip);
+		// The getting-started guide already says this, so the tip waits until it is gone.
+		const Config &current = app_.config();
+		const bool guideShowing = current.settings.showTips && !current.settings.locked &&
+					  !tipDismissed(current, "guide");
+		if (!guideShowing) {
+			if (QWidget *tip = tipFor("shots", "Laycue.Tip.Shots.Title", "Laycue.Tip.Shots.Body"))
+				layout->addWidget(tip);
+		}
 	}
 	if (pushbacksTipHost_) {
 		auto *layout = pushbacksTipHost_->layout();
@@ -545,6 +528,7 @@ void LaycueDock::onConfigChanged()
 		}
 	}
 	updatePushbackList();
+	updateGuide();
 
 	if (obsReady_ && !shuttingDown_) {
 		saveTimer_.start();
@@ -908,9 +892,6 @@ void LaycueDock::updateStateUi()
 	}
 	cutButton_->setEnabled(cued);
 	goLiveButton_->setEnabled(cued);
-	const QColor buttonText = cued ? color::ink : color::textDisabled;
-	setLabelColor(goLiveTitle_, buttonText);
-	setLabelColor(goLiveDetail_, buttonText);
 	updateTransitionLabel();
 
 	// Cards
@@ -926,13 +907,13 @@ void LaycueDock::updateStateUi()
 
 void LaycueDock::updateTransitionLabel()
 {
-	if (!goLiveDetail_)
+	if (!goLiveButton_)
 		return;
 	const TransitionInfo transition = currentTransition();
 	QString detail = fromStd(transition.name);
 	if (transition.durationMs > 0)
 		detail += QStringLiteral(" · %1 s").arg(transition.durationMs / 1000.0, 0, 'f', 1);
-	goLiveDetail_->setText(detail);
+	goLiveButton_->setDetail(detail);
 }
 
 void LaycueDock::updatePictureTargets()
@@ -1006,6 +987,8 @@ void LaycueDock::goLive(bool instant)
 	if (!transitionToRestore_.empty())
 		restoreTimer_.start();
 	take(cue_);
+	if (!app_.config().wentLive)
+		app_.modify([](Config &c) { c.wentLive = true; });
 	showToast(text(instant ? "Laycue.CutDone" : "Laycue.LiveDone").arg(name));
 	updatePictureTargets();
 	updateStateUi();
@@ -1032,6 +1015,91 @@ void LaycueDock::updatePushbackList()
 	pbEmpty_->setVisible(none);
 	pbGridHost_->setVisible(!none);
 	pushbacksHeaderHost_->setVisible(!none);
+}
+
+void LaycueDock::updateGuide()
+{
+	using namespace ui;
+	auto *layout = shotsGuideHost_->layout();
+	page::clear(layout);
+
+	const Config &config = app_.config();
+	if (!config.settings.showTips || config.settings.locked || tipDismissed(config, "guide"))
+		return;
+
+	struct Step {
+		QString title;
+		QString sub;
+		bool done;
+		QString action;
+		std::function<void()> run;
+	};
+	const std::vector<Step> steps = {
+		{text("Laycue.Guide.Overlays"), text("Laycue.Guide.OverlaysSub"), !config.tags.empty(),
+		 text("Laycue.Guide.OverlaysAction"),
+		 [this]() {
+			 openOverlaySetup();
+		 }},
+		{text("Laycue.Guide.Pushback"), text("Laycue.Guide.PushbackSub"), !config.pushbacks.empty(),
+		 text("Laycue.Guide.PushbackAction"),
+		 [this]() {
+			 openAddPushback();
+		 }},
+		{text("Laycue.Guide.GoLive"), text("Laycue.Guide.GoLiveSub"), config.wentLive, QString(), nullptr},
+	};
+	const bool allDone = std::all_of(steps.begin(), steps.end(), [](const Step &s) { return s.done; });
+
+	auto *card = new Surface(1, shotsGuideHost_);
+	auto *v = new QVBoxLayout(card);
+	v->setSpacing(size::gapSmall);
+	card->setPadding(14, 12, 10, 12);
+
+	auto *header = new QHBoxLayout();
+	header->addWidget(makeLabel(card, uiFont(14, 700), color::cream,
+				    text(allDone ? "Laycue.Guide.AllDone" : "Laycue.Guide.Title")),
+			  1);
+	auto *hide = new ActionButton(text("Laycue.Guide.Hide"), ActionButton::Kind::Link, card);
+	connect(hide, &QAbstractButton::clicked, this,
+		[this]() { app_.modify([](Config &c) { dismissTip(c, "guide"); }); });
+	header->addWidget(hide);
+	v->addLayout(header);
+	if (!allDone) {
+		auto *intro = makeLabel(card, uiFont(12, 400), color::textSecondary, text("Laycue.Guide.Intro"));
+		intro->setWordWrap(true);
+		v->addWidget(intro);
+	}
+
+	for (const Step &step : steps) {
+		auto *row = new QHBoxLayout();
+		row->setSpacing(size::gapSmall + 2);
+		auto *mark = new QLabel(step.done ? QStringLiteral("✓") : QString(), card);
+		mark->setFixedSize(22, 22);
+		mark->setAlignment(Qt::AlignCenter);
+		mark->setStyleSheet(
+			step.done
+				? QStringLiteral(
+					  "background: %1; color: %2; border-radius: 11px; font-size: 13px; font-weight: 700;")
+					  .arg(hex(color::setup), hex(color::cream))
+				: QStringLiteral(
+					  "background: transparent; border: 1.5px solid rgba(255,255,255,60); border-radius: 11px;"));
+		row->addWidget(mark, 0, Qt::AlignTop);
+		auto *textColumn = new QVBoxLayout();
+		textColumn->setSpacing(1);
+		textColumn->addWidget(
+			makeLabel(card, uiFont(13, 600), step.done ? color::textSecondary : color::cream, step.title));
+		auto *sub = makeLabel(card, uiFont(11, 400), color::textTertiary, step.sub);
+		sub->setWordWrap(true);
+		textColumn->addWidget(sub);
+		row->addLayout(textColumn, 1);
+		if (!step.done && step.run) {
+			auto *action = new ActionButton(step.action, ActionButton::Kind::Secondary, card);
+			const auto run = step.run;
+			connect(action, &QAbstractButton::clicked, this, [run]() { run(); });
+			row->addWidget(action, 0, Qt::AlignTop);
+		}
+		v->addLayout(row);
+	}
+	layout->addWidget(card);
 }
 
 void LaycueDock::openOverlaySetup()
@@ -1261,6 +1329,51 @@ void LaycueDock::switchInside(const std::string &pushbackId, const std::string &
 		obs_log(LOG_ERROR, "Could not switch the camera inside the pushback: %s", error.what());
 		showToast(text("Laycue.Inside.Failed"));
 	}
+}
+
+void LaycueDock::runHotkey(HotkeyAction action)
+{
+	if (!obsReady_ || shuttingDown_)
+		return;
+	switch (action) {
+	case HotkeyAction::GoLive:
+		goLive(false);
+		break;
+	case HotkeyAction::Cut:
+		goLive(true);
+		break;
+	case HotkeyAction::Unpin:
+		unpin();
+		break;
+	case HotkeyAction::NextCamera:
+		stepCamera(1);
+		break;
+	case HotkeyAction::PreviousCamera:
+		stepCamera(-1);
+		break;
+	case HotkeyAction::ClearUpNext:
+		cue_.next.clear();
+		updatePictureTargets();
+		updateStateUi();
+		break;
+	}
+}
+
+// The live pushback shows the next (or previous) camera in its list, wrapping around.
+void LaycueDock::stepCamera(int direction)
+{
+	const Pushback *pushback = pushbackForScene(cue_.live);
+	if (!pushback || pushback->feeds.size() < 2)
+		return;
+	const auto &feeds = pushback->feeds;
+	size_t index = 0;
+	for (size_t i = 0; i < feeds.size(); ++i) {
+		if (feeds[i].uuid == pushback->activeFeed)
+			index = i;
+	}
+	const size_t count = feeds.size();
+	const size_t next = (index + count + (direction > 0 ? 1 : count - 1)) % count;
+	switchInside(pushback->id, feeds[next].uuid);
 }
 
 void LaycueDock::unpin()
