@@ -75,6 +75,7 @@ OBSData configToData(const Config &config)
 		obs_data_set_bool(s, "locked", v.locked);
 		obs_data_set_bool(s, "showTips", v.showTips);
 		obs_data_set_bool(s, "autoKey", v.autoKey);
+		obs_data_set_bool(s, "laycueView", v.laycueView);
 		obs_data_set_obj(root, "settings", s);
 	}
 
@@ -140,6 +141,29 @@ OBSData configToData(const Config &config)
 		obs_data_set_array(root, "pushbacks", array);
 	}
 
+	{
+		OBSDataArrayAutoRelease array = obs_data_array_create();
+		for (const Layout &l : config.layouts) {
+			OBSDataAutoRelease item = obs_data_create();
+			obs_data_set_string(item, "id", l.id.c_str());
+			obs_data_set_string(item, "name", l.name.c_str());
+			obs_data_set_string(item, "template", l.templateId.c_str());
+			obs_data_set_string(item, "sceneUuid", l.sceneUuid.c_str());
+			obs_data_set_string(item, "sceneName", l.sceneName.c_str());
+			obs_data_set_string(item, "fit", l.fit == FitMode::Whole ? "whole" : "fill");
+			OBSDataArrayAutoRelease slots = obs_data_array_create();
+			for (const SlotSource &slot : l.sources) {
+				OBSDataAutoRelease entry = obs_data_create();
+				obs_data_set_string(entry, "uuid", slot.uuid.c_str());
+				obs_data_set_string(entry, "name", slot.name.c_str());
+				obs_data_array_push_back(slots, entry);
+			}
+			obs_data_set_array(item, "slots", slots);
+			obs_data_array_push_back(array, item);
+		}
+		obs_data_set_array(root, "layouts", array);
+	}
+
 	return root;
 }
 
@@ -164,12 +188,14 @@ Config configFromData(obs_data_t *data)
 			obs_data_set_default_bool(s, "locked", v.locked);
 			obs_data_set_default_bool(s, "showTips", v.showTips);
 			obs_data_set_default_bool(s, "autoKey", v.autoKey);
+			obs_data_set_default_bool(s, "laycueView", v.laycueView);
 			v.insideFade = obs_data_get_bool(s, "insideFade");
 			v.insideFadeMs = static_cast<int>(obs_data_get_int(s, "insideFadeMs"));
 			v.largeButtons = obs_data_get_bool(s, "largeButtons");
 			v.locked = obs_data_get_bool(s, "locked");
 			v.showTips = obs_data_get_bool(s, "showTips");
 			v.autoKey = obs_data_get_bool(s, "autoKey");
+			v.laycueView = obs_data_get_bool(s, "laycueView");
 		}
 	}
 
@@ -230,6 +256,28 @@ Config configFromData(obs_data_t *data)
 				p.feeds.push_back({getString(feed, "uuid"), getString(feed, "name")});
 			}
 			config.pushbacks.push_back(std::move(p));
+		}
+	}
+
+	{
+		OBSDataArrayAutoRelease array = obs_data_get_array(data, "layouts");
+		const size_t count = array ? obs_data_array_count(array) : 0;
+		for (size_t i = 0; i < count; ++i) {
+			OBSDataAutoRelease item = obs_data_array_item(array, i);
+			Layout l;
+			l.id = getString(item, "id");
+			l.name = getString(item, "name");
+			l.templateId = getString(item, "template");
+			l.sceneUuid = getString(item, "sceneUuid");
+			l.sceneName = getString(item, "sceneName");
+			l.fit = getString(item, "fit") == "whole" ? FitMode::Whole : FitMode::Fill;
+			OBSDataArrayAutoRelease slots = obs_data_get_array(item, "slots");
+			const size_t slotCount = slots ? obs_data_array_count(slots) : 0;
+			for (size_t k = 0; k < slotCount; ++k) {
+				OBSDataAutoRelease entry = obs_data_array_item(slots, k);
+				l.sources.push_back({getString(entry, "uuid"), getString(entry, "name")});
+			}
+			config.layouts.push_back(std::move(l));
 		}
 	}
 

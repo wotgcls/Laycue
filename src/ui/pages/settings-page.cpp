@@ -3,6 +3,7 @@
 #include "core/config.hpp"
 #include "features/app.hpp"
 #include "features/profiles.hpp"
+#include "obs/switcher.hpp"
 #include "ui/controls.hpp"
 #include "ui/labels.hpp"
 #include "ui/pages/helpers.hpp"
@@ -101,6 +102,24 @@ void SettingsPage::build()
 	message_ = label(this, QString(), 12, 500, color::overlay);
 	message_->hide();
 	page->addWidget(message_);
+
+	// --- How Laycue works with OBS ---
+	{
+		QVBoxLayout *v = group(page, this, lt("Laycue.Settings.WithObs"));
+		auto *mode = new Segmented();
+		mode->setItems({lt("Laycue.Mode.Normal"), lt("Laycue.Mode.Studio")});
+		mode->setCurrent(studioModeActive() ? 1 : 0);
+		mode->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+		mode->setFixedWidth(160);
+		mode->setAccessibleName(lt("Laycue.Mode.Accessible"));
+		connect(mode, &Segmented::changed, this, [this](int index) { emit studioRequested(index == 1); });
+		v->addWidget(row(this, lt("Laycue.Settings.Mode"), lt("Laycue.Mode.Tip"), mode));
+		v->addWidget(divider(this));
+		v->addWidget(row(
+			this, lt("Laycue.Settings.View"), lt("Laycue.Settings.ViewSub"),
+			makeSwitch(nullptr, lt("Laycue.Settings.View"), config.settings.laycueView,
+				   [this](bool on) { app_.modify([&](Config &c) { c.settings.laycueView = on; }); })));
+	}
 
 	// --- Pushbacks and overlays (setup: hidden while locked) ---
 	editHost_ = new QWidget(this);

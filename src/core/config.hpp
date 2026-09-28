@@ -45,6 +45,24 @@ struct Pushback {
 	Rgb keyColour;
 };
 
+// One slot of a layout: which source sits in it.
+struct SlotSource {
+	std::string uuid;
+	std::string name;
+};
+
+// A layout the operator made from a template (split screen, picture in picture...). Laycue builds
+// an OBS scene for it, "Laycue · <name>", with one source in each slot.
+struct Layout {
+	std::string id;
+	std::string name;
+	std::string templateId;
+	std::string sceneUuid;
+	std::string sceneName;
+	FitMode fit = FitMode::Fill;
+	std::vector<SlotSource> sources; // one per slot of the template, in order; uuid empty = empty slot
+};
+
 struct Settings {
 	bool insideFade = true; // switching the camera inside a pushback: fade (true) or cut
 	int insideFadeMs = 400;
@@ -52,6 +70,7 @@ struct Settings {
 	bool locked = false;       // hides everything that edits setup
 	bool showTips = true;      // guide cards and hints
 	bool autoKey = true;       // "Remove the background colour for me" is on by default in Add pushback
+	bool laycueView = false;   // hide OBS's own Preview/Program area so Laycue is the main view
 };
 
 struct Config {
@@ -60,6 +79,7 @@ struct Config {
 	std::vector<TagAssignment> tags;
 	std::vector<Rule> rules;
 	std::vector<Pushback> pushbacks;
+	std::vector<Layout> layouts;
 	std::vector<std::string> dismissedTips; // guide cards the operator has closed
 	bool rulesInitialised = false;          // the starter rule has been offered once
 	bool wentLive = false;                  // Go Live or Cut has been used (ticks off the getting-started guide)
@@ -80,5 +100,6 @@ void dismissTip(Config &config, const std::string &tipId);
 
 // A short id for a new pushback that no other pushback uses.
 std::string newPushbackId(const Config &config);
+std::string newLayoutId(const Config &config);
 
 } // namespace laycue

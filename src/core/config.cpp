@@ -1,5 +1,7 @@
 #include "core/config.hpp"
 
+#include "core/layouts.hpp"
+
 #include <algorithm>
 
 namespace laycue {
@@ -36,6 +38,17 @@ void sanitize(Config &config)
 		pushbacks.push_back(std::move(p));
 	}
 	config.pushbacks = std::move(pushbacks);
+
+	// Layouts: need an id, a name and a template Laycue knows; slots match the template.
+	std::vector<Layout> layouts;
+	for (Layout &l : config.layouts) {
+		const LayoutTemplate *shape = findTemplate(l.templateId);
+		if (l.id.empty() || l.name.empty() || !shape)
+			continue;
+		l.sources.resize(shape->shapes.size());
+		layouts.push_back(std::move(l));
+	}
+	config.layouts = std::move(layouts);
 }
 
 std::string tagOf(const Config &config, const std::string &sourceUuid)
@@ -81,6 +94,17 @@ std::string newPushbackId(const Config &config)
 		const std::string id = "pb" + std::to_string(n);
 		const bool taken = std::any_of(config.pushbacks.begin(), config.pushbacks.end(),
 					       [&](const Pushback &p) { return p.id == id; });
+		if (!taken)
+			return id;
+	}
+}
+
+std::string newLayoutId(const Config &config)
+{
+	for (int n = 1;; ++n) {
+		const std::string id = "ly" + std::to_string(n);
+		const bool taken = std::any_of(config.layouts.begin(), config.layouts.end(),
+					       [&](const Layout &l) { return l.id == id; });
 		if (!taken)
 			return id;
 	}

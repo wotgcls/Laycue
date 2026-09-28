@@ -2,6 +2,8 @@
 
 #include "core/config.hpp"
 #include "features/app.hpp"
+#include "core/layouts.hpp"
+#include "obs/layout-scene.hpp"
 #include "obs/overlay-items.hpp"
 #include "obs/pushback-scene.hpp"
 #include "obs/scene-reader.hpp"
@@ -10,11 +12,13 @@
 #include "ui/labels.hpp"
 #include "ui/pages/add-pushback-page.hpp"
 #include "ui/pages/helpers.hpp"
+#include "ui/pages/new-layout-page.hpp"
 #include "ui/pages/overlay-setup-page.hpp"
 #include "ui/pages/settings-page.hpp"
 #include "ui/style.hpp"
 #include "ui/tabs/overlays-tab.hpp"
 #include "ui/tokens.hpp"
+#include "ui/view-takeover.hpp"
 #include "ui/widgets.hpp"
 
 #include <obs-module.h>
@@ -58,7 +62,6 @@ constexpr int kSuppressFallbackMs = 5000; // safety net if OBS never reports the
 constexpr int kSuppressGraceMs = 600;     // after a transition ends, OBS's own Preview swap is still ignored
 constexpr int kSaveDelayMs = 1500;        // wait this long after a change before saving
 constexpr int kCardMinWidth = 190;        // shot cards never get narrower than this (except at 2 across)
-constexpr int kWideLayoutWidth = 640;     // from here on, Live and Up next sit side by side
 constexpr int kRestoreFallbackMs = 1000;  // safety net for putting the transition back after a Cut
 constexpr int kLiveIntervalMs = 100;      // Live picture: ~10 fps
 constexpr int kNextIntervalMs = 250;      // Up next picture: ~4 fps
@@ -129,6 +132,7 @@ LaycueDock::LaycueDock(App &app, QWidget *parent) : QWidget(parent), app_(app), 
 	grabber_ = std::make_unique<FrameGrabber>();
 
 	buildUi();
+	view_ = std::make_unique<ui::ViewTakeover>(this);
 
 	refreshTimer_.setSingleShot(true);
 	refreshTimer_.setInterval(kRefreshDelayMs);
@@ -266,21 +270,6 @@ QWidget *LaycueDock::buildHome()
 	stageLayout->setSpacing(size::gapSmall + 2);
 	stage_->setPadding(12, 10, 12, 12);
 
-	auto *modeRow = new QHBoxLayout();
-	modeRow->setSpacing(size::gapSmall);
-	modeSwitch_ = new Segmented(stage_);
-	modeSwitch_->setItems({text("Laycue.Mode.Normal"), text("Laycue.Mode.Studio")});
-	modeSwitch_->setAccessibleName(text("Laycue.Mode.Accessible"));
-	modeSwitch_->setToolTip(text("Laycue.Mode.Tip"));
-	modeSwitch_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-	modeSwitch_->setFixedWidth(176);
-	connect(modeSwitch_, &Segmented::changed, this, [this](int index) { chooseMode(index == 1); });
-	modeRow->addWidget(modeSwitch_);
-	auto *modeHint = makeLabel(stage_, uiFont(11, 400), color::textTertiary, text("Laycue.Mode.Hint"));
-	modeHint->setWordWrap(true);
-	modeRow->addWidget(modeHint, 1);
-	stageLayout->addLayout(modeRow);
-
 	// Live and Up next pictures. Narrow panel: big Live, with Up next small beside its name.
 	// Wide panel: the two side by side at equal size, Up next on the left like OBS's Preview.
 	picturesGrid_ = new QGridLayout();
@@ -359,21 +348,13 @@ QWidget *LaycueDock::buildHome()
 	shotsTabLayout_ = new QVBoxLayout(shotsTab_);
 	shotsTabLayout_->setContentsMargins(0, 0, 0, 0);
 	shotsTabLayout_->setSpacing(size::gapSmall + 2);
-	auto *shotsHeader = new QVBoxLayout();
-	shotsHeader->setSpacing(2);
-	shotsHeader->addWidget(makeLabel(shotsTab_, uiFont(15, 700), color::cream, text("Laycue.Shots")));
 	auto *shotsHint = makeLabel(shotsTab_, uiFont(12, 400), color::textSecondary, text("Laycue.ShotsHint"));
 	shotsHint->setWordWrap(true);
-	shotsHeader->addWidget(shotsHint);
-	shotsTabLayout_->addLayout(shotsHeader);
+	shotsTabLayout_->addWidget(shotsHint);
 	shotsGuideHost_ = new QWidget(shotsTab_);
 	auto *guideLayout = new QVBoxLayout(shotsGuideHost_);
 	guideLayout->setContentsMargins(0, 0, 0, 0);
 	shotsTabLayout_->addWidget(shotsGuideHost_);
-	shotsTipHost_ = new QWidget(shotsTab_);
-	auto *tipLayout = new QVBoxLayout(shotsTipHost_);
-	tipLayout->setContentsMargins(0, 0, 0, 0);
-	shotsTabLayout_->addWidget(shotsTipHost_);
 	shotsGridHost_ = new QWidget(shotsTab_);
 	shotsGrid_ = new QGridLayout(shotsGridHost_);
 	shotsGrid_->setContentsMargins(0, 2, 0, 2);
@@ -388,55 +369,73 @@ QWidget *LaycueDock::buildHome()
 	shotsTabLayout_->addStretch(1);
 	tabHostLayout->addWidget(shotsTab_);
 
-	// Pushbacks tab
+	// Layouts tab: what Laycue builds for you (split screens and pushbacks)
 	pushbacksTab_ = new QWidget(tabHost);
-	auto *pushbacksLayout = new QVBoxLayout(pushbacksTab_);
-	pushbacksLayout->setContentsMargins(0, 0, 0, 0);
-	pushbacksLayout->setSpacing(size::gapSmall + 2);
+	auto *layoutsLayout = new QVBoxLayout(pushbacksTab_);
+	layoutsLayout->setContentsMargins(0, 0, 0, 0);
+	layoutsLayout->setSpacing(size::gapSmall + 2);
+
 	pushbacksHeaderHost_ = new QWidget(pushbacksTab_);
-	auto *pbHeader = new QHBoxLayout(pushbacksHeaderHost_);
-	pbHeader->setContentsMargins(0, 0, 0, 0);
-	auto *pbTitles = new QVBoxLayout();
-	pbTitles->setSpacing(2);
-	pbTitles->addWidget(
-		makeLabel(pushbacksHeaderHost_, uiFont(15, 700), color::cream, text("Laycue.Pushbacks.Title")));
-	auto *pbHint =
-		makeLabel(pushbacksHeaderHost_, uiFont(12, 400), color::textSecondary, text("Laycue.Pushbacks.Hint"));
-	pbHint->setWordWrap(true);
-	pbTitles->addWidget(pbHint);
-	pbHeader->addLayout(pbTitles, 1);
-	auto *addPushback =
+	auto *makeRow = new QHBoxLayout(pushbacksHeaderHost_);
+	makeRow->setContentsMargins(0, 0, 0, 0);
+	makeRow->setSpacing(size::gapSmall);
+	newLayoutButton_ =
+		new ActionButton(text("Laycue.Layouts.New"), ActionButton::Kind::Primary, pushbacksHeaderHost_);
+	connect(newLayoutButton_, &QAbstractButton::clicked, this, &LaycueDock::openNewLayout);
+	makeRow->addWidget(newLayoutButton_);
+	addPushbackButton_ =
 		new ActionButton(text("Laycue.Pushbacks.Add"), ActionButton::Kind::Secondary, pushbacksHeaderHost_);
-	connect(addPushback, &QAbstractButton::clicked, this, &LaycueDock::openAddPushback);
-	addPushbackButton_ = addPushback;
-	pbHeader->addWidget(addPushback, 0, Qt::AlignTop);
-	pushbacksLayout->addWidget(pushbacksHeaderHost_);
-	pushbacksTipHost_ = new QWidget(pushbacksTab_);
-	auto *pbTipLayout = new QVBoxLayout(pushbacksTipHost_);
-	pbTipLayout->setContentsMargins(0, 0, 0, 0);
-	pushbacksLayout->addWidget(pushbacksTipHost_);
-	pbGridHost_ = new QWidget(pushbacksTab_);
-	pbGrid_ = new QGridLayout(pbGridHost_);
-	pbGrid_->setContentsMargins(0, 2, 0, 2);
-	pbGrid_->setHorizontalSpacing(size::gapSmall + 2);
-	pbGrid_->setVerticalSpacing(size::gapSmall + 2);
-	pbGrid_->setAlignment(Qt::AlignTop);
-	pushbacksLayout->addWidget(pbGridHost_);
+	connect(addPushbackButton_, &QAbstractButton::clicked, this, &LaycueDock::openAddPushback);
+	makeRow->addWidget(addPushbackButton_);
+	makeRow->addStretch(1);
+	layoutsLayout->addWidget(pushbacksHeaderHost_);
+
+	const auto gridHost = [&](QWidget **hostOut, QGridLayout **gridOut) {
+		*hostOut = new QWidget(pushbacksTab_);
+		*gridOut = new QGridLayout(*hostOut);
+		(*gridOut)->setContentsMargins(0, 2, 0, 2);
+		(*gridOut)->setHorizontalSpacing(size::gapSmall + 2);
+		(*gridOut)->setVerticalSpacing(size::gapSmall + 2);
+		(*gridOut)->setAlignment(Qt::AlignTop);
+	};
+	lyLabel_ = makeLabel(pushbacksTab_, uiFont(11, 700), color::textTertiary,
+			     text("Laycue.Layouts.SectionLayouts").toUpper());
+	layoutsLayout->addWidget(lyLabel_);
+	gridHost(&lyGridHost_, &lyGrid_);
+	layoutsLayout->addWidget(lyGridHost_);
+	pbLabel_ = makeLabel(pushbacksTab_, uiFont(11, 700), color::textTertiary,
+			     text("Laycue.Layouts.SectionPushbacks").toUpper());
+	layoutsLayout->addWidget(pbLabel_);
+	gridHost(&pbGridHost_, &pbGrid_);
+	layoutsLayout->addWidget(pbGridHost_);
+
+	// Nothing made yet: two clear choices.
 	pbEmpty_ = new QWidget(pushbacksTab_);
 	auto *emptyLayout = new QVBoxLayout(pbEmpty_);
 	emptyLayout->setContentsMargins(0, 0, 0, 0);
 	emptyLayout->setSpacing(size::gapSmall + 2);
-	emptyLayout->addWidget(makeLabel(pbEmpty_, uiFont(15, 700), color::cream, text("Laycue.Pushbacks.EmptyTitle")));
-	auto *emptyBody =
-		makeLabel(pbEmpty_, uiFont(12, 400), color::textSecondary, text("Laycue.Pushbacks.EmptyBody"));
-	emptyBody->setWordWrap(true);
-	emptyLayout->addWidget(emptyBody);
-	auto *emptyAdd = new ActionButton(text("Laycue.Pushbacks.AddFirst"), ActionButton::Kind::Primary, pbEmpty_);
-	connect(emptyAdd, &QAbstractButton::clicked, this, &LaycueDock::openAddPushback);
-	emptyAddButton_ = emptyAdd;
-	emptyLayout->addWidget(emptyAdd, 0, Qt::AlignLeft);
-	pushbacksLayout->addWidget(pbEmpty_);
-	pushbacksLayout->addStretch(1);
+	const auto choice = [&](const char *titleKey, const char *bodyKey, const char *buttonKey,
+				ActionButton::Kind kind, void (LaycueDock::*open)(), QAbstractButton **buttonOut) {
+		auto *card = new Surface(1, pbEmpty_);
+		auto *v = new QVBoxLayout(card);
+		v->setSpacing(size::gapSmall);
+		card->setPadding(14, 12, 14, 12);
+		v->addWidget(makeLabel(card, uiFont(14, 700), color::cream, text(titleKey)));
+		auto *body = makeLabel(card, uiFont(12, 400), color::textSecondary, text(bodyKey));
+		body->setWordWrap(true);
+		v->addWidget(body);
+		auto *button = new ActionButton(text(buttonKey), kind, card);
+		connect(button, &QAbstractButton::clicked, this, open);
+		v->addWidget(button, 0, Qt::AlignLeft);
+		*buttonOut = button;
+		emptyLayout->addWidget(card);
+	};
+	choice("Laycue.Layouts.EmptyTitle", "Laycue.Layouts.EmptyBody", "Laycue.Layouts.New",
+	       ActionButton::Kind::Primary, &LaycueDock::openNewLayout, &emptyNewLayoutButton_);
+	choice("Laycue.Pushbacks.EmptyTitle", "Laycue.Pushbacks.EmptyBody", "Laycue.Pushbacks.AddFirst",
+	       ActionButton::Kind::Secondary, &LaycueDock::openAddPushback, &emptyAddButton_);
+	layoutsLayout->addWidget(pbEmpty_);
+	layoutsLayout->addStretch(1);
 	pushbacksTab_->hide();
 	tabHostLayout->addWidget(pushbacksTab_);
 
@@ -497,55 +496,14 @@ void LaycueDock::onConfigChanged()
 {
 	ui::setLargeControls(content_, app_.config().settings.largeButtons);
 
-	// Tips: shown until dismissed, unless tips are turned off.
-	if (shotsTipHost_) {
-		auto *layout = shotsTipHost_->layout();
-		while (QLayoutItem *item = layout->takeAt(0)) {
-			if (item->widget())
-				item->widget()->deleteLater();
-			delete item;
-		}
-		// The getting-started guide already says this, so the tip waits until it is gone.
-		const Config &current = app_.config();
-		const bool guideShowing = current.settings.showTips && !current.settings.locked &&
-					  !tipDismissed(current, "guide");
-		if (!guideShowing) {
-			if (QWidget *tip = tipFor("shots", "Laycue.Tip.Shots.Title", "Laycue.Tip.Shots.Body"))
-				layout->addWidget(tip);
-		}
-	}
-	if (pushbacksTipHost_) {
-		auto *layout = pushbacksTipHost_->layout();
-		while (QLayoutItem *item = layout->takeAt(0)) {
-			if (item->widget())
-				item->widget()->deleteLater();
-			delete item;
-		}
-		if (!app_.config().pushbacks.empty()) {
-			if (QWidget *tip =
-				    tipFor("pushbacks", "Laycue.Tip.Pushbacks.Title", "Laycue.Tip.Pushbacks.Body"))
-				layout->addWidget(tip);
-		}
-	}
-	updatePushbackList();
+	updateLayoutsTab();
 	updateGuide();
 
 	if (obsReady_ && !shuttingDown_) {
+		applyView();
 		saveTimer_.start();
 		scheduleRefresh();
 	}
-}
-
-QWidget *LaycueDock::tipFor(const char *id, const char *titleKey, const char *bodyKey)
-{
-	const Config &config = app_.config();
-	if (!config.settings.showTips || tipDismissed(config, id))
-		return nullptr;
-	auto *tip = new ui::TipCard(text(titleKey), text(bodyKey));
-	const std::string tipId = id;
-	connect(tip, &ui::TipCard::dismissed, this,
-		[this, tipId]() { app_.modify([&](Config &c) { dismissTip(c, tipId); }); });
-	return tip;
 }
 
 void LaycueDock::resizeEvent(QResizeEvent *event)
@@ -554,17 +512,12 @@ void LaycueDock::resizeEvent(QResizeEvent *event)
 	using namespace ui;
 	// Inside the stage: the panel width, less the page margin and the stage's own padding.
 	const int contentWidth = width() - 2 * (size::margin - size::shadowMargin) - 2 * (size::shadowMargin + 12);
-	const bool wide = contentWidth >= kWideLayoutWidth;
-	arrangePictures(wide);
-	if (wide) {
-		const int half = (contentWidth - size::gap) / 2;
-		liveView_->setFixedSize(half, half * 9 / 16);
-		nextView_->setFixedSize(half, half * 9 / 16);
-	} else {
-		liveView_->setFixedSize(contentWidth, contentWidth * 9 / 16);
-		const int nextWidth = (contentWidth - size::gap) * 45 / 100;
-		nextView_->setFixedSize(nextWidth, nextWidth * 9 / 16);
-	}
+	// Up next and Live always sit side by side at equal size, like OBS's Preview and Program,
+	// so the whole stage is visible at once even in a narrow panel.
+	arrangePictures(true);
+	const int half = std::max(80, (contentWidth - size::gap) / 2);
+	liveView_->setFixedSize(half, half * 9 / 16);
+	nextView_->setFixedSize(half, half * 9 / 16);
 	layoutCards();
 	placeToast();
 }
@@ -602,6 +555,7 @@ void LaycueDock::handleFrontendEvent(enum obs_frontend_event event)
 	case OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED:
 		obsReady_ = true;
 		pictureTimer_.start();
+		applyView();
 		scheduleRefresh();
 		break;
 
@@ -648,6 +602,7 @@ void LaycueDock::handleFrontendEvent(enum obs_frontend_event event)
 
 	case OBS_FRONTEND_EVENT_EXIT:
 		finishCut();
+		view_->set(false); // OBS's own screens come back before OBS saves its window
 		shuttingDown_ = true;
 		obsReady_ = false;
 		refreshTimer_.stop();
@@ -660,6 +615,20 @@ void LaycueDock::handleFrontendEvent(enum obs_frontend_event event)
 	default:
 		break;
 	}
+}
+
+void LaycueDock::applyView()
+{
+	const bool wanted = app_.config().settings.laycueView;
+	if (wanted == view_->isOn())
+		return;
+	if (!view_->set(wanted)) {
+		// OBS's window isn't what Laycue expects: leave OBS as it is and switch the setting off.
+		app_.modify([](Config &c) { c.settings.laycueView = false; });
+		showToast(text("Laycue.View.Unavailable"));
+		return;
+	}
+	showToast(text(wanted ? "Laycue.View.On" : "Laycue.View.Off"));
 }
 
 void LaycueDock::scheduleRefresh()
@@ -686,6 +655,7 @@ void LaycueDock::refreshNow()
 		if (!repairChecked_) {
 			repairChecked_ = true;
 			repairPushbacks();
+			repairLayouts();
 		}
 
 		// Every scene, the ones for the Shots tab (not Laycue's pushback scenes), and the pushbacks.
@@ -694,18 +664,22 @@ void LaycueDock::refreshNow()
 		std::vector<Shot> pushbackShots;
 		for (const SceneInfo &scene : snapshot.scenes) {
 			scenes.push_back({scene.uuid, scene.name});
-			if (pushbackForScene(scene.uuid) == nullptr)
+			if (pushbackForScene(scene.uuid) == nullptr && layoutForScene(scene.uuid) == nullptr)
 				shots.push_back({scene.uuid, scene.name});
 		}
 		for (const Pushback &pushback : app_.config().pushbacks)
 			pushbackShots.push_back({pushback.sceneUuid, pushback.name});
+		std::vector<Shot> layoutShots;
+		for (const Layout &layout : app_.config().layouts)
+			layoutShots.push_back({layout.sceneUuid, layout.name});
 		const auto same = [](const std::vector<Shot> &a, const std::vector<Shot> &b) {
 			return a.size() == b.size() &&
 			       std::equal(a.begin(), a.end(), b.begin(), [](const Shot &x, const Shot &y) {
 				       return x.uuid == y.uuid && x.name == y.name;
 			       });
 		};
-		if (!same(scenes, scenes_) || !same(pushbackShots, pushbackShots_)) {
+		if (!same(scenes, scenes_) || !same(pushbackShots, pushbackShots_) ||
+		    !same(layoutShots, layoutShots_)) {
 			for (const Shot &old : scenes_) {
 				const bool stillThere = std::any_of(scenes.begin(), scenes.end(),
 								    [&](const Shot &s) { return s.uuid == old.uuid; });
@@ -715,6 +689,7 @@ void LaycueDock::refreshNow()
 			scenes_ = std::move(scenes);
 			shots_ = std::move(shots);
 			pushbackShots_ = std::move(pushbackShots);
+			layoutShots_ = std::move(layoutShots);
 			rebuildCards();
 		}
 
@@ -751,7 +726,6 @@ void LaycueDock::refreshNow()
 			lastPreview_.clear();
 			pushNextToPreview_ = false;
 		}
-		modeSwitch_->setCurrent(snapshot.studioMode ? 1 : 0);
 
 		updateOverlays(snapshot);
 		updatePictureTargets();
@@ -805,6 +779,20 @@ void LaycueDock::rebuildCards()
 		connect(card, &QAbstractButton::clicked, this, [this, uuid]() { onShotClicked(uuid); });
 		cards_[shot.uuid] = card;
 	}
+	for (const Layout &layout : app_.config().layouts) {
+		auto *card = new ui::ShotCard(lyGridHost_);
+		card->setName(fromStd(layout.name));
+		const LayoutTemplate *shape = findTemplate(layout.templateId);
+		card->setToolTip(
+			text("Laycue.Layouts.Tip").arg(fromStd(layout.name), shape ? text(shape->nameKey) : QString()));
+		card->setContextMenuPolicy(Qt::CustomContextMenu);
+		const std::string uuid = layout.sceneUuid;
+		const std::string id = layout.id;
+		connect(card, &QAbstractButton::clicked, this, [this, uuid]() { onShotClicked(uuid); });
+		connect(card, &QWidget::customContextMenuRequested, this,
+			[this, id, card](const QPoint &pos) { layoutMenu(id, card->mapToGlobal(pos)); });
+		cards_[layout.sceneUuid] = card;
+	}
 	for (const Pushback &pushback : app_.config().pushbacks) {
 		auto *card = new ui::ShotCard(pbGridHost_);
 		card->setName(fromStd(pushback.name));
@@ -823,9 +811,7 @@ void LaycueDock::rebuildCards()
 	}
 	emptyLabel_->setVisible(shots_.empty());
 	shotsGridHost_->setVisible(!shots_.empty());
-	pbEmpty_->setVisible(pushbackShots_.empty());
-	pbGridHost_->setVisible(!pushbackShots_.empty());
-	pushbacksHeaderHost_->setVisible(!pushbackShots_.empty());
+	updateLayoutsTab();
 	layoutCards();
 }
 
@@ -835,6 +821,7 @@ void LaycueDock::layoutCards()
 		return;
 	const int available = tabScroll_->viewport()->width() - 4;
 	layoutGrid(shotsGrid_, shots_, available);
+	layoutGrid(lyGrid_, layoutShots_, available);
 	layoutGrid(pbGrid_, pushbackShots_, available);
 }
 
@@ -955,6 +942,8 @@ void LaycueDock::onShotClicked(const std::string &uuid)
 	if (result == PickResult::Cued) {
 		if (const Pushback *pushback = pushbackForScene(uuid))
 			layoutPushback(*pushback); // a camera's real size is only known once OBS has drawn it
+		if (const Layout *layout = layoutForScene(uuid))
+			fitLayout(*layout);
 		if (studioModeActive())
 			showInPreview(uuid);
 		// Show the still we already have straight away; faster refreshes follow.
@@ -973,6 +962,8 @@ void LaycueDock::goLive(bool instant)
 
 	if (const Pushback *pushback = pushbackForScene(target))
 		layoutPushback(*pushback);
+	if (const Layout *layout = layoutForScene(target))
+		fitLayout(*layout);
 
 	suppressPreview_ = studioModeActive();
 	if (suppressPreview_)
@@ -994,6 +985,17 @@ void LaycueDock::goLive(bool instant)
 	updateStateUi();
 }
 
+const Layout *LaycueDock::layoutForScene(const std::string &sceneUuid) const
+{
+	if (sceneUuid.empty())
+		return nullptr;
+	for (const Layout &layout : app_.config().layouts) {
+		if (layout.sceneUuid == sceneUuid)
+			return &layout;
+	}
+	return nullptr;
+}
+
 const Pushback *LaycueDock::pushbackForScene(const std::string &sceneUuid) const
 {
 	if (sceneUuid.empty())
@@ -1005,16 +1007,22 @@ const Pushback *LaycueDock::pushbackForScene(const std::string &sceneUuid) const
 	return nullptr;
 }
 
-void LaycueDock::updatePushbackList()
+void LaycueDock::updateLayoutsTab()
 {
-	const bool locked = app_.config().settings.locked;
+	const Config &config = app_.config();
+	const bool locked = config.settings.locked;
 	lockPill_->setVisible(locked);
-	addPushbackButton_->setVisible(!locked);
-	emptyAddButton_->setVisible(!locked);
-	const bool none = app_.config().pushbacks.empty();
+	const bool anyLayouts = !config.layouts.empty();
+	const bool anyPushbacks = !config.pushbacks.empty();
+	const bool none = !anyLayouts && !anyPushbacks;
 	pbEmpty_->setVisible(none);
-	pbGridHost_->setVisible(!none);
-	pushbacksHeaderHost_->setVisible(!none);
+	emptyNewLayoutButton_->setVisible(!locked);
+	emptyAddButton_->setVisible(!locked);
+	pushbacksHeaderHost_->setVisible(!none && !locked);
+	lyLabel_->setVisible(anyLayouts);
+	lyGridHost_->setVisible(anyLayouts);
+	pbLabel_->setVisible(anyPushbacks);
+	pbGridHost_->setVisible(anyPushbacks);
 }
 
 void LaycueDock::updateGuide()
@@ -1040,65 +1048,44 @@ void LaycueDock::updateGuide()
 		 [this]() {
 			 openOverlaySetup();
 		 }},
-		{text("Laycue.Guide.Pushback"), text("Laycue.Guide.PushbackSub"), !config.pushbacks.empty(),
-		 text("Laycue.Guide.PushbackAction"),
+		{text("Laycue.Guide.Pushback"), text("Laycue.Guide.PushbackSub"),
+		 !config.pushbacks.empty() || !config.layouts.empty(), text("Laycue.Guide.PushbackAction"),
 		 [this]() {
-			 openAddPushback();
+			 showTab(Tab::Pushbacks);
 		 }},
 		{text("Laycue.Guide.GoLive"), text("Laycue.Guide.GoLiveSub"), config.wentLive, QString(), nullptr},
 	};
-	const bool allDone = std::all_of(steps.begin(), steps.end(), [](const Step &s) { return s.done; });
+	// One step at a time: the first one not done yet. When all are done the guide goes away.
+	const auto next = std::find_if(steps.begin(), steps.end(), [](const Step &step) { return !step.done; });
+	if (next == steps.end())
+		return;
+	const int number = int(next - steps.begin()) + 1;
 
 	auto *card = new Surface(1, shotsGuideHost_);
-	auto *v = new QVBoxLayout(card);
-	v->setSpacing(size::gapSmall);
-	card->setPadding(14, 12, 10, 12);
+	auto *row = new QHBoxLayout(card);
+	row->setSpacing(size::gapSmall + 2);
+	card->setPadding(12, 8, 8, 8);
 
-	auto *header = new QHBoxLayout();
-	header->addWidget(makeLabel(card, uiFont(14, 700), color::cream,
-				    text(allDone ? "Laycue.Guide.AllDone" : "Laycue.Guide.Title")),
-			  1);
+	auto *textColumn = new QVBoxLayout();
+	textColumn->setSpacing(1);
+	textColumn->addWidget(makeLabel(card, uiFont(10, 700), color::setup,
+					text("Laycue.Guide.Step").arg(number).arg(int(steps.size())).toUpper()));
+	textColumn->addWidget(makeLabel(card, uiFont(13, 600), color::cream, next->title));
+	auto *sub = makeLabel(card, uiFont(11, 400), color::textSecondary, next->sub);
+	sub->setWordWrap(true);
+	textColumn->addWidget(sub);
+	row->addLayout(textColumn, 1);
+
+	if (next->run) {
+		auto *action = new ActionButton(next->action, ActionButton::Kind::Secondary, card);
+		const auto run = next->run;
+		connect(action, &QAbstractButton::clicked, this, [run]() { run(); });
+		row->addWidget(action, 0, Qt::AlignVCenter);
+	}
 	auto *hide = new ActionButton(text("Laycue.Guide.Hide"), ActionButton::Kind::Link, card);
 	connect(hide, &QAbstractButton::clicked, this,
 		[this]() { app_.modify([](Config &c) { dismissTip(c, "guide"); }); });
-	header->addWidget(hide);
-	v->addLayout(header);
-	if (!allDone) {
-		auto *intro = makeLabel(card, uiFont(12, 400), color::textSecondary, text("Laycue.Guide.Intro"));
-		intro->setWordWrap(true);
-		v->addWidget(intro);
-	}
-
-	for (const Step &step : steps) {
-		auto *row = new QHBoxLayout();
-		row->setSpacing(size::gapSmall + 2);
-		auto *mark = new QLabel(step.done ? QStringLiteral("✓") : QString(), card);
-		mark->setFixedSize(22, 22);
-		mark->setAlignment(Qt::AlignCenter);
-		mark->setStyleSheet(
-			step.done
-				? QStringLiteral(
-					  "background: %1; color: %2; border-radius: 11px; font-size: 13px; font-weight: 700;")
-					  .arg(hex(color::setup), hex(color::cream))
-				: QStringLiteral(
-					  "background: transparent; border: 1.5px solid rgba(255,255,255,60); border-radius: 11px;"));
-		row->addWidget(mark, 0, Qt::AlignTop);
-		auto *textColumn = new QVBoxLayout();
-		textColumn->setSpacing(1);
-		textColumn->addWidget(
-			makeLabel(card, uiFont(13, 600), step.done ? color::textSecondary : color::cream, step.title));
-		auto *sub = makeLabel(card, uiFont(11, 400), color::textTertiary, step.sub);
-		sub->setWordWrap(true);
-		textColumn->addWidget(sub);
-		row->addLayout(textColumn, 1);
-		if (!step.done && step.run) {
-			auto *action = new ActionButton(step.action, ActionButton::Kind::Secondary, card);
-			const auto run = step.run;
-			connect(action, &QAbstractButton::clicked, this, [run]() { run(); });
-			row->addWidget(action, 0, Qt::AlignTop);
-		}
-		v->addLayout(row);
-	}
+	row->addWidget(hide, 0, Qt::AlignVCenter);
 	layout->addWidget(card);
 }
 
@@ -1114,9 +1101,12 @@ void LaycueDock::openSettings()
 	auto *page = new ui::SettingsPage(app_);
 	connect(page, &ui::PageFrame::backRequested, this, &LaycueDock::closePage);
 	connect(page, &ui::SettingsPage::overlaySetupRequested, this, [this]() { openOverlaySetup(); });
+	connect(page, &ui::SettingsPage::studioRequested, this, [this](bool studio) { chooseMode(studio); });
 	connect(page, &ui::SettingsPage::refitAllRequested, this, [this]() {
 		for (const Pushback &pushback : app_.config().pushbacks)
 			layoutPushback(pushback);
+		for (const Layout &layout : app_.config().layouts)
+			fitLayout(layout);
 	});
 	openPage(page);
 }
@@ -1130,6 +1120,109 @@ void LaycueDock::openAddPushback()
 	});
 	connect(page, &ui::AddPushbackPage::created, this, [this](const std::string &) { scheduleRefresh(); });
 	openPage(page);
+}
+
+void LaycueDock::openNewLayout()
+{
+	auto *page = new ui::NewLayoutPage(app_);
+	connect(page, &ui::PageFrame::backRequested, this, [this]() {
+		closePage();
+		showTab(Tab::Pushbacks);
+	});
+	connect(page, &ui::NewLayoutPage::created, this, [this](const std::string &, const QString &name) {
+		showToast(text("Laycue.Layouts.Made").arg(name));
+		scheduleRefresh();
+	});
+	openPage(page);
+}
+
+void LaycueDock::repairLayouts()
+{
+	// A layout's scene can go missing (deleted in OBS). It is Laycue's own scene, so rebuild it.
+	std::vector<Layout> rebuilt;
+	for (const Layout &layout : app_.config().layouts) {
+		if (layoutSceneExists(layout))
+			continue;
+		const LayoutBuildResult result = buildLayoutScene(layout);
+		if (result.ok) {
+			rebuilt.push_back(result.layout);
+			showToast(text("Laycue.Layouts.Rebuilt").arg(fromStd(layout.name)));
+		} else {
+			obs_log(LOG_WARNING, "Could not rebuild the scene for layout '%s': %s", layout.name.c_str(),
+				result.error.c_str());
+		}
+	}
+	if (rebuilt.empty())
+		return;
+	app_.modify([&](Config &config) {
+		for (const Layout &fixed : rebuilt) {
+			for (Layout &l : config.layouts) {
+				if (l.id == fixed.id) {
+					l.sceneUuid = fixed.sceneUuid;
+					l.sceneName = fixed.sceneName;
+				}
+			}
+		}
+	});
+}
+
+void LaycueDock::layoutMenu(const std::string &layoutId, const QPoint &globalPos)
+{
+	const auto found = std::find_if(app_.config().layouts.begin(), app_.config().layouts.end(),
+					[&](const Layout &l) { return l.id == layoutId; });
+	if (found == app_.config().layouts.end())
+		return;
+	const Layout layout = *found;
+	const bool locked = app_.config().settings.locked;
+
+	QMenu menu(this);
+	QAction *refit = menu.addAction(text("Laycue.Layouts.Refit"));
+	connect(refit, &QAction::triggered, this, [this, layout]() {
+		fitLayout(layout);
+		showToast(text("Laycue.Pushbacks.Refitted").arg(fromStd(layout.name)));
+	});
+	if (!locked) {
+		QAction *rename = menu.addAction(text("Laycue.Layouts.Rename"));
+		connect(rename, &QAction::triggered, this, [this, layout]() {
+			bool ok = false;
+			const QString name = QInputDialog::getText(this, text("Laycue.Layouts.Rename"),
+								   text("Laycue.Add.Name"), QLineEdit::Normal,
+								   fromStd(layout.name), &ok)
+						     .trimmed();
+			if (!ok || name.isEmpty() || name.toStdString() == layout.name)
+				return;
+			renameLayoutScene(layout, name.toStdString());
+			app_.modify([&](Config &c) {
+				for (Layout &l : c.layouts) {
+					if (l.id == layout.id)
+						l.name = name.toStdString();
+				}
+			});
+			scheduleRefresh();
+		});
+		menu.addSeparator();
+		QAction *remove = menu.addAction(text("Laycue.Layouts.Remove"));
+		connect(remove, &QAction::triggered, this, [this, layout]() {
+			if (cue_.live == layout.sceneUuid) {
+				showToast(text("Laycue.Pushbacks.RemoveLive"));
+				return;
+			}
+			const auto answer =
+				QMessageBox::question(this, text("Laycue.Layouts.RemoveTitle"),
+						      text("Laycue.Layouts.RemoveBody").arg(fromStd(layout.name)));
+			if (answer != QMessageBox::Yes)
+				return;
+			removeLayoutScene(layout);
+			shotRemoved(cue_, layout.sceneUuid);
+			app_.modify([&](Config &c) {
+				c.layouts.erase(std::remove_if(c.layouts.begin(), c.layouts.end(),
+							       [&](const Layout &l) { return l.id == layout.id; }),
+						c.layouts.end());
+			});
+			scheduleRefresh();
+		});
+	}
+	menu.exec(globalPos);
 }
 
 void LaycueDock::repairPushbacks()
@@ -1472,6 +1565,7 @@ void LaycueDock::resetForCollectionChange()
 	scenes_.clear();
 	shots_.clear();
 	pushbackShots_.clear();
+	layoutShots_.clear();
 	lastLive_.clear();
 	previousLive_.clear();
 	repairChecked_ = false;

@@ -63,3 +63,21 @@ TEST_CASE("config: new pushback ids never repeat")
 	c.pushbacks.push_back(p);
 	CHECK_EQ(laycue::newPushbackId(c), std::string("pb2"));
 }
+
+TEST_CASE("config: layouts keep their template's slot count and drop unknown templates")
+{
+	Config c;
+	laycue::Layout ok;
+	ok.id = "ly1";
+	ok.name = "Camera and scripture";
+	ok.templateId = "main-and-side";
+	ok.sources.push_back({"uuid-cam", "Camera"});
+	laycue::Layout unknown = ok;
+	unknown.id = "ly2";
+	unknown.templateId = "no-such-template";
+	c.layouts = {ok, unknown};
+	laycue::sanitize(c);
+	CHECK_EQ(int(c.layouts.size()), 1);
+	CHECK_EQ(int(c.layouts[0].sources.size()), 2);
+	CHECK_EQ(laycue::newLayoutId(c), std::string("ly2"));
+}

@@ -44,6 +44,7 @@ target_sources(
     src/core/detect.cpp
     src/core/geometry.cpp
     src/core/autotag.cpp
+    src/core/layouts.cpp
     src/core/exclusivity.cpp
     src/core/config.cpp
     src/core/scene-model.cpp
@@ -63,9 +64,12 @@ target_sources(
     src/obs/pixel-reader.cpp
     src/obs/overlay-items.cpp
     src/obs/pushback-scene.cpp
+    src/obs/layout-scene.cpp
+    src/obs/scene-util.cpp
     src/obs/pushback-scene.hpp
     src/ui/controls.cpp
     src/ui/style.cpp
+    src/ui/view-takeover.cpp
     src/ui/tabs/overlays-tab.cpp
     src/ui/tabs/overlays-tab.hpp
     src/ui/labels.cpp
@@ -73,13 +77,16 @@ target_sources(
     src/ui/pages/page-frame.cpp
     src/ui/pages/page-frame.hpp
     src/ui/pages/add-pushback-page.cpp
+    src/ui/pages/new-layout-page.cpp
     src/ui/pages/add-pushback-page.hpp
+    src/ui/pages/new-layout-page.hpp
     src/ui/pages/helpers.hpp
     src/ui/pages/settings-page.cpp
     src/ui/pages/settings-page.hpp
     src/ui/pages/overlay-setup-page.cpp
     src/ui/pages/overlay-setup-page.hpp
     src/ui/style.hpp
+    src/ui/view-takeover.hpp
     src/ui/controls.hpp
     src/ui/laycue-dock.cpp
     src/ui/laycue-dock.hpp

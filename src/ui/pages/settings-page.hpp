@@ -21,6 +21,7 @@ public:
 signals:
 	void overlaySetupRequested();
 	void refitAllRequested();
+	void studioRequested(bool studio);
 
 private:
 	void build();

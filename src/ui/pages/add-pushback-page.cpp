@@ -67,7 +67,7 @@ bool isLaycueScene(const std::string &name)
 } // namespace
 
 AddPushbackPage::AddPushbackPage(App &app, QWidget *parent)
-	: PageFrame(lt("Laycue.Pushbacks.Title"), lt("Laycue.Add.Title"), parent),
+	: PageFrame(lt("Laycue.Layouts.Title"), lt("Laycue.Add.Title"), parent),
 	  app_(app)
 {
 	progress_ = label(this, QString(), 12, 500, color::textTertiary);

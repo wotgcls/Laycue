@@ -60,6 +60,7 @@ Config makePortable(const Config &config)
 {
 	Config portable = config;
 	portable.pushbacks.clear();
+	portable.layouts.clear();
 	portable.dismissedTips.clear();
 	for (TagAssignment &tag : portable.tags)
 		tag.sourceUuid.clear();
@@ -107,9 +108,11 @@ void apply(App &app, const Config &portable, std::string &summary)
 	int tagged = 0;
 	int skipped = 0;
 	app.modify([&](Config &config) {
-		const bool locked = config.settings.locked; // a profile never locks or unlocks the panel
+		const bool locked = config.settings.locked;   // a profile never locks or unlocks the panel
+		const bool view = config.settings.laycueView; // nor does it switch the Laycue view
 		config.settings = portable.settings;
 		config.settings.locked = locked;
+		config.settings.laycueView = view;
 		for (const TagAssignment &tag : portable.tags) {
 			const auto found = std::find_if(items.begin(), items.end(), [&](const OverlayItem &item) {
 				return item.sourceName == tag.sourceName;

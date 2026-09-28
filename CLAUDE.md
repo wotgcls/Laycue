@@ -51,6 +51,8 @@ src/
     overlay-items.*      # overlay items: read, show/hide, measure the visible-pixel spot
     pixel-reader.*       # image files (OBS's decoder) and sources drawn WITH their filters
     pushback-scene.*     # builds/drives a pushback's own scene, camera fit, Chroma Key tuning
+    layout-scene.*       # builds a layout's own scene (split screen etc.), one source per slot
+    scene-util.*         # helpers shared by pushback/layout scenes (place item, canvas size)
     frame-grabber.*      # Live/Up next/shot pictures on the graphics thread
     switcher.*           # Go Live / Cut, studio mode
   core/                  # PURE C++17. No libobs, no Qt. Fully unit tested.
@@ -58,6 +60,7 @@ src/
     geometry.*           # rects, overlap rule, spot mapping, fill/fit, picture placement
     autotag.*            # suggests an overlay label from name and position
     exclusivity.*        # overlay rules: which items to hide (scope, strict, pause)
+    layouts.*            # layout templates (slots as canvas fractions) and slot rectangles
     config.*             # everything Laycue remembers (tags, rules, pushbacks, settings)
     cue-state.*          # Live / Up next rules
     source-kinds.*       # friendly names for OBS source types
@@ -71,7 +74,8 @@ src/
     laycue-dock.*        # the panel: header tabs, stage, tabs, pages
     controls.*           # Surface (depth), Segmented, Switch, ActionButton, GearButton, TipCard
     widgets.*            # PictureView, ShotCard, FeedButton
-    pages/               # Set up overlays, Add pushback, Settings, PageFrame
+    pages/               # Set up overlays, Add pushback, New layout, Settings, PageFrame
+    view-takeover.*      # opt-in "Laycue view": hides OBS's central Preview/Program widget
     tabs/                # Overlays tab
 tests/                   # standalone CMake project testing src/core (+ the real pushback fixtures)
 data/locale/en-US.ini    # all user-visible text
@@ -158,6 +162,8 @@ Pure function. Input: "item X (source S) became visible in scene N", every group
 - **A source nothing references is destroyed when you release it.** Hold it (`SourceHold`) until a scene has it.
 - **Frontend save data lands under `modules` in the collection file.** Laycue's config is `modules.laycue`, hotkeys `modules.laycue_hotkeys`.
 - **OBS swaps Preview and Program after a transition.** After Go Live the panel ignores Preview changes for a moment (`kSuppressGraceMs`), so that swap isn't read as the operator cueing something.
+- **Never name a member `slots`, `signals` or `emit` in a header the UI includes**: Qt defines them as macros. Use `sources`, `shapes`.
+- **Laycue view hides OBS's central widget** (`QMainWindow::centralWidget()`), not a widget found by name: OBS's inner widget names differ between versions. It restores it on turning off and on exit.
 - **Hotkey callbacks run on OBS's hotkey thread**; post to the UI thread. Signals can fire on any thread too.
 
 ## Coding rules

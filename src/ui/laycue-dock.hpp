@@ -32,12 +32,14 @@ namespace laycue {
 
 class App;
 struct Pushback;
+struct Layout;
 struct Snapshot;
 
 namespace ui {
 class OverlaysTab;
 class PictureView;
 class Segmented;
+class ViewTakeover;
 class StageButton;
 class ShotCard;
 class Surface;
@@ -78,18 +80,23 @@ private:
 	void rebuildCards();
 	void layoutCards();
 	void layoutGrid(QGridLayout *grid, const std::vector<Shot> &shots, int available);
-	void updatePushbackList();
+	void updateLayoutsTab();
 	void updateInsideBar();
 	void switchInside(const std::string &pushbackId, const std::string &feedUuid);
 	void unpin();
 	void stepCamera(int direction);
 	void pushbackMenu(const std::string &pushbackId, const QPoint &globalPos);
 	void openAddPushback();
+	void openNewLayout();
+	void layoutMenu(const std::string &layoutId, const QPoint &globalPos);
+	void repairLayouts();
 	void updateGuide();
 	void openSettings();
+	void applyView(); // Laycue view on/off, to match the setting
 	void openOverlaySetup();
 	void repairPushbacks();
 	const Pushback *pushbackForScene(const std::string &sceneUuid) const;
+	const Layout *layoutForScene(const std::string &sceneUuid) const;
 	void arrangePictures(bool wide);
 	void updateStateUi();
 	void updateTransitionLabel();
@@ -103,7 +110,6 @@ private:
 	void onItemVisible(const std::string &sceneUuid, int64_t itemId, bool visible);
 	void showToast(const QString &message);
 	void placeToast();
-	QWidget *tipFor(const char *id, const char *titleKey, const char *bodyKey);
 	std::string nameOf(const std::string &uuid) const;
 	void resetForCollectionChange();
 
@@ -119,7 +125,8 @@ private:
 	QAbstractButton *lockPill_ = nullptr;
 	QAbstractButton *addPushbackButton_ = nullptr;
 	QAbstractButton *emptyAddButton_ = nullptr;
-	ui::Segmented *modeSwitch_ = nullptr;
+	QAbstractButton *newLayoutButton_ = nullptr;
+	QAbstractButton *emptyNewLayoutButton_ = nullptr;
 	Tab tab_ = Tab::Shots;
 
 	// Stage
@@ -147,13 +154,15 @@ private:
 	QWidget *shotsTab_ = nullptr;
 	QVBoxLayout *shotsTabLayout_ = nullptr;
 	QWidget *shotsGuideHost_ = nullptr;
-	QWidget *shotsTipHost_ = nullptr;
 	QWidget *shotsGridHost_ = nullptr;
 	QGridLayout *shotsGrid_ = nullptr;
 	QLabel *emptyLabel_ = nullptr;
 	QWidget *pushbacksTab_ = nullptr;
-	QWidget *pushbacksTipHost_ = nullptr;
 	QWidget *pushbacksHeaderHost_ = nullptr;
+	QLabel *lyLabel_ = nullptr;
+	QWidget *lyGridHost_ = nullptr;
+	QGridLayout *lyGrid_ = nullptr;
+	QLabel *pbLabel_ = nullptr;
 	QWidget *pbGridHost_ = nullptr;
 	QGridLayout *pbGrid_ = nullptr;
 	QWidget *pbEmpty_ = nullptr;
@@ -174,11 +183,13 @@ private:
 	OverlayEngine overlayEngine_;
 	std::unique_ptr<SceneWatcher> watcher_;
 	std::unique_ptr<FrameGrabber> grabber_;
+	std::unique_ptr<ui::ViewTakeover> view_;
 	std::map<std::string, uint64_t> pictureSerials_;
 
 	std::vector<Shot> scenes_;        // every OBS scene, for names and pictures
 	std::vector<Shot> shots_;         // the scenes shown in the Shots tab (not Laycue's pushback scenes)
 	std::vector<Shot> pushbackShots_; // the pushbacks, by their scene
+	std::vector<Shot> layoutShots_;   // the layouts, by their scene
 	CueState cue_;
 	std::string lastLive_;            // the scene that was live at the last refresh
 	std::string previousLive_;        // what was live before the current pushback (for Unpin)
