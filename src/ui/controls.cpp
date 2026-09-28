@@ -463,6 +463,58 @@ void ActionButton::paintEvent(QPaintEvent *)
 	}
 }
 
+// ----- GearButton -----
+
+GearButton::GearButton(QWidget *parent) : QAbstractButton(parent)
+{
+	setCursor(Qt::PointingHandCursor);
+	setFocusPolicy(Qt::TabFocus);
+	setFixedSize(sizeHint());
+}
+
+void GearButton::enterEvent(QEnterEvent *event)
+{
+	hovered_ = true;
+	update();
+	QAbstractButton::enterEvent(event);
+}
+
+void GearButton::leaveEvent(QEvent *event)
+{
+	hovered_ = false;
+	update();
+	QAbstractButton::leaveEvent(event);
+}
+
+void GearButton::paintEvent(QPaintEvent *)
+{
+	QPainter p(this);
+	p.setRenderHint(QPainter::Antialiasing);
+	const QRectF box = QRectF(rect()).adjusted(1, 1, -1, -1);
+	p.setPen(Qt::NoPen);
+	p.setBrush(isDown() ? QColor(255, 255, 255, 26) : hovered_ ? QColor(255, 255, 255, 16) : Qt::transparent);
+	p.drawRoundedRect(box, size::radius, size::radius);
+
+	// A ring with eight teeth.
+	const QPointF c = box.center();
+	QPen pen(hovered_ ? color::cream : color::textSecondary, 2);
+	pen.setCapStyle(Qt::RoundCap);
+	p.setPen(pen);
+	p.setBrush(Qt::NoBrush);
+	p.drawEllipse(c, 5.0, 5.0);
+	for (int i = 0; i < 8; ++i) {
+		p.save();
+		p.translate(c);
+		p.rotate(i * 45.0);
+		p.drawLine(QPointF(0, -7.0), QPointF(0, -9.0));
+		p.restore();
+	}
+	if (hasFocus()) {
+		p.setPen(QPen(color::setup, 2));
+		p.drawRoundedRect(box, size::radius, size::radius);
+	}
+}
+
 QLabel *makeChip(QWidget *parent, const QString &text, const QColor &dot)
 {
 	auto *chip = new QLabel(parent);

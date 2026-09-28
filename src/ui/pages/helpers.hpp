@@ -11,21 +11,20 @@
 
 namespace laycue::ui::page {
 
-inline QLabel *label(QWidget *parent, const QString &text, int px, int weight, const QColor &colour)
+inline QLabel *innerLabel(QWidget *parent, const QString &text, int px, int weight, const QColor &colour)
 {
 	auto *l = new QLabel(text, parent);
 	l->setFont(uiFont(px, weight));
 	l->setStyleSheet(labelStyle(colour, l->font()));
 	l->setWordWrap(true);
-	l->setContentsMargins(size::shadowMargin, 0, size::shadowMargin, 0); // line up with the cards' edges
 	return l;
 }
 
-// A label with no indent, for use inside a card.
-inline QLabel *innerLabel(QWidget *parent, const QString &text, int px, int weight, const QColor &colour)
+// A label that lines up with the cards' edges (their shadow margin is empty space).
+inline QLabel *label(QWidget *parent, const QString &text, int px, int weight, const QColor &colour)
 {
-	QLabel *l = label(parent, text, px, weight, colour);
-	l->setContentsMargins(0, 0, 0, 0);
+	QLabel *l = innerLabel(parent, text, px, weight, colour);
+	l->setStyleSheet(l->styleSheet() + QStringLiteral(" padding: 0px %1px;").arg(size::shadowMargin));
 	return l;
 }
 

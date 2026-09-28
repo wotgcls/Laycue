@@ -11,6 +11,7 @@
 #include "ui/pages/add-pushback-page.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/pages/overlay-setup-page.hpp"
+#include "ui/pages/settings-page.hpp"
 #include "ui/style.hpp"
 #include "ui/tabs/overlays-tab.hpp"
 #include "ui/tokens.hpp"
@@ -132,6 +133,7 @@ LaycueDock::LaycueDock(App &app, QWidget *parent) : QWidget(parent), app_(app), 
 {
 	setObjectName("LaycueDock");
 	setAttribute(Qt::WA_StyledBackground, true);
+	setFocusPolicy(Qt::ClickFocus); // the panel itself can hold focus, so Space (Go Live) works after a click
 	setMinimumWidth(280);
 	ui::loadBrandFonts();
 
@@ -264,6 +266,19 @@ QWidget *LaycueDock::buildHome()
 		showTab(index == 0 ? Tab::Shots : index == 1 ? Tab::Pushbacks : Tab::Overlays);
 	});
 	header->addWidget(tabs_, 1);
+	lockPill_ = new ActionButton(text("Laycue.Locked"), ActionButton::Kind::Secondary, home);
+	lockPill_->setToolTip(text("Laycue.LockedTip"));
+	lockPill_->hide();
+	connect(lockPill_, &QAbstractButton::clicked, this, [this]() {
+		app_.modify([](Config &c) { c.settings.locked = false; });
+		showToast(text("Laycue.Unlocked"));
+	});
+	header->addWidget(lockPill_);
+	auto *gear = new GearButton(home);
+	gear->setToolTip(text("Laycue.Settings.Title"));
+	gear->setAccessibleName(text("Laycue.Settings.Title"));
+	connect(gear, &QAbstractButton::clicked, this, &LaycueDock::openSettings);
+	header->addWidget(gear);
 	root->addLayout(header);
 
 	// The stage: Live, Up next and the two buttons. The most raised surface.
@@ -416,6 +431,7 @@ QWidget *LaycueDock::buildHome()
 	auto *addPushback =
 		new ActionButton(text("Laycue.Pushbacks.Add"), ActionButton::Kind::Secondary, pushbacksHeaderHost_);
 	connect(addPushback, &QAbstractButton::clicked, this, &LaycueDock::openAddPushback);
+	addPushbackButton_ = addPushback;
 	pbHeader->addWidget(addPushback, 0, Qt::AlignTop);
 	pushbacksLayout->addWidget(pushbacksHeaderHost_);
 	pushbacksTipHost_ = new QWidget(pushbacksTab_);
@@ -440,6 +456,7 @@ QWidget *LaycueDock::buildHome()
 	emptyLayout->addWidget(emptyBody);
 	auto *emptyAdd = new ActionButton(text("Laycue.Pushbacks.AddFirst"), ActionButton::Kind::Primary, pbEmpty_);
 	connect(emptyAdd, &QAbstractButton::clicked, this, &LaycueDock::openAddPushback);
+	emptyAddButton_ = emptyAdd;
 	emptyLayout->addWidget(emptyAdd, 0, Qt::AlignLeft);
 	pushbacksLayout->addWidget(pbEmpty_);
 	pushbacksLayout->addStretch(1);
@@ -454,11 +471,7 @@ QWidget *LaycueDock::buildHome()
 			if (!setItemVisible(sceneUuid, itemId, show))
 				showToast(text("Laycue.Overlays.Gone"));
 		});
-	connect(overlaysTab_, &OverlaysTab::setupRequested, this, [this]() {
-		auto *page = new OverlaySetupPage(app_);
-		connect(page, &PageFrame::backRequested, this, &LaycueDock::closePage);
-		openPage(page);
-	});
+	connect(overlaysTab_, &OverlaysTab::setupRequested, this, &LaycueDock::openOverlaySetup);
 	tabHostLayout->addWidget(overlaysTab_);
 	tabHostLayout->addStretch(1);
 
@@ -488,6 +501,7 @@ void LaycueDock::openPage(QWidget *page)
 	pages_->addWidget(page);
 	pages_->setCurrentWidget(page);
 	ui::setLargeControls(content_, app_.config().settings.largeButtons);
+	setFocus(Qt::OtherFocusReason); // no focus ring on the first button just because a page opened
 }
 
 void LaycueDock::closePage()
@@ -497,6 +511,7 @@ void LaycueDock::closePage()
 		pages_->removeWidget(openedPage_);
 		openedPage_->deleteLater();
 		openedPage_ = nullptr;
+		setFocus(Qt::OtherFocusReason);
 	}
 	scheduleRefresh();
 }
@@ -1009,10 +1024,33 @@ const Pushback *LaycueDock::pushbackForScene(const std::string &sceneUuid) const
 
 void LaycueDock::updatePushbackList()
 {
+	const bool locked = app_.config().settings.locked;
+	lockPill_->setVisible(locked);
+	addPushbackButton_->setVisible(!locked);
+	emptyAddButton_->setVisible(!locked);
 	const bool none = app_.config().pushbacks.empty();
 	pbEmpty_->setVisible(none);
 	pbGridHost_->setVisible(!none);
 	pushbacksHeaderHost_->setVisible(!none);
+}
+
+void LaycueDock::openOverlaySetup()
+{
+	auto *page = new ui::OverlaySetupPage(app_);
+	connect(page, &ui::PageFrame::backRequested, this, &LaycueDock::closePage);
+	openPage(page);
+}
+
+void LaycueDock::openSettings()
+{
+	auto *page = new ui::SettingsPage(app_);
+	connect(page, &ui::PageFrame::backRequested, this, &LaycueDock::closePage);
+	connect(page, &ui::SettingsPage::overlaySetupRequested, this, [this]() { openOverlaySetup(); });
+	connect(page, &ui::SettingsPage::refitAllRequested, this, [this]() {
+		for (const Pushback &pushback : app_.config().pushbacks)
+			layoutPushback(pushback);
+	});
+	openPage(page);
 }
 
 void LaycueDock::openAddPushback()

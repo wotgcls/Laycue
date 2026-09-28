@@ -135,6 +135,23 @@ private:
 	bool hovered_ = false;
 };
 
+// The Settings button: a gear, drawn by Laycue.
+class GearButton : public QAbstractButton {
+	Q_OBJECT
+
+public:
+	explicit GearButton(QWidget *parent = nullptr);
+	QSize sizeHint() const override { return {36, 36}; }
+
+protected:
+	void paintEvent(QPaintEvent *event) override;
+	void enterEvent(QEnterEvent *event) override;
+	void leaveEvent(QEvent *event) override;
+
+private:
+	bool hovered_ = false;
+};
+
 // A small coloured pill ("Scripture", "Live"...) used in lists.
 QLabel *makeChip(QWidget *parent, const QString &text, const QColor &dot);
 

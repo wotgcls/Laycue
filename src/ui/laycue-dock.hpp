@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+class QAbstractButton;
 class QGridLayout;
 class QLabel;
 class QPushButton;
@@ -78,6 +79,8 @@ private:
 	void unpin();
 	void pushbackMenu(const std::string &pushbackId, const QPoint &globalPos);
 	void openAddPushback();
+	void openSettings();
+	void openOverlaySetup();
 	void repairPushbacks();
 	const Pushback *pushbackForScene(const std::string &sceneUuid) const;
 	void arrangePictures(bool wide);
@@ -106,6 +109,9 @@ private:
 	QWidget *home_ = nullptr;
 	QWidget *openedPage_ = nullptr;
 	ui::Segmented *tabs_ = nullptr;
+	QAbstractButton *lockPill_ = nullptr;
+	QAbstractButton *addPushbackButton_ = nullptr;
+	QAbstractButton *emptyAddButton_ = nullptr;
 	ui::Segmented *modeSwitch_ = nullptr;
 	Tab tab_ = Tab::Shots;
 

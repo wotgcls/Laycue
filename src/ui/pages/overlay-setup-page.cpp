@@ -53,16 +53,7 @@ std::vector<SourceRow> readSourceRows()
 	return rows;
 }
 
-QLabel *label(QWidget *parent, const QString &text, int px, int weight, const QColor &colour)
-{
-	auto *l = new QLabel(text, parent);
-	l->setFont(uiFont(px, weight));
-	l->setStyleSheet(labelStyle(colour, l->font()));
-	l->setWordWrap(true);
-	l->setContentsMargins(size::shadowMargin, 0, size::shadowMargin, 0); // line up with the cards' edges
-	return l;
-}
-
+using page::label;
 using page::button;
 
 void clearLayout(QWidget *host)

@@ -50,6 +50,8 @@ target_sources(
     src/core/source-kinds.cpp
     src/features/app.cpp
     src/features/overlay-engine.cpp
+    src/features/profiles.cpp
+    src/features/profiles.hpp
     src/features/overlay-engine.hpp
     src/store/config-io.cpp
     src/obs/scene-reader.cpp
@@ -71,6 +73,8 @@ target_sources(
     src/ui/pages/add-pushback-page.cpp
     src/ui/pages/add-pushback-page.hpp
     src/ui/pages/helpers.hpp
+    src/ui/pages/settings-page.cpp
+    src/ui/pages/settings-page.hpp
     src/ui/pages/overlay-setup-page.cpp
     src/ui/pages/overlay-setup-page.hpp
     src/ui/style.hpp
