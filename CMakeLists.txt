@@ -49,6 +49,8 @@ target_sources(
     src/core/scene-model.cpp
     src/core/source-kinds.cpp
     src/features/app.cpp
+    src/features/overlay-engine.cpp
+    src/features/overlay-engine.hpp
     src/store/config-io.cpp
     src/obs/scene-reader.cpp
     src/obs/scene-watcher.cpp
@@ -56,6 +58,8 @@ target_sources(
     src/obs/switcher.cpp
     src/obs/pixel-reader.cpp
     src/obs/overlay-items.cpp
+    src/obs/pushback-scene.cpp
+    src/obs/pushback-scene.hpp
     src/ui/controls.cpp
     src/ui/style.cpp
     src/ui/tabs/overlays-tab.cpp
@@ -64,6 +68,9 @@ target_sources(
     src/ui/labels.hpp
     src/ui/pages/page-frame.cpp
     src/ui/pages/page-frame.hpp
+    src/ui/pages/add-pushback-page.cpp
+    src/ui/pages/add-pushback-page.hpp
+    src/ui/pages/helpers.hpp
     src/ui/pages/overlay-setup-page.cpp
     src/ui/pages/overlay-setup-page.hpp
     src/ui/style.hpp
@@ -73,8 +80,8 @@ target_sources(
     src/ui/tokens.cpp
     src/ui/widgets.cpp
     src/ui/widgets.hpp
-    src/ui/window-finder.cpp
-    src/ui/window-finder.hpp
+    src/ui/window-preview.cpp
+    src/ui/window-preview.hpp
 )
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})

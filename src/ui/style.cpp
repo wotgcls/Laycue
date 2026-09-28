@@ -16,6 +16,7 @@ QString panelStyleSheet()
 #LaycueContent QScrollBar::handle:vertical { background: @control; border-radius: 4px; min-height: 24px; }
 #LaycueContent QScrollBar::add-line, #LaycueContent QScrollBar::sub-line { height: 0; }
 #LaycueContent QLabel { background: transparent; }
+#LaycueContent QPushButton { margin: 0; } /* OBS's own theme adds margins to push buttons */
 
 #LaycueContent QPushButton[role="control"] { border-radius: @radiusPx; padding: 0 14px; min-height: @controlPx; font-size: 13px; font-weight: 600; }
 #LaycueContent[large="true"] QPushButton[role="control"] { min-height: @touchPx; }
@@ -53,7 +54,7 @@ QString panelStyleSheet()
 #LaycueContent QPushButton#laycueChip:hover { background: rgba(255,255,255,12); }
 #LaycueContent QPushButton#laycueChip:checked { background: rgba(255,179,26,36); color: @cream; border: 1px solid @overlay; }
 
-#LaycueContent QPushButton#laycueFeed { background: @control; color: @cream; border: 1px solid rgba(255,255,255,20); border-radius: @radiusPx; padding: 0 8px; min-height: @touchPx; font-size: 12px; font-weight: 600; }
+#LaycueContent QPushButton#laycueFeed { background: @control; color: @cream; border: 1px solid rgba(255,255,255,20); border-radius: @radiusPx; padding: 0 8px; font-size: 12px; font-weight: 600; }
 #LaycueContent QPushButton#laycueFeed:hover { background: #363430; }
 #LaycueContent QPushButton#laycueFeed:checked { background: #2A1714; border: 1.5px solid @live; }
 

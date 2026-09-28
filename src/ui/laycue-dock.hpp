@@ -6,6 +6,7 @@
 
 #include "core/cue-state.hpp"
 #include "obs/frame-grabber.hpp"
+#include "features/overlay-engine.hpp"
 #include "obs/scene-watcher.hpp"
 
 #include <obs-frontend-api.h>
@@ -28,6 +29,7 @@ class QVBoxLayout;
 namespace laycue {
 
 class App;
+struct Pushback;
 struct Snapshot;
 
 namespace ui {
@@ -57,7 +59,7 @@ private:
 		std::string uuid;
 		std::string name;
 	};
-	enum class Tab { Shots, Overlays };
+	enum class Tab { Shots, Pushbacks, Overlays };
 
 	void buildUi();
 	QWidget *buildHome();
@@ -69,6 +71,15 @@ private:
 	void onConfigChanged();
 	void rebuildCards();
 	void layoutCards();
+	void layoutGrid(QGridLayout *grid, const std::vector<Shot> &shots, int available);
+	void updatePushbackList();
+	void updateInsideBar();
+	void switchInside(const std::string &pushbackId, const std::string &feedUuid);
+	void unpin();
+	void pushbackMenu(const std::string &pushbackId, const QPoint &globalPos);
+	void openAddPushback();
+	void repairPushbacks();
+	const Pushback *pushbackForScene(const std::string &sceneUuid) const;
 	void arrangePictures(bool wide);
 	void updateStateUi();
 	void updateTransitionLabel();
@@ -79,6 +90,7 @@ private:
 	void goLive(bool instant);
 	void finishCut(); // puts back the operator's transition after a Cut
 	void chooseMode(bool studio);
+	void onItemVisible(const std::string &sceneUuid, int64_t itemId, bool visible);
 	void showToast(const QString &message);
 	void placeToast();
 	QWidget *tipFor(const char *id, const char *titleKey, const char *bodyKey);
@@ -114,6 +126,11 @@ private:
 	QLabel *goLiveTitle_ = nullptr;
 	QLabel *goLiveDetail_ = nullptr;
 
+	// The live pushback's "camera inside" controls
+	QWidget *insideBar_ = nullptr;
+	QVBoxLayout *insideLayout_ = nullptr;
+	std::string insideKey_; // what the bar currently shows, so it is only rebuilt when it changes
+
 	// Tabs
 	QScrollArea *tabScroll_ = nullptr;
 	QWidget *shotsTab_ = nullptr;
@@ -122,6 +139,12 @@ private:
 	QWidget *shotsGridHost_ = nullptr;
 	QGridLayout *shotsGrid_ = nullptr;
 	QLabel *emptyLabel_ = nullptr;
+	QWidget *pushbacksTab_ = nullptr;
+	QWidget *pushbacksTipHost_ = nullptr;
+	QWidget *pushbacksHeaderHost_ = nullptr;
+	QWidget *pbGridHost_ = nullptr;
+	QGridLayout *pbGrid_ = nullptr;
+	QWidget *pbEmpty_ = nullptr;
 	ui::OverlaysTab *overlaysTab_ = nullptr;
 	std::map<std::string, ui::ShotCard *> cards_;
 
@@ -136,12 +159,18 @@ private:
 	QTimer restoreTimer_; // fallback in case OBS never reports the Cut finishing
 	QTimer saveTimer_;    // saves Laycue's setup shortly after it changes
 
+	OverlayEngine overlayEngine_;
 	std::unique_ptr<SceneWatcher> watcher_;
 	std::unique_ptr<FrameGrabber> grabber_;
 	std::map<std::string, uint64_t> pictureSerials_;
 
-	std::vector<Shot> shots_;
+	std::vector<Shot> scenes_;        // every OBS scene, for names and pictures
+	std::vector<Shot> shots_;         // the scenes shown in the Shots tab (not Laycue's pushback scenes)
+	std::vector<Shot> pushbackShots_; // the pushbacks, by their scene
 	CueState cue_;
+	std::string lastLive_;            // the scene that was live at the last refresh
+	std::string previousLive_;        // what was live before the current pushback (for Unpin)
+	bool repairChecked_ = false;      // pushback scenes have been checked since the collection loaded
 	std::string lastPreview_;         // OBS's preview scene as last seen (studio mode)
 	bool suppressPreview_ = false;    // ignore preview changes caused by our own Go Live
 	bool pushNextToPreview_ = false;  // studio mode just turned on: show Up next in OBS's Preview

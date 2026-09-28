@@ -264,4 +264,61 @@ void ShotCard::paintEvent(QPaintEvent *)
 		   QFontMetrics(p.font()).elidedText(name_, Qt::ElideRight, int(nameRect.width())));
 }
 
+// ----- FeedButton -----
+
+FeedButton::FeedButton(const QString &text, QWidget *parent) : QAbstractButton(parent)
+{
+	setText(text);
+	setCheckable(true);
+	setCursor(Qt::PointingHandCursor);
+	setFocusPolicy(Qt::TabFocus);
+	setFixedHeight(size::touch);
+	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+	setAccessibleName(text);
+}
+
+QSize FeedButton::sizeHint() const
+{
+	return {QFontMetrics(uiFont(12, 600)).horizontalAdvance(text()) + 24, size::touch};
+}
+
+void FeedButton::enterEvent(QEnterEvent *event)
+{
+	hovered_ = true;
+	update();
+	QAbstractButton::enterEvent(event);
+}
+
+void FeedButton::leaveEvent(QEvent *event)
+{
+	hovered_ = false;
+	update();
+	QAbstractButton::leaveEvent(event);
+}
+
+void FeedButton::paintEvent(QPaintEvent *)
+{
+	QPainter p(this);
+	p.setRenderHint(QPainter::Antialiasing);
+	QRectF box = QRectF(rect()).adjusted(1, 1, -1, -1);
+	if (isDown()) {
+		const QPointF c = box.center();
+		box = QRectF(c.x() - box.width() * 0.49, c.y() - box.height() * 0.49, box.width() * 0.98,
+			     box.height() * 0.98);
+	}
+	const bool on = isChecked();
+	p.setPen(QPen(on ? color::live : QColor(255, 255, 255, 26), on ? 1.5 : 1));
+	p.setBrush(on ? QColor(0x2A, 0x17, 0x14) : (hovered_ ? QColor(0x36, 0x34, 0x30) : color::control));
+	p.drawRoundedRect(box, size::radius, size::radius);
+	p.setPen(color::cream);
+	p.setFont(uiFont(12, 600));
+	const QString shown = QFontMetrics(p.font()).elidedText(text(), Qt::ElideRight, int(box.width()) - 16);
+	p.drawText(box, Qt::AlignCenter, shown);
+	if (hasFocus()) {
+		p.setBrush(Qt::NoBrush);
+		p.setPen(QPen(color::setup, 2));
+		p.drawRoundedRect(QRectF(rect()).adjusted(1, 1, -1, -1), size::radius, size::radius);
+	}
+}
+
 } // namespace laycue::ui

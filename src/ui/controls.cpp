@@ -130,7 +130,7 @@ int Segmented::controlHeight() const
 QRectF Segmented::segmentRect(int index) const
 {
 	const QRectF track = QRectF(rect()).adjusted(2, 2, -2, -2);
-	const qreal each = track.width() / std::max<int>(1, labels_.size());
+	const qreal each = track.width() / std::max(1, static_cast<int>(labels_.size()));
 	return QRectF(track.left() + each * index, track.top(), each, track.height());
 }
 
@@ -327,6 +327,7 @@ TipCard::TipCard(const QString &title, const QString &body, QWidget *parent) : S
 	auto *heading = new QLabel(title, this);
 	heading->setFont(uiFont(13, 700));
 	heading->setStyleSheet(labelStyle(color::cream, heading->font()));
+	heading->setWordWrap(true); // a long title must wrap, not widen the whole panel
 	auto *copy = new QLabel(body, this);
 	copy->setFont(uiFont(12, 400));
 	copy->setStyleSheet(labelStyle(color::textSecondary, copy->font()));

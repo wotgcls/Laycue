@@ -71,4 +71,24 @@ private:
 	bool hovered_ = false;
 };
 
+// A choice button drawn by Laycue (a camera inside a pushback): when checked it is outlined in
+// Tally Red, because that camera is on air.
+class FeedButton : public QAbstractButton {
+	Q_OBJECT
+
+public:
+	explicit FeedButton(const QString &text, QWidget *parent = nullptr);
+
+	QSize sizeHint() const override;
+
+protected:
+	void paintEvent(QPaintEvent *event) override;
+	void enterEvent(QEnterEvent *event) override;
+	void leaveEvent(QEvent *event) override;
+	void nextCheckState() override {} // never toggles itself: the panel says which one is showing
+
+private:
+	bool hovered_ = false;
+};
+
 } // namespace laycue::ui
