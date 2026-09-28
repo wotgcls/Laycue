@@ -15,8 +15,15 @@ add_executable(
   test-source-kinds.cpp
   test-cue-state.cpp
   test-detect.cpp
+  test-geometry.cpp
+  test-exclusivity.cpp
+  test-config.cpp
   "${LAYCUE_SRC}/core/cue-state.cpp"
   "${LAYCUE_SRC}/core/detect.cpp"
+  "${LAYCUE_SRC}/core/geometry.cpp"
+  "${LAYCUE_SRC}/core/autotag.cpp"
+  "${LAYCUE_SRC}/core/exclusivity.cpp"
+  "${LAYCUE_SRC}/core/config.cpp"
   "${LAYCUE_SRC}/core/scene-model.cpp"
   "${LAYCUE_SRC}/core/source-kinds.cpp"
 )

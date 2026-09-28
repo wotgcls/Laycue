@@ -42,6 +42,10 @@ target_sources(
     src/plugin-main.cpp
     src/core/cue-state.cpp
     src/core/detect.cpp
+    src/core/geometry.cpp
+    src/core/autotag.cpp
+    src/core/exclusivity.cpp
+    src/core/config.cpp
     src/core/scene-model.cpp
     src/core/source-kinds.cpp
     src/obs/scene-reader.cpp
