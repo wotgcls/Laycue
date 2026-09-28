@@ -16,7 +16,8 @@ output) leaves. Bands are always blue, green, amber, red, top to bottom.
 | `laycue-mark-mono-ink.svg`, `laycue-mark-mono-cream.svg` | One colour: print, embroidery, fax |
 | `laycue-mark-square.svg` | Square crop for app icons (48 px and up) |
 | `laycue-mark-16.svg`, `laycue-favicon-16.png` | Pixel-snapped 3-band version for 16 px |
-| `laycue-lockup-on-dark.png`, `laycue-lockup-on-light.png` | Horizontal logo (mark + wordmark), 2× |
+| `laycue-mark-on-dark.png`, `laycue-mark-on-light.png` | Mark as PNG (2×), used in the OBS panel header |
+| `laycue-lockup-on-dark.png`, `laycue-lockup-on-light.png` | Horizontal logo (mark + wordmark), 2×. Not used inside OBS |
 | `laycue-app-icon-dark-1024.png`, `laycue-app-icon-light-1024.png` | App icons |
 | `laycue.ico` | Windows icon (16–256 px), used by the installer |
 
@@ -42,6 +43,7 @@ never used as text on Ink below 18 px.
 - **Archivo** (variable width; SIL Open Font License): display 800, headings 700, UI 400–600.
 - **JetBrains Mono** (SIL Open Font License): hotkeys, specs, eyebrows.
 - Inside OBS the panel bundles Archivo and falls back to the system UI font.
+- Inside OBS the only brand element is the full-colour mark at 30 px in the panel header (no wordmark).
 
 ## Controls (from the brand system)
 

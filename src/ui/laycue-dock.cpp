@@ -43,15 +43,16 @@ void expandGroups(QTreeWidgetItem *row)
 	}
 }
 
-constexpr int kLogoHeight = 18; // logical pixels
+constexpr int kLogoHeight = 19; // logical pixels: the brand mark at 30 px wide
 
-// The Laycue logo for the panel header, picked for the current OBS theme (cream on dark, ink on light).
+// The Laycue mark for the panel header (the brand allows only the mark inside OBS),
+// picked for the current OBS theme (cream screen on dark, ink screen on light).
 // Returns an empty label if the image is missing, so a broken install never breaks the panel.
 QLabel *makeLogo(QWidget *parent)
 {
 	auto *logo = new QLabel(parent);
 	const bool darkTheme = parent->palette().color(QPalette::Window).lightness() < 128;
-	const char *file = darkTheme ? "brand/laycue-lockup-on-dark.png" : "brand/laycue-lockup-on-light.png";
+	const char *file = darkTheme ? "brand/laycue-mark-on-dark.png" : "brand/laycue-mark-on-light.png";
 
 	char *path = obs_module_file(file);
 	if (!path) {
