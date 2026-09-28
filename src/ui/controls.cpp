@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include <QDynamicPropertyChangeEvent>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
@@ -336,11 +337,130 @@ TipCard::TipCard(const QString &title, const QString &body, QWidget *parent) : S
 	text->addWidget(copy);
 	root->addLayout(text, 1);
 
-	auto *close = new QPushButton(QString::fromUtf8(obs_module_text("Laycue.GotIt")), this);
-	close->setObjectName("laycueLink");
-	close->setCursor(Qt::PointingHandCursor);
-	connect(close, &QPushButton::clicked, this, &TipCard::dismissed);
+	auto *close =
+		new ActionButton(QString::fromUtf8(obs_module_text("Laycue.GotIt")), ActionButton::Kind::Link, this);
+	connect(close, &QAbstractButton::clicked, this, &TipCard::dismissed);
 	root->addWidget(close, 0, Qt::AlignTop);
+}
+
+// ----- ActionButton -----
+
+ActionButton::ActionButton(const QString &text, Kind kind, QWidget *parent) : QAbstractButton(parent), kind_(kind)
+{
+	setText(text);
+	setCursor(Qt::PointingHandCursor);
+	setFocusPolicy(Qt::TabFocus);
+	setAccessibleName(text);
+	// Follow the panel's size setting from the moment the button exists.
+	for (QWidget *w = parent; w; w = w->parentWidget()) {
+		if (w->property("large").isValid()) {
+			large_ = w->property("large").toBool();
+			break;
+		}
+	}
+	applyHeight();
+}
+
+void ActionButton::setLarge(bool large)
+{
+	large_ = large;
+	applyHeight();
+}
+
+void ActionButton::setKind(Kind kind)
+{
+	kind_ = kind;
+	update();
+}
+
+void ActionButton::applyHeight()
+{
+	setFixedHeight(large_ ? size::touch : size::controlHeight);
+	updateGeometry();
+}
+
+bool ActionButton::event(QEvent *event)
+{
+	if (event->type() == QEvent::DynamicPropertyChange) {
+		auto *change = static_cast<QDynamicPropertyChangeEvent *>(event);
+		if (change->propertyName() == "large") {
+			large_ = property("large").toBool();
+			applyHeight();
+		}
+	}
+	return QAbstractButton::event(event);
+}
+
+QSize ActionButton::sizeHint() const
+{
+	const int padding = kind_ == Kind::Link ? 20 : 30;
+	return {QFontMetrics(uiFont(13, 600)).horizontalAdvance(text()) + padding,
+		large_ ? size::touch : size::controlHeight};
+}
+
+void ActionButton::enterEvent(QEnterEvent *event)
+{
+	hovered_ = true;
+	update();
+	QAbstractButton::enterEvent(event);
+}
+
+void ActionButton::leaveEvent(QEvent *event)
+{
+	hovered_ = false;
+	update();
+	QAbstractButton::leaveEvent(event);
+}
+
+void ActionButton::paintEvent(QPaintEvent *)
+{
+	QPainter p(this);
+	p.setRenderHint(QPainter::Antialiasing);
+	QRectF box = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+	if (isDown() && isEnabled()) {
+		const QPointF c = box.center();
+		box = QRectF(c.x() - box.width() * 0.49, c.y() - box.height() * 0.49, box.width() * 0.98,
+			     box.height() * 0.98);
+	}
+
+	QColor fill = Qt::transparent;
+	QColor border = Qt::transparent;
+	QColor text = color::cream;
+	switch (kind_) {
+	case Kind::Primary:
+		fill = hovered_ ? QColor(0xFB, 0xF6, 0xEA) : color::cream;
+		text = color::ink;
+		break;
+	case Kind::Secondary:
+	case Kind::Danger:
+		fill = hovered_ ? QColor(0x36, 0x34, 0x30) : color::control;
+		border = QColor(255, 255, 255, 26);
+		text = kind_ == Kind::Danger ? color::live : color::cream;
+		break;
+	case Kind::Link:
+		fill = hovered_ ? QColor(46, 139, 255, 30) : Qt::transparent;
+		text = color::setup;
+		break;
+	}
+	if (!isEnabled()) {
+		fill = kind_ == Kind::Link ? Qt::transparent : color::graphite;
+		border = kind_ == Kind::Link ? Qt::transparent : QColor(255, 255, 255, 10);
+		text = color::textDisabled;
+	}
+
+	p.setPen(border.alpha() ? QPen(border, 1) : Qt::NoPen);
+	p.setBrush(fill);
+	p.drawRoundedRect(box, size::radius, size::radius);
+	p.setPen(text);
+	p.setFont(uiFont(13, 600));
+	p.drawText(box, Qt::AlignCenter,
+		   QFontMetrics(p.font()).elidedText(this->text(), Qt::ElideRight, int(box.width()) - 12));
+
+	if (hasFocus()) {
+		p.setBrush(Qt::NoBrush);
+		p.setPen(QPen(color::setup, 2));
+		p.drawRoundedRect(QRectF(rect()).adjusted(1, 1, -1, -1), size::radius, size::radius);
+	}
 }
 
 QLabel *makeChip(QWidget *parent, const QString &text, const QColor &dot)

@@ -15,7 +15,7 @@
 
 class QLabel;
 class QLineEdit;
-class QPushButton;
+class QAbstractButton;
 class QStackedWidget;
 class QVBoxLayout;
 
@@ -74,8 +74,8 @@ private:
 	App &app_;
 	QStackedWidget *steps_ = nullptr;
 	QLabel *progress_ = nullptr;
-	QPushButton *primary_ = nullptr;
-	QPushButton *backStep_ = nullptr;
+	QAbstractButton *primary_ = nullptr;
+	QAbstractButton *backStep_ = nullptr;
 	Step step_ = Step::Graphic;
 
 	// Step 1

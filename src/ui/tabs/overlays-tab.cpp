@@ -1,5 +1,6 @@
 #include "ui/tabs/overlays-tab.hpp"
 
+#include "ui/controls.hpp"
 #include "ui/labels.hpp"
 #include "ui/tokens.hpp"
 
@@ -125,11 +126,10 @@ void OverlaysTab::rebuild()
 	auto addSetup = [&](const QString &text, const char *object) {
 		if (locked_)
 			return;
-		auto *b = new QPushButton(text, this);
-		b->setObjectName(object);
-		b->setProperty("role", "control");
-		b->setCursor(Qt::PointingHandCursor);
-		connect(b, &QPushButton::clicked, this, &OverlaysTab::setupRequested);
+		const auto kind = std::string(object) == "laycuePrimary" ? ActionButton::Kind::Primary
+									 : ActionButton::Kind::Link;
+		auto *b = new ActionButton(text, kind, this);
+		connect(b, &QAbstractButton::clicked, this, &OverlaysTab::setupRequested);
 		root_->addWidget(b, 0, Qt::AlignLeft);
 	};
 

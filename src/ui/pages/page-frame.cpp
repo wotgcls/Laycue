@@ -1,5 +1,6 @@
 #include "ui/pages/page-frame.hpp"
 
+#include "ui/controls.hpp"
 #include "ui/tokens.hpp"
 
 #include <QHBoxLayout>
@@ -18,12 +19,9 @@ PageFrame::PageFrame(const QString &backLabel, const QString &title, QWidget *pa
 
 	auto *header = new QHBoxLayout();
 	header->setSpacing(size::gapSmall);
-	auto *back = new QPushButton(QStringLiteral("‹  ") + backLabel, this);
-	back->setObjectName("laycueLink");
-	back->setProperty("role", "control");
-	back->setCursor(Qt::PointingHandCursor);
+	auto *back = new ActionButton(QStringLiteral("‹  ") + backLabel, ActionButton::Kind::Link, this);
 	back->setAccessibleName(backLabel);
-	connect(back, &QPushButton::clicked, this, &PageFrame::backRequested);
+	connect(back, &QAbstractButton::clicked, this, &PageFrame::backRequested);
 	header->addWidget(back);
 	header->addStretch(1);
 	root_->addLayout(header);

@@ -1,6 +1,7 @@
 // Small building blocks shared by the full-panel pages.
 #pragma once
 
+#include "ui/controls.hpp"
 #include "ui/tokens.hpp"
 
 #include <QLabel>
@@ -28,13 +29,18 @@ inline QLabel *innerLabel(QWidget *parent, const QString &text, int px, int weig
 	return l;
 }
 
-inline QPushButton *button(QWidget *parent, const QString &text, const char *object)
+// `object` names the look: laycuePrimary, laycueSecondary, laycueDanger or laycueLink.
+inline ActionButton *button(QWidget *parent, const QString &text, const char *object)
 {
-	auto *b = new QPushButton(text, parent);
-	b->setObjectName(object);
-	b->setProperty("role", "control");
-	b->setCursor(Qt::PointingHandCursor);
-	return b;
+	const QString name = QString::fromLatin1(object);
+	ActionButton::Kind kind = ActionButton::Kind::Secondary;
+	if (name == "laycuePrimary")
+		kind = ActionButton::Kind::Primary;
+	else if (name == "laycueDanger")
+		kind = ActionButton::Kind::Danger;
+	else if (name == "laycueLink")
+		kind = ActionButton::Kind::Link;
+	return new ActionButton(text, kind, parent);
 }
 
 inline void clear(QLayout *layout)

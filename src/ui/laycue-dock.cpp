@@ -413,11 +413,9 @@ QWidget *LaycueDock::buildHome()
 	pbHint->setWordWrap(true);
 	pbTitles->addWidget(pbHint);
 	pbHeader->addLayout(pbTitles, 1);
-	auto *addPushback = new QPushButton(text("Laycue.Pushbacks.Add"), pushbacksHeaderHost_);
-	addPushback->setObjectName("laycueSecondary");
-	addPushback->setProperty("role", "control");
-	addPushback->setCursor(Qt::PointingHandCursor);
-	connect(addPushback, &QPushButton::clicked, this, &LaycueDock::openAddPushback);
+	auto *addPushback =
+		new ActionButton(text("Laycue.Pushbacks.Add"), ActionButton::Kind::Secondary, pushbacksHeaderHost_);
+	connect(addPushback, &QAbstractButton::clicked, this, &LaycueDock::openAddPushback);
 	pbHeader->addWidget(addPushback, 0, Qt::AlignTop);
 	pushbacksLayout->addWidget(pushbacksHeaderHost_);
 	pushbacksTipHost_ = new QWidget(pushbacksTab_);
@@ -440,11 +438,8 @@ QWidget *LaycueDock::buildHome()
 		makeLabel(pbEmpty_, uiFont(12, 400), color::textSecondary, text("Laycue.Pushbacks.EmptyBody"));
 	emptyBody->setWordWrap(true);
 	emptyLayout->addWidget(emptyBody);
-	auto *emptyAdd = new QPushButton(text("Laycue.Pushbacks.AddFirst"), pbEmpty_);
-	emptyAdd->setObjectName("laycuePrimary");
-	emptyAdd->setProperty("role", "control");
-	emptyAdd->setCursor(Qt::PointingHandCursor);
-	connect(emptyAdd, &QPushButton::clicked, this, &LaycueDock::openAddPushback);
+	auto *emptyAdd = new ActionButton(text("Laycue.Pushbacks.AddFirst"), ActionButton::Kind::Primary, pbEmpty_);
+	connect(emptyAdd, &QAbstractButton::clicked, this, &LaycueDock::openAddPushback);
 	emptyLayout->addWidget(emptyAdd, 0, Qt::AlignLeft);
 	pushbacksLayout->addWidget(pbEmpty_);
 	pushbacksLayout->addStretch(1);
@@ -1158,12 +1153,10 @@ void LaycueDock::updateInsideBar()
 	headerLayout->addWidget(
 		makeLabel(headerRow, uiFont(12, 700), color::textSecondary, text("Laycue.Inside.Title")), 1);
 	if (!previousLive_.empty()) {
-		auto *unpinButton = new QPushButton(text("Laycue.Inside.Unpin"), headerRow);
-		unpinButton->setObjectName("laycueSecondary");
-		unpinButton->setProperty("role", "control");
-		unpinButton->setCursor(Qt::PointingHandCursor);
+		auto *unpinButton =
+			new ActionButton(text("Laycue.Inside.Unpin"), ActionButton::Kind::Secondary, headerRow);
 		unpinButton->setToolTip(text("Laycue.Inside.UnpinTip").arg(fromStd(nameOf(previousLive_))));
-		connect(unpinButton, &QPushButton::clicked, this, &LaycueDock::unpin);
+		connect(unpinButton, &QAbstractButton::clicked, this, &LaycueDock::unpin);
 		headerLayout->addWidget(unpinButton);
 	}
 	insideLayout_->addWidget(headerRow);

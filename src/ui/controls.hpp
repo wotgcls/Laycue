@@ -105,6 +105,36 @@ signals:
 	void dismissed();
 };
 
+// A button drawn by Laycue, so OBS's theme can't change its size or position. Primary is the one
+// main action on a page (cream); Secondary is a quiet button; Link is blue text; Danger is red text.
+class ActionButton : public QAbstractButton {
+	Q_OBJECT
+
+public:
+	enum class Kind { Primary, Secondary, Link, Danger };
+
+	ActionButton(const QString &text, Kind kind, QWidget *parent = nullptr);
+
+	// Big enough for a finger (the "Large buttons" setting), or the normal desktop size.
+	void setLarge(bool large);
+	void setKind(Kind kind);
+
+	QSize sizeHint() const override;
+
+protected:
+	void paintEvent(QPaintEvent *event) override;
+	void enterEvent(QEnterEvent *event) override;
+	void leaveEvent(QEvent *event) override;
+	bool event(QEvent *event) override;
+
+private:
+	void applyHeight();
+
+	Kind kind_;
+	bool large_ = false;
+	bool hovered_ = false;
+};
+
 // A small coloured pill ("Scripture", "Live"...) used in lists.
 QLabel *makeChip(QWidget *parent, const QString &text, const QColor &dot);
 

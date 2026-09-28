@@ -7,6 +7,7 @@
 #include "obs/scene-reader.hpp"
 #include "ui/controls.hpp"
 #include "ui/labels.hpp"
+#include "ui/pages/helpers.hpp"
 #include "ui/tokens.hpp"
 
 #include <QAction>
@@ -62,14 +63,7 @@ QLabel *label(QWidget *parent, const QString &text, int px, int weight, const QC
 	return l;
 }
 
-QPushButton *button(QWidget *parent, const QString &text, const char *object)
-{
-	auto *b = new QPushButton(text, parent);
-	b->setObjectName(object);
-	b->setProperty("role", "control");
-	b->setCursor(Qt::PointingHandCursor);
-	return b;
-}
+using page::button;
 
 void clearLayout(QWidget *host)
 {
@@ -107,7 +101,7 @@ OverlaySetupPage::OverlaySetupPage(App &app, QWidget *parent)
 	sourcesHeader->addWidget(label(this, lt("Laycue.OverlaySetup.Sources"), 15, 700, color::cream), 1);
 	auto *autoButton = button(this, lt("Laycue.AutoTag"), "laycueSecondary");
 	autoButton->setToolTip(lt("Laycue.AutoTagTip"));
-	connect(autoButton, &QPushButton::clicked, this, &OverlaySetupPage::autoTag);
+	connect(autoButton, &QAbstractButton::clicked, this, &OverlaySetupPage::autoTag);
 	sourcesHeader->addWidget(autoButton);
 	body()->addLayout(sourcesHeader);
 
@@ -130,7 +124,7 @@ OverlaySetupPage::OverlaySetupPage(App &app, QWidget *parent)
 	rulesHeader->setContentsMargins(0, 0, size::shadowMargin, 0);
 	rulesHeader->addWidget(label(this, lt("Laycue.Rules.Title"), 15, 700, color::cream), 1);
 	auto *add = button(this, lt("Laycue.Rules.New"), "laycueSecondary");
-	connect(add, &QPushButton::clicked, this, [this]() {
+	connect(add, &QAbstractButton::clicked, this, [this]() {
 		app_.modify([](Config &c) {
 			Rule rule;
 			rule.name = "Rule " + std::to_string(c.rules.size() + 1);
@@ -228,7 +222,7 @@ void OverlaySetupPage::rebuildSources()
 			});
 			menu.exec(globalPos);
 		};
-		connect(tagButton, &QPushButton::clicked, this,
+		connect(tagButton, &QAbstractButton::clicked, this,
 			[tagButton, showMenu]() { showMenu(tagButton->mapToGlobal(QPoint(0, tagButton->height()))); });
 		connect(widget, &QWidget::customContextMenuRequested, this,
 			[widget, showMenu](const QPoint &pos) { showMenu(widget->mapToGlobal(pos)); });
@@ -273,7 +267,7 @@ void OverlaySetupPage::rebuildRules()
 		});
 		top->addWidget(name, 1);
 		auto *remove = button(card, lt("Laycue.Rules.Delete"), "laycueDanger");
-		connect(remove, &QPushButton::clicked, this, [this, i]() {
+		connect(remove, &QAbstractButton::clicked, this, [this, i]() {
 			app_.modify([&](Config &c) {
 				if (i < c.rules.size())
 					c.rules.erase(c.rules.begin() + i);
@@ -290,8 +284,9 @@ void OverlaySetupPage::rebuildRules()
 		const std::vector<std::string> tags = knownTags(config);
 		for (size_t t = 0; t < tags.size(); ++t) {
 			const std::string tagId = tags[t];
-			auto *chip = button(card, tagDisplayName(tagId), "laycueChip");
-			chip->setProperty("role", QVariant());
+			auto *chip = new QPushButton(tagDisplayName(tagId), card);
+			chip->setObjectName("laycueChip");
+			chip->setCursor(Qt::PointingHandCursor);
 			chip->setCheckable(true);
 			chip->setChecked(std::find(rule.tags.begin(), rule.tags.end(), tagId) != rule.tags.end());
 			connect(chip, &QPushButton::toggled, this, [this, i, tagId](bool on) {
@@ -330,7 +325,7 @@ void OverlaySetupPage::rebuildRules()
 						     ? lt("Laycue.Rules.ChooseScenes")
 						     : lt("Laycue.Rules.ChooseScenesN").arg(rule.scenes.size());
 			auto *choose = button(card, text, "laycueSecondary");
-			connect(choose, &QPushButton::clicked, this, [this, i, choose, scenes]() {
+			connect(choose, &QAbstractButton::clicked, this, [this, i, choose, scenes]() {
 				QMenu menu(this);
 				for (const auto &scene : scenes) {
 					QAction *action = menu.addAction(QString::fromStdString(scene.second));

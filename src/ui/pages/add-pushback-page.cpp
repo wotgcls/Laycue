@@ -86,11 +86,11 @@ AddPushbackPage::AddPushbackPage(App &app, QWidget *parent)
 	row->setSpacing(size::gapSmall);
 	backStep_ = button(footer, lt("Laycue.Back"), "laycueSecondary");
 	backStep_->setMinimumHeight(size::touch);
-	connect(backStep_, &QPushButton::clicked, this, &AddPushbackPage::backClicked);
+	connect(backStep_, &QAbstractButton::clicked, this, &AddPushbackPage::backClicked);
 	row->addWidget(backStep_);
 	primary_ = button(footer, lt("Laycue.Next"), "laycuePrimary");
 	primary_->setMinimumHeight(size::touch);
-	connect(primary_, &QPushButton::clicked, this, &AddPushbackPage::primaryClicked);
+	connect(primary_, &QAbstractButton::clicked, this, &AddPushbackPage::primaryClicked);
 	row->addWidget(primary_, 1);
 	setFooter(footer);
 
@@ -112,10 +112,10 @@ QWidget *AddPushbackPage::buildGraphicStep()
 	pick->setContentsMargins(size::shadowMargin, 0, size::shadowMargin, 0);
 	pick->setSpacing(size::gapSmall);
 	auto *file = button(w, lt("Laycue.Add.ChooseImage"), "laycuePrimary");
-	connect(file, &QPushButton::clicked, this, &AddPushbackPage::chooseFile);
+	connect(file, &QAbstractButton::clicked, this, &AddPushbackPage::chooseFile);
 	pick->addWidget(file);
 	auto *fromObs = button(w, lt("Laycue.Add.FromObs"), "laycueSecondary");
-	connect(fromObs, &QPushButton::clicked, this, &AddPushbackPage::chooseSource);
+	connect(fromObs, &QAbstractButton::clicked, this, &AddPushbackPage::chooseSource);
 	pick->addWidget(fromObs);
 	pick->addStretch(1);
 	v->addLayout(pick);
@@ -160,7 +160,7 @@ QWidget *AddPushbackPage::buildGraphicStep()
 	colourText_ = innerLabel(colourBox_, QString(), 12, 500, color::cream);
 	colourRow->addWidget(colourText_, 1);
 	auto *pickColour = button(colourBox_, lt("Laycue.Add.PickColour"), "laycueSecondary");
-	connect(pickColour, &QPushButton::clicked, this, &AddPushbackPage::pickColour);
+	connect(pickColour, &QAbstractButton::clicked, this, &AddPushbackPage::pickColour);
 	colourRow->addWidget(pickColour);
 	c->addWidget(colourBox_);
 
@@ -541,7 +541,7 @@ QWidget *AddPushbackPage::buildDoneStep()
 	v->addWidget(card);
 
 	auto *another = button(w, lt("Laycue.Add.Another"), "laycueLink");
-	connect(another, &QPushButton::clicked, this, [this]() {
+	connect(another, &QAbstractButton::clicked, this, [this]() {
 		picture_ = RgbaImage();
 		filePath_.clear();
 		sourceUuid_.clear();
