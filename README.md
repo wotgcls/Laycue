@@ -24,9 +24,12 @@ Every push to GitHub builds Laycue for Windows, macOS and Linux automatically.
 Close OBS first.
 
 **Windows**
-1. Unzip the download. Inside is another zip, `laycue-…-windows-x64.zip`. Unzip that too.
-2. You'll see a folder called `laycue`. Copy it into `C:\ProgramData\obs-studio\plugins\`. Create the `plugins` folder if it doesn't exist. `ProgramData` is hidden: paste the path into File Explorer's address bar.
-3. The result should be `C:\ProgramData\obs-studio\plugins\laycue\bin\64bit\laycue.dll`.
+1. Unzip the download and double-click `laycue-…-windows-x64-Installer.exe`.
+2. If Windows shows a blue "Windows protected your PC" box, click **More info**, then **Run anyway**. This appears because the beta isn't code-signed yet.
+3. Click **Yes** when Windows asks for permission, then **Next → Install → Finish**. If OBS is open, the installer offers to close it.
+4. To remove Laycue later: Windows **Settings → Apps → Installed apps → Laycue for OBS Studio → Uninstall**.
+
+The download also contains a plain zip (`laycue-…-windows-x64.zip`) for manual installs: copy its `laycue` folder into `C:\ProgramData\obs-studio\plugins\`.
 
 **macOS**
 1. Unzip the download and double-click the `.pkg` installer.

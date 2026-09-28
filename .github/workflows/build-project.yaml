@@ -290,6 +290,26 @@ jobs:
           config: ${{ needs.check-event.outputs.config }}
           package: ${{ fromJSON(needs.check-event.outputs.package) }}
 
+      - name: Build Windows Installer 💾
+        run: |
+          # Build Windows Installer 💾 (Laycue: double-click setup .exe, see build-aux/windows-installer.iss)
+          $Iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if ( ! ( Test-Path $Iscc ) ) {
+            choco install innosetup --no-progress -y
+            if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+          }
+
+          $IsccArgs = @(
+            '/Qp'
+            "/DAppVersion=${{ steps.setup.outputs.pluginVersion }}"
+            "/DSourceDir=${{ github.workspace }}\release\${{ needs.check-event.outputs.config }}"
+            "/DOutputDir=${{ github.workspace }}\release"
+            "/DOutputBaseName=${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-x64-Installer"
+            'build-aux\windows-installer.iss'
+          )
+          & $Iscc @IsccArgs
+          if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+
       - name: Upload Artifacts 📡
         uses: actions/upload-artifact@v4
         with:
