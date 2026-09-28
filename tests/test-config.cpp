@@ -39,7 +39,7 @@ TEST_CASE("config: sanitize drops broken entries and fixes numbers")
 	CHECK_EQ(c.version, laycue::kConfigVersion);
 	CHECK_EQ(c.settings.insideFadeMs, 3000);
 	CHECK_EQ(c.tags.size(), size_t(1));
-	CHECK_EQ(c.rules.size(), size_t(1));
+	CHECK_EQ(c.rules.size(), size_t(2)); // a rule without tags is kept: it is one being set up
 	CHECK_EQ(c.pushbacks.size(), size_t(1));
 	CHECK_EQ(c.pushbacks[0].activeFeed, std::string("f1")); // unknown active feed falls back to the first
 }

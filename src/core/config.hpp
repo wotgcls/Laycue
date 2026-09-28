@@ -46,7 +46,6 @@ struct Pushback {
 };
 
 struct Settings {
-	bool studioMode = true; // the Normal | Studio choice: true = Laycue runs Preview and Program
 	bool insideFade = true; // switching the camera inside a pushback: fade (true) or cut
 	int insideFadeMs = 400;
 	bool largeButtons = false; // touchscreen sizes

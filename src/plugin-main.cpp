@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License along
 with this program. If not, see <https://www.gnu.org/licenses/>
 */
 
+#include "features/app.hpp"
 #include "ui/laycue-dock.hpp"
 
 #include <obs-frontend-api.h>
@@ -24,6 +25,8 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #include <QMainWindow>
 #include <QPointer>
+
+#include <memory>
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
@@ -36,9 +39,14 @@ constexpr const char *kDockId = "laycue";
 // QPointer becomes null automatically when that happens.
 QPointer<laycue::LaycueDock> g_dock;
 
+// The one top-level object. Created first, destroyed last, so the dock never outlives it.
+std::unique_ptr<laycue::App> g_app;
+
 void onFrontendEvent(enum obs_frontend_event event, void *)
 {
 	try {
+		if (g_app)
+			g_app->handleFrontendEvent(event);
 		if (g_dock)
 			g_dock->handleFrontendEvent(event);
 	} catch (const std::exception &error) {
@@ -53,8 +61,9 @@ void onFrontendEvent(enum obs_frontend_event event, void *)
 bool obs_module_load(void)
 {
 	try {
+		g_app = std::make_unique<laycue::App>();
 		auto *mainWindow = static_cast<QMainWindow *>(obs_frontend_get_main_window());
-		auto *dock = new laycue::LaycueDock(mainWindow);
+		auto *dock = new laycue::LaycueDock(*g_app, mainWindow);
 
 		if (!obs_frontend_add_dock_by_id(kDockId, obs_module_text("Laycue.DockTitle"), dock)) {
 			obs_log(LOG_ERROR, "Could not add the Laycue dock (id '%s' already in use?)", kDockId);
@@ -76,5 +85,6 @@ bool obs_module_load(void)
 void obs_module_unload(void)
 {
 	obs_frontend_remove_event_callback(onFrontendEvent, nullptr);
+	g_app.reset();
 	obs_log(LOG_INFO, "plugin unloaded");
 }

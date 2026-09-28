@@ -11,6 +11,9 @@ namespace laycue::ui {
 namespace color {
 inline const QColor ink{0x11, 0x11, 0x10};           // panel base
 inline const QColor graphite{0x1C, 0x1B, 0x19};      // raised surfaces (cards)
+inline const QColor stage{0x22, 0x21, 0x1F};         // the most raised surface: Live, Up next and the main buttons
+inline const QColor recess{0x0B, 0x0B, 0x0A};        // sunken tracks (tab bar, switches off)
+inline const QColor control{0x2C, 0x2A, 0x27};       // selected segment, quiet buttons
 inline const QColor graphiteHover{0x23, 0x21, 0x1E}; // card under the mouse
 inline const QColor line{0x2C, 0x2A, 0x27};          // dividers, quiet outlines
 inline const QColor lineStrong{0x3A, 0x37, 0x32};    // secondary button outline
@@ -35,6 +38,8 @@ constexpr int gapSmall = 8;
 constexpr int gap = 14;
 constexpr int gapLarge = 24;
 constexpr int margin = 12;
+constexpr int controlHeight = 32; // desktop density: buttons, rows, tabs
+constexpr int shadowMargin = 8;   // room a raised surface needs for its soft shadow
 } // namespace size
 
 // Registers the bundled Archivo and JetBrains Mono fonts. Safe to call more than once;

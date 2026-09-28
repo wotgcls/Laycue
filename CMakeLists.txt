@@ -48,11 +48,26 @@ target_sources(
     src/core/config.cpp
     src/core/scene-model.cpp
     src/core/source-kinds.cpp
+    src/features/app.cpp
+    src/store/config-io.cpp
     src/obs/scene-reader.cpp
     src/obs/scene-watcher.cpp
     src/obs/frame-grabber.cpp
     src/obs/switcher.cpp
     src/obs/pixel-reader.cpp
+    src/obs/overlay-items.cpp
+    src/ui/controls.cpp
+    src/ui/style.cpp
+    src/ui/tabs/overlays-tab.cpp
+    src/ui/tabs/overlays-tab.hpp
+    src/ui/labels.cpp
+    src/ui/labels.hpp
+    src/ui/pages/page-frame.cpp
+    src/ui/pages/page-frame.hpp
+    src/ui/pages/overlay-setup-page.cpp
+    src/ui/pages/overlay-setup-page.hpp
+    src/ui/style.hpp
+    src/ui/controls.hpp
     src/ui/laycue-dock.cpp
     src/ui/laycue-dock.hpp
     src/ui/tokens.cpp

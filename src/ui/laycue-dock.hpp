@@ -1,8 +1,7 @@
 // The Laycue panel shown inside OBS (Docks → Laycue).
 //
-// Release 1 Shots view: every OBS scene is a shot. Tap a shot to put it in Up next,
-// then Go Live (OBS transition) or Cut (instant). Only features that work are shown;
-// overlays, pushbacks and the Mixer view appear when they are built.
+// One stage (Live, Up next, Cut, Go Live) on top, tabs underneath (Shots, Overlays), and
+// full-panel pages for setup (Set up overlays, Settings…). Only features that work are shown.
 #pragma once
 
 #include "core/cue-state.hpp"
@@ -23,19 +22,27 @@ class QGridLayout;
 class QLabel;
 class QPushButton;
 class QScrollArea;
+class QStackedWidget;
+class QVBoxLayout;
 
 namespace laycue {
 
+class App;
+struct Snapshot;
+
 namespace ui {
+class OverlaysTab;
 class PictureView;
+class Segmented;
 class ShotCard;
+class Surface;
 } // namespace ui
 
 class LaycueDock : public QWidget {
 	Q_OBJECT
 
 public:
-	explicit LaycueDock(QWidget *parent = nullptr);
+	LaycueDock(App &app, QWidget *parent = nullptr);
 	~LaycueDock() override;
 
 	// Called on the UI thread for every OBS frontend event.
@@ -50,10 +57,16 @@ private:
 		std::string uuid;
 		std::string name;
 	};
+	enum class Tab { Shots, Overlays };
 
 	void buildUi();
+	QWidget *buildHome();
+	void showTab(Tab tab);
+	void openPage(QWidget *page);
+	void closePage();
 	void scheduleRefresh(); // thread-safe; coalesces bursts of changes
 	void refreshNow();      // UI thread only
+	void onConfigChanged();
 	void rebuildCards();
 	void layoutCards();
 	void arrangePictures(bool wide);
@@ -61,15 +74,31 @@ private:
 	void updateTransitionLabel();
 	void updatePictureTargets();
 	void pullPictures();
+	void updateOverlays(const Snapshot &snapshot);
 	void onShotClicked(const std::string &uuid);
 	void goLive(bool instant);
 	void finishCut(); // puts back the operator's transition after a Cut
+	void chooseMode(bool studio);
 	void showToast(const QString &message);
+	void placeToast();
+	QWidget *tipFor(const char *id, const char *titleKey, const char *bodyKey);
 	std::string nameOf(const std::string &uuid) const;
 	void resetForCollectionChange();
 
-	// Widgets (owned by Qt through parenting)
-	QLabel *studioLabel_ = nullptr;
+	App &app_;
+	int listenerId_ = 0;
+
+	// Structure
+	QWidget *content_ = nullptr;
+	QStackedWidget *pages_ = nullptr;
+	QWidget *home_ = nullptr;
+	QWidget *openedPage_ = nullptr;
+	ui::Segmented *tabs_ = nullptr;
+	ui::Segmented *modeSwitch_ = nullptr;
+	Tab tab_ = Tab::Shots;
+
+	// Stage
+	ui::Surface *stage_ = nullptr;
 	ui::PictureView *liveView_ = nullptr;
 	ui::PictureView *nextView_ = nullptr;
 	QGridLayout *picturesGrid_ = nullptr;
@@ -84,19 +113,28 @@ private:
 	QPushButton *goLiveButton_ = nullptr;
 	QLabel *goLiveTitle_ = nullptr;
 	QLabel *goLiveDetail_ = nullptr;
-	QScrollArea *shotsScroll_ = nullptr;
-	QWidget *shotsHost_ = nullptr;
+
+	// Tabs
+	QScrollArea *tabScroll_ = nullptr;
+	QWidget *shotsTab_ = nullptr;
+	QVBoxLayout *shotsTabLayout_ = nullptr;
+	QWidget *shotsTipHost_ = nullptr;
+	QWidget *shotsGridHost_ = nullptr;
 	QGridLayout *shotsGrid_ = nullptr;
 	QLabel *emptyLabel_ = nullptr;
+	ui::OverlaysTab *overlaysTab_ = nullptr;
+	std::map<std::string, ui::ShotCard *> cards_;
+
+	// Notice
 	QWidget *toast_ = nullptr;
 	QLabel *toastText_ = nullptr;
-	std::map<std::string, ui::ShotCard *> cards_;
 
 	QTimer refreshTimer_;
 	QTimer pictureTimer_;
 	QTimer toastTimer_;
 	QTimer suppressTimer_;
 	QTimer restoreTimer_; // fallback in case OBS never reports the Cut finishing
+	QTimer saveTimer_;    // saves Laycue's setup shortly after it changes
 
 	std::unique_ptr<SceneWatcher> watcher_;
 	std::unique_ptr<FrameGrabber> grabber_;
@@ -106,6 +144,7 @@ private:
 	CueState cue_;
 	std::string lastPreview_;         // OBS's preview scene as last seen (studio mode)
 	bool suppressPreview_ = false;    // ignore preview changes caused by our own Go Live
+	bool pushNextToPreview_ = false;  // studio mode just turned on: show Up next in OBS's Preview
 	std::string transitionToRestore_; // the operator's transition while a Cut is running
 	bool obsReady_ = false;           // true once OBS has finished loading a scene collection
 	bool shuttingDown_ = false;

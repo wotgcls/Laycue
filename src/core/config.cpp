@@ -22,10 +22,7 @@ void sanitize(Config &config)
 	}
 	config.tags = std::move(tags);
 
-	// Rules: a rule with no tags does nothing, drop it.
-	config.rules.erase(std::remove_if(config.rules.begin(), config.rules.end(),
-					  [](const Rule &r) { return r.tags.empty(); }),
-			   config.rules.end());
+	// Rules: one with no tags simply does nothing (it may be a rule being set up), so it is kept.
 
 	// Pushbacks: need an id and a name; the active feed must be one of the feeds.
 	std::vector<Pushback> pushbacks;
