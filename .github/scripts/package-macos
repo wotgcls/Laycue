@@ -99,7 +99,9 @@ package() {
 
   local output_name="${product_name}-${product_version}-${host_os}-universal"
 
-  if [[ ! -d ${project_root}/release/${config}/${product_name}.plugin ]] {
+  # Laycue is a pack of plugins (laycue-scenes.plugin, laycue-titles.plugin, ...), so look for any.
+  local -a plugin_bundles=( ${project_root}/release/${config}/*.plugin(N:t) )
+  if (( ${#plugin_bundles} == 0 )) {
     log_error 'No release artifact found. Run the build script or the CMake install procedure first.'
     return 2
   }
@@ -156,14 +158,14 @@ package() {
   } else {
     log_group "Archiving ${product_name}..."
     pushd ${project_root}/release/${config}
-    XZ_OPT=-T0 tar -cvJf ${project_root}/release/${output_name}.tar.xz ${product_name}.plugin
+    XZ_OPT=-T0 tar -cvJf ${project_root}/release/${output_name}.tar.xz ${plugin_bundles}
     popd
   }
 
   if [[ ${config} == Release ]] {
     log_group "Archiving ${product_name} Debug Symbols..."
     pushd ${project_root}/release/${config}
-    XZ_OPT=-T0 tar -cvJf ${project_root}/release/${output_name}-dSYMs.tar.xz ${product_name}.plugin.dSYM
+    XZ_OPT=-T0 tar -cvJf ${project_root}/release/${output_name}-dSYMs.tar.xz ${^plugin_bundles}.dSYM
     popd
   }
 

@@ -131,7 +131,7 @@ build() {
     -arch arm64
     -arch x86_64
     -project ${product_name}.xcodeproj
-    -target ${product_name}
+    -alltargets
     -destination "generic/platform=macOS,name=Any Mac"
     -configuration ${config}
     -parallelizeTargets
