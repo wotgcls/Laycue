@@ -67,21 +67,24 @@ function(set_target_properties_plugin target)
   install(TARGETS ${target} LIBRARY DESTINATION .)
   install(FILES "$<TARGET_BUNDLE_DIR:${target}>.dsym" CONFIGURATIONS Release DESTINATION . OPTIONAL)
 
-  configure_file(cmake/macos/resources/distribution.in "${CMAKE_CURRENT_BINARY_DIR}/distribution" @ONLY)
-  configure_file(cmake/macos/resources/create-package.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/create-package.cmake" @ONLY)
-  install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/create-package.cmake")
+  # The installer package for all plugins is made once, after the last plugin (see CMakeLists.txt).
 endfunction()
 
 # target_install_resources: Helper function to add resources into bundle
 function(target_install_resources target)
   message(DEBUG "Installing resources for target ${target}...")
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data")
-    file(GLOB_RECURSE data_files "${CMAKE_CURRENT_SOURCE_DIR}/data/*")
+  set(_data_dirs "${CMAKE_CURRENT_SOURCE_DIR}/data")
+  if(DEFINED LAYCUE_COMMON_DATA_DIR)
+    list(APPEND _data_dirs "${LAYCUE_COMMON_DATA_DIR}")
+  endif()
+  foreach(_dir IN LISTS _data_dirs)
+  if(EXISTS "${_dir}")
+    file(GLOB_RECURSE data_files "${_dir}/*")
     foreach(data_file IN LISTS data_files)
       cmake_path(
         RELATIVE_PATH
         data_file
-        BASE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
+        BASE_DIRECTORY "${_dir}/"
         OUTPUT_VARIABLE relative_path
       )
       cmake_path(GET relative_path PARENT_PATH relative_path)
@@ -90,6 +93,7 @@ function(target_install_resources target)
       source_group("Resources/${relative_path}" FILES "${data_file}")
     endforeach()
   endif()
+  endforeach()
 endfunction()
 
 # target_add_resource: Helper function to add a specific resource to a bundle

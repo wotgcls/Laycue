@@ -10,91 +10,25 @@ option(ENABLE_QT "Use Qt functionality" OFF)
 include(compilerconfig)
 include(defaults)
 include(helpers)
-
-add_library(${CMAKE_PROJECT_NAME} MODULE)
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/laycue-plugin.cmake")
 
 find_package(libobs REQUIRED)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
+find_package(obs-frontend-api REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
 
-if(ENABLE_FRONTEND_API)
-  find_package(obs-frontend-api REQUIRED)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
-endif()
+# The Laycue pack: three plugins that are installed (and can be removed) separately, plus a small
+# static library with the shared look and feel (brand tokens, controls, fonts).
+add_subdirectory(plugins/common)
+add_subdirectory(plugins/scenes)
 
-if(ENABLE_QT)
-  find_package(Qt6 COMPONENTS Widgets Core)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
-  target_compile_options(
-    ${CMAKE_PROJECT_NAME}
-    PRIVATE $<$<C_COMPILER_ID:Clang,AppleClang>:-Wno-quoted-include-in-framework-header -Wno-comma>
+if(OS_MACOS)
+  # One installer package holding every plugin of the pack.
+  set(LAYCUE_PLUGIN_LIST laycue-scenes)
+  configure_file(cmake/macos/resources/distribution.in "${CMAKE_CURRENT_BINARY_DIR}/distribution" @ONLY)
+  configure_file(
+    cmake/macos/resources/create-package.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/create-package.cmake"
+    @ONLY
   )
-  set_target_properties(
-    ${CMAKE_PROJECT_NAME}
-    PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON
-  )
+  install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/create-package.cmake")
 endif()
-
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src)
-
-target_sources(
-  ${CMAKE_PROJECT_NAME}
-  PRIVATE
-    src/plugin-main.cpp
-    src/core/cue-state.cpp
-    src/core/detect.cpp
-    src/core/geometry.cpp
-    src/core/autotag.cpp
-    src/core/layouts.cpp
-    src/core/exclusivity.cpp
-    src/core/config.cpp
-    src/core/scene-model.cpp
-    src/core/source-kinds.cpp
-    src/features/app.cpp
-    src/features/hotkeys.cpp
-    src/features/hotkeys.hpp
-    src/features/overlay-engine.cpp
-    src/features/profiles.cpp
-    src/features/profiles.hpp
-    src/features/overlay-engine.hpp
-    src/store/config-io.cpp
-    src/obs/scene-reader.cpp
-    src/obs/scene-watcher.cpp
-    src/obs/frame-grabber.cpp
-    src/obs/switcher.cpp
-    src/obs/pixel-reader.cpp
-    src/obs/overlay-items.cpp
-    src/obs/pushback-scene.cpp
-    src/obs/layout-scene.cpp
-    src/obs/scene-util.cpp
-    src/obs/pushback-scene.hpp
-    src/ui/controls.cpp
-    src/ui/style.cpp
-    src/ui/view-takeover.cpp
-    src/ui/tabs/overlays-tab.cpp
-    src/ui/tabs/overlays-tab.hpp
-    src/ui/labels.cpp
-    src/ui/labels.hpp
-    src/ui/pages/page-frame.cpp
-    src/ui/pages/page-frame.hpp
-    src/ui/pages/add-pushback-page.cpp
-    src/ui/pages/new-layout-page.cpp
-    src/ui/pages/add-pushback-page.hpp
-    src/ui/pages/new-layout-page.hpp
-    src/ui/pages/helpers.hpp
-    src/ui/pages/settings-page.cpp
-    src/ui/pages/settings-page.hpp
-    src/ui/pages/overlay-setup-page.cpp
-    src/ui/pages/overlay-setup-page.hpp
-    src/ui/style.hpp
-    src/ui/view-takeover.hpp
-    src/ui/controls.hpp
-    src/ui/laycue-dock.cpp
-    src/ui/laycue-dock.hpp
-    src/ui/tokens.cpp
-    src/ui/widgets.cpp
-    src/ui/widgets.hpp
-    src/ui/window-preview.cpp
-    src/ui/window-preview.hpp
-)
-
-set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})

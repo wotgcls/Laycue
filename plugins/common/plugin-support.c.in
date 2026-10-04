@@ -18,7 +18,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #include <plugin-support.h>
 
-const char *PLUGIN_NAME = "@CMAKE_PROJECT_NAME@";
+const char *PLUGIN_NAME = "@PLUGIN_TARGET_NAME@";
 const char *PLUGIN_VERSION = "@CMAKE_PROJECT_VERSION@";
 
 void obs_log(int log_level, const char *format, ...)

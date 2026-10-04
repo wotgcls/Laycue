@@ -54,13 +54,18 @@ endfunction()
 # Helper function to add resources into bundle
 function(target_install_resources target)
   message(DEBUG "Installing resources for target ${target}...")
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data")
-    file(GLOB_RECURSE data_files "${CMAKE_CURRENT_SOURCE_DIR}/data/*")
+  set(_data_dirs "${CMAKE_CURRENT_SOURCE_DIR}/data")
+  if(DEFINED LAYCUE_COMMON_DATA_DIR)
+    list(APPEND _data_dirs "${LAYCUE_COMMON_DATA_DIR}")
+  endif()
+  foreach(_dir IN LISTS _data_dirs)
+  if(EXISTS "${_dir}")
+    file(GLOB_RECURSE data_files "${_dir}/*")
     foreach(data_file IN LISTS data_files)
       cmake_path(
         RELATIVE_PATH
         data_file
-        BASE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
+        BASE_DIRECTORY "${_dir}/"
         OUTPUT_VARIABLE relative_path
       )
       cmake_path(GET relative_path PARENT_PATH relative_path)
@@ -69,7 +74,7 @@ function(target_install_resources target)
     endforeach()
 
     install(
-      DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
+      DIRECTORY "${_dir}/"
       DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/obs/obs-plugins/${target}
       USE_SOURCE_PERMISSIONS
     )
@@ -79,12 +84,13 @@ function(target_install_resources target)
       POST_BUILD
       COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/rundir/$<CONFIG>/${target}"
       COMMAND
-        "${CMAKE_COMMAND}" -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/data"
+        "${CMAKE_COMMAND}" -E copy_directory "${_dir}"
         "${CMAKE_CURRENT_BINARY_DIR}/rundir/$<CONFIG>/${target}"
       COMMENT "Copy ${target} resources to rundir"
       VERBATIM
     )
   endif()
+  endforeach()
 endfunction()
 
 # Helper function to add a specific resource to a bundle

@@ -8,11 +8,6 @@
 
 namespace laycue::ui {
 
-QString lt(const char *key)
-{
-	return QString::fromUtf8(obs_module_text(key));
-}
-
 QString tagDisplayName(const std::string &tagId)
 {
 	const auto &builtIn = builtInTags();

@@ -2,6 +2,7 @@
 #pragma once
 
 #include "core/source-kinds.hpp"
+#include "ui/text.hpp"
 
 #include <QString>
 
@@ -13,8 +14,5 @@ namespace laycue::ui {
 QString tagDisplayName(const std::string &tag);
 
 QString kindDisplayName(SourceKind kind);
-
-// obs_module_text as a QString.
-QString lt(const char *key);
 
 } // namespace laycue::ui
