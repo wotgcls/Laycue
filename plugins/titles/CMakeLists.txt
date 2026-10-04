@@ -1,0 +1,19 @@
+laycue_add_plugin(
+  laycue-titles
+  SOURCES
+    src/plugin-main.cpp
+    src/core/easing.cpp
+    src/core/easing.hpp
+    src/core/ticker.cpp
+    src/core/ticker.hpp
+    src/core/title-clock.cpp
+    src/core/title-clock.hpp
+    src/core/title-templates.cpp
+    src/core/title-templates.hpp
+    src/obs/title-source.cpp
+    src/obs/title-source.hpp
+    src/render/font-set.cpp
+    src/render/font-set.hpp
+    src/render/title-renderer.cpp
+    src/render/title-renderer.hpp
+)

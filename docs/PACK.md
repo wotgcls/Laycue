@@ -1,0 +1,101 @@
+# The Laycue pack: product definition (v1.0)
+
+Three OBS plugins that are installed (and removed) separately. They share one look and feel and
+nothing else at run time, so any one of them can be used alone.
+
+| Plugin | Job | Folder |
+|---|---|---|
+| **Laycue Scenes** | Run scenes and layers without mistakes: Go Live, overlay rules, layouts, pushbacks | `plugins/scenes` |
+| **Laycue Titles** | Broadcast-quality lower thirds, tickers and scripture bars, made inside OBS | `plugins/titles` |
+| **Laycue Network** | Choose the right bitrate, watch the connection live, protect the stream | `plugins/network` |
+
+## What problem each one solves (and what OBS and others already do)
+
+Research notes are from public sources read on 2026-10-04: the OBS forum, OBS's own commit history, plugin
+reviews and church-streaming guides.
+
+### Scenes
+- **Problem:** volunteers run OBS; one wrong click or two overlays on top of each other ruins the service.
+  OBS "does the least hand-holding" (church-streaming guides).
+- **OBS has:** scenes, Studio Mode, hotkeys. **Plugins have:** Advanced Scene Switcher (automation by rules),
+  Move (transitions).
+- **Laycue adds (nobody does this together):** overlay rules by *label and position*, camera-in-a-frame
+  "pushbacks" with live camera switching, one-click layouts, Studio Mode takeover, a volunteer lock.
+
+### Titles
+- **Problem (demand evidence):** "it is difficult to have lower third graphics controlled independently
+  from camera scenes" (OBS forum). Churches work around it with Stream Deck + browser sources + separate
+  graphics apps. Scripture and speaker names are needed every week.
+- **OBS has:** text sources and a browser source. No lower-third system, no animation, no templates.
+- **Others:** browser-source based tools (HTML/CSS), web servers inside OBS (Smart Lower Thirds), a paid
+  web app (StreamSlayers). All need a browser source or a web server.
+- **Laycue adds:** a *native* OBS source (no browser, no web server, no network), 20 designed templates
+  that look broadcast-grade, a custom template editor, scrolling tickers, scripture bars with
+  auto-fit text, show/hide with animation from the dock or hotkeys, a queue ("next up"), and one click to add
+  the title layer to every scene so it stays on air while cameras switch.
+
+### Network
+- **Problem (demand evidence):** "good upload speed but bitrate continues to drop", "good internet speeds,
+  bad bit rate", dropped frames that trigger platform quality warnings. People guess a bitrate.
+- **OBS has:** *Dynamic Bitrate* (Settings > Advanced): lowers bitrate when congested and creeps back up
+  slowly, with no visibility and no recommendation; the Auto-Configuration Wizard (one-time estimate, only
+  for some services).
+- **Laycue adds:** a pre-flight upload test with a plain recommendation (bitrate, resolution, fps), a live
+  health score with history, an *adaptive* mode with your own floor and ceiling and a visible reason for every
+  change, alerts before viewers notice, and an after-stream report. We do **not** pretend OBS has nothing:
+  Laycue Network uses the same encoder-update mechanism OBS's own dynamic bitrate uses, and adds the
+  parts it lacks.
+
+
+## Where existing tools fall short, and how the pack uses it
+
+Sources: OBS forum threads and issues #8451, #9667, #12235, #12982, #5933 (GitHub), plugin project pages.
+
+| Existing tool | Documented weakness | What Laycue does instead |
+|---|---|---|
+| Browser-source lower thirds (HTML, Smart Lower Thirds, StreamElements, Animated Lower Thirds) | CEF uses a lot of CPU (reports of 50-60% of a core), stutters when OBS loses focus (Windows Efficiency Mode), fonts go missing, needs a local web server or port, "lower third not showing" is a common support thread | Titles is a **native source**: no browser engine, no server, no ports; fonts are bundled; an idle title costs nothing; it never depends on window focus |
+| OBS Dynamic Bitrate | RTMP only (not SRT or WHIP); can fall to ~400 kbps and take 5-10 minutes to recover; any manual change is undone; can loop (raise, fail to reconfigure, drop); AMF encoder not supported | Network's controller is **protocol-independent** (it drives the encoder), recovers on a **bounded, visible ramp** you choose (default about 60 s), never goes under **your floor**, remembers the bitrate you set as the ceiling, and **stops and says so** if the encoder refuses a change instead of looping |
+| Advanced Scene Switcher | Powerful but hard to learn, outdated docs, macros that fire together cause flicker and need hand-made cooldowns; no preview of what will happen | Scenes has few rules, each shown in plain words with the spot it covers; changes Laycue causes are never re-triggered; a lock mode for volunteers |
+| Hand-made lower thirds from OBS text sources | No animation, no queue, change per scene | One title layer, animated in and out, queued, added to every scene on request |
+| Auto-Configuration Wizard | One-time, some services only, not live | Pre-flight test any time, plus a live health score |
+
+## Features chosen because people ask for them (not only what you listed)
+
+Ranked by evidence of demand and by how much they reduce on-air mistakes.
+
+1. Lower thirds that stay up while cameras switch (Titles: one-click "add to every scene").
+2. Control from a Stream Deck or any hotkey box (every plugin registers OBS hotkeys; Stream Deck can press them).
+3. Scripture and song-line titles with automatic text fitting (Titles).
+4. A queue: prepare the next title while one is on air (Titles).
+5. A pre-service checklist: "is the stream ready?" (Network pre-flight; Scenes lock).
+6. Volunteer mode: lock setup so nothing gets rearranged mid-service (Scenes, already built).
+7. Early warning instead of after-the-fact dropped frames (Network health score + alert).
+8. After-stream report to learn from (Network).
+
+Not in v1 (said honestly): multistreaming, chat/alerts, vertical canvas, audio tools. Other plugins own these.
+
+## MVP definition ("viable" means these work in real OBS)
+
+- **Scenes:** everything already built and tested (Shots, Go Live/Cut, overlays + rules, layouts, pushbacks, Studio Mode, Laycue view, lock, profiles, hotkeys).
+- **Titles:** a `Laycue Title` source; 20 templates; custom template editor; ticker; show/hide with
+  animation; queue; hotkeys; add to all scenes; designed preview gallery; unit-tested timeline maths.
+- **Network:** recommender + controller as tested pure logic; live sampler from the real stream output;
+  upload test; health score + charts; adaptive mode (live encoder bitrate changes); after-stream report.
+
+## Architecture decisions
+
+- One repository, one CMake project, **three MODULE targets** and a static `laycue-common` library (brand tokens,
+  controls, fonts). Statically linked into each module: no shared DLLs, no version conflicts, install any subset.
+- Pure logic in `core/` of each plugin, unit tested without OBS. OBS-touching code is isolated in `obs/`.
+- Titles render with Qt's painter into a small texture region (bottom third / ticker bar) and are uploaded to the
+  GPU; animation runs only while moving, so a title that is simply on air costs nothing.
+- Network measures what OBS exposes (bytes sent, dropped frames, congestion) plus an opt-in upload test.
+  The test sends random bytes only when the operator clicks Test, to an endpoint they can change.
+- Installer: Windows setup with one checkbox per plugin; macOS/Linux packages carry all three.
+
+## Success criteria
+
+- A volunteer can show a speaker name without touching a scene.
+- A streamer on a bad connection ends a one-hour stream with fewer dropped frames than with OBS dynamic bitrate alone,
+  and can see why bitrate changed.
+- Each plugin works installed alone.

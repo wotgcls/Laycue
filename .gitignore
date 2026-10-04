@@ -7,6 +7,12 @@
 !/cmake
 !/data
 !/src
+!/plugins
+!/docs
+!/tests
+!/assets
+!/PRD.md
+!/CLAUDE.md
 !.clang-format
 !.gersemirc
 !.gitignore
