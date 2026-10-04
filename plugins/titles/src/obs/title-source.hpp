@@ -18,11 +18,11 @@ constexpr const char *templateId = "template";
 constexpr const char *line1 = "line1";
 constexpr const char *line2 = "line2";
 constexpr const char *tag = "tag";
-constexpr const char *custom = "custom";           // an obs_data object: the custom template's overrides
-constexpr const char *accentOn = "accent_on";      // use the brand colour below instead of the template's accent
-constexpr const char *accent = "accent";           // colour (OBS colour int)
-constexpr const char *hold = "hold";               // seconds on air before it hides itself; -1 = the template's own
-constexpr const char *onAir = "on_air";            // set by the panel to show or hide; never saved
+constexpr const char *custom = "custom";      // an obs_data object: the custom template's overrides
+constexpr const char *accentOn = "accent_on"; // use the brand colour below instead of the template's accent
+constexpr const char *accent = "accent";      // colour (OBS colour int)
+constexpr const char *hold = "hold";          // seconds on air before it hides itself; -1 = the template's own
+constexpr const char *onAir = "on_air";       // set by the panel to show or hide; never saved
 } // namespace key
 
 } // namespace laycue::titles

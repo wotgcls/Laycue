@@ -188,11 +188,89 @@ TEST_CASE("titles: custom templates keep only what was changed and survive a sav
 TEST_CASE("titles: broken custom data is repaired, never trusted")
 {
 	std::map<std::string, std::string> broken = {{"base", "gone"},   {"accent", "red"}, {"in", "spin"},
-						     {"radius", "9999"}, {"hold", "-4"}, {"speed", "nan"}};
+						     {"radius", "9999"}, {"hold", "-4"},    {"speed", "nan"}};
 	const Overrides o = fromMap(broken);
 	CHECK(findTemplate(o.baseId) != nullptr);
 	CHECK(!o.hasAccent);
 	CHECK(!o.hasMotionIn);
 	CHECK(o.cornerRadius <= 60.0);
 	CHECK(o.holdSeconds >= 0.0);
+}
+
+#include "core/library.hpp"
+
+TEST_CASE("titles library: custom templates are saved, replaced by name, and removed safely")
+{
+	Library lib;
+	Overrides o;
+	o.baseId = "pop-card";
+	o.name = "Sunday";
+	CHECK(saveCustom(lib, o));
+	CHECK(saveCustom(lib, o)); // same name replaces, doesn't duplicate
+	CHECK_EQ(int(lib.customs.size()), 1);
+	CHECK_EQ(uniqueCustomName(lib, "Sunday"), std::string("Sunday 2"));
+	CHECK_EQ(uniqueCustomName(lib, "Easter"), std::string("Easter"));
+
+	lib.selected = customId("Sunday");
+	lib.queue.push_back({customId("Sunday"), {"A", "B", ""}});
+	std::string base;
+	const auto resolved = resolveStyle(lib, lib.selected, &base);
+	CHECK_EQ(base, std::string("pop-card"));
+	CHECK_EQ(resolved.id, std::string("pop-card"));
+
+	CHECK(removeCustom(lib, "Sunday"));
+	CHECK_EQ(lib.selected, std::string("pop-card")); // falls back to the base design, never breaks
+	CHECK_EQ(lib.queue[0].styleId, std::string("pop-card"));
+	CHECK(!removeCustom(lib, "Sunday"));
+}
+
+TEST_CASE("titles library: an unknown style id resolves to the first built-in template")
+{
+	Library lib;
+	std::string base;
+	const auto t = resolveStyle(lib, "custom:gone", &base);
+	CHECK_EQ(base, builtInTemplates().front().id);
+	CHECK_EQ(t.id, builtInTemplates().front().id);
+	resolveStyle(lib, "no-such-built-in", &base);
+	CHECK_EQ(base, builtInTemplates().front().id);
+}
+
+TEST_CASE("titles library: the queue keeps its order and has a limit")
+{
+	Library lib;
+	for (int i = 0; i < 3; ++i)
+		CHECK(enqueue(lib, {"clean-bar", {std::to_string(i), "", ""}}));
+	CHECK(moveInQueue(lib, 2, 0));
+	CHECK_EQ(lib.queue[0].content.line1, std::string("2"));
+	CHECK(!moveInQueue(lib, 5, 0));
+	QueueItem out;
+	CHECK(popQueue(lib, out));
+	CHECK_EQ(out.content.line1, std::string("2"));
+	CHECK(removeFromQueue(lib, 0));
+	CHECK_EQ(int(lib.queue.size()), 1);
+	CHECK(!removeFromQueue(lib, 9));
+	lib.queue.clear();
+	for (size_t i = 0; i < kMaxQueue; ++i)
+		CHECK(enqueue(lib, {"clean-bar", {}}));
+	CHECK(!enqueue(lib, {"clean-bar", {}}));
+	QueueItem none;
+	Library empty;
+	CHECK(!popQueue(empty, none));
+}
+
+TEST_CASE("titles library: sanitize repairs a damaged file")
+{
+	Library lib;
+	lib.selected = "custom:ghost";
+	lib.holdOverride = 99999;
+	lib.queue.push_back({"nope", {std::string(5000, 'x'), "", ""}});
+	Overrides nameless;
+	nameless.baseId = "clean-bar";
+	lib.customs.push_back(nameless);
+	sanitize(lib);
+	CHECK(lib.customs.empty());
+	CHECK(findTemplate(lib.selected) != nullptr);
+	CHECK(findTemplate(lib.queue[0].styleId) != nullptr);
+	CHECK(lib.queue[0].content.line1.size() <= 600);
+	CHECK_EQ(lib.holdOverride, -1);
 }

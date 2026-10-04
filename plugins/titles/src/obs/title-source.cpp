@@ -32,7 +32,6 @@ struct TitleSource {
 	TitleText text;
 	bool useAccent = false;
 	Rgba accent;
-	bool wantOnAir = false; // the last on_air value seen, so only a change triggers show/hide
 
 	// Animation.
 	TitleClock clock;
@@ -106,8 +105,13 @@ void getDefaults(obs_data_t *settings)
 {
 	const TitleTemplate &first = builtInTemplates().front();
 	obs_data_set_default_string(settings, key::templateId, first.id.c_str());
-	obs_data_set_default_string(settings, key::line1, obs_module_text(sampleKey(first, 1).c_str()));
-	obs_data_set_default_string(settings, key::line2, obs_module_text(sampleKey(first, 2).c_str()));
+	const auto sample = [&](int field) {
+		const std::string k = sampleKey(first, field);
+		const char *text = obs_module_text(k.c_str());
+		return text && k != text ? text : "";
+	};
+	obs_data_set_default_string(settings, key::line1, sample(1));
+	obs_data_set_default_string(settings, key::line2, sample(2));
 	obs_data_set_default_string(settings, key::tag, "");
 	obs_data_set_default_bool(settings, key::accentOn, false);
 	obs_data_set_default_int(settings, key::accent, toObsColour(first.palette.accent));
@@ -140,13 +144,11 @@ void update(void *data, obs_data_t *settings)
 		applyClockConfig(*s);
 		s->dirty = true;
 
-		const bool onAir = obs_data_get_bool(settings, key::onAir);
-		if (onAir != s->wantOnAir) {
-			s->wantOnAir = onAir;
-			if (onAir)
-				s->clock.show();
-			else
-				s->clock.hide();
+		// "on_air" is a one-shot command (used by scenes saved with a title on air, and by simple
+		// scripts): it is read once and cleared, so a later settings change never shows a title again.
+		if (obs_data_get_bool(settings, key::onAir)) {
+			s->clock.show();
+			obs_data_set_bool(settings, key::onAir, false);
 		}
 	} catch (...) {
 		obs_log(LOG_ERROR, "Title source: could not apply settings");
@@ -264,7 +266,8 @@ void render(void *data, gs_effect_t *effect)
 			s->textureH = h;
 			s->uploadPending = false;
 		} else if (s->uploadPending) {
-			gs_texture_set_image(s->texture, s->image.constBits(), uint32_t(s->image.bytesPerLine()), false);
+			gs_texture_set_image(s->texture, s->image.constBits(), uint32_t(s->image.bytesPerLine()),
+					     false);
 			s->uploadPending = false;
 		}
 		if (!s->texture)
@@ -289,7 +292,6 @@ void showTitle(TitleSource &s)
 {
 	std::lock_guard<std::mutex> lock(s.mutex);
 	s.clock.show();
-	s.wantOnAir = true;
 	s.dirty = true;
 }
 
@@ -297,7 +299,6 @@ void hideTitle(TitleSource &s)
 {
 	std::lock_guard<std::mutex> lock(s.mutex);
 	s.clock.hide();
-	s.wantOnAir = false;
 }
 
 void procShow(void *data, calldata_t *)
@@ -355,9 +356,12 @@ void *createWithControls(obs_data_t *settings, obs_source_t *source)
 	proc_handler_add(ph, "void laycue_title_show()", procShow, s);
 	proc_handler_add(ph, "void laycue_title_hide()", procHide, s);
 	proc_handler_add(ph, "void laycue_title_state(out int phase, out float hold_remaining)", procState, s);
-	obs_hotkey_register_source(source, "laycue_title.toggle", obs_module_text("Laycue.Titles.Hotkey.Toggle"), toggleHotkey, s);
-	obs_hotkey_register_source(source, "laycue_title.show", obs_module_text("Laycue.Titles.Hotkey.Show"), showHotkey, s);
-	obs_hotkey_register_source(source, "laycue_title.hide", obs_module_text("Laycue.Titles.Hotkey.Hide"), hideHotkey, s);
+	obs_hotkey_register_source(source, "laycue_title.toggle", obs_module_text("Laycue.Titles.Hotkey.Toggle"),
+				   toggleHotkey, s);
+	obs_hotkey_register_source(source, "laycue_title.show", obs_module_text("Laycue.Titles.Hotkey.Show"),
+				   showHotkey, s);
+	obs_hotkey_register_source(source, "laycue_title.hide", obs_module_text("Laycue.Titles.Hotkey.Hide"),
+				   hideHotkey, s);
 	return s;
 }
 
@@ -400,8 +404,9 @@ bool hideClicked(obs_properties_t *, obs_property_t *, void *data)
 obs_properties_t *getProperties(void *data)
 {
 	obs_properties_t *props = obs_properties_create();
-	obs_property_t *list = obs_properties_add_list(props, key::templateId, obs_module_text("Laycue.Titles.Template"),
-						       OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	obs_property_t *list = obs_properties_add_list(props, key::templateId,
+						       obs_module_text("Laycue.Titles.Template"), OBS_COMBO_TYPE_LIST,
+						       OBS_COMBO_FORMAT_STRING);
 	for (const TitleTemplate &t : builtInTemplates())
 		obs_property_list_add_string(list, obs_module_text(nameKey(t).c_str()), t.id.c_str());
 	obs_property_set_modified_callback(list, templateChanged);

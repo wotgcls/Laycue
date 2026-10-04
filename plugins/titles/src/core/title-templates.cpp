@@ -34,8 +34,8 @@ Rgba withAlpha(Rgba c, uint8_t a)
 	return c;
 }
 
-TitleTemplate make(const char *id, Category category, Palette palette, FontFace display, FontFace body,
-		   MotionKind in, MotionKind out)
+TitleTemplate make(const char *id, Category category, Palette palette, FontFace display, FontFace body, MotionKind in,
+		   MotionKind out)
 {
 	TitleTemplate t;
 	t.id = id;
@@ -56,36 +56,42 @@ std::vector<TitleTemplate> buildAll()
 
 	// ---- People: who is speaking ----
 	{
-		auto t = make("clean-bar", Category::People, {withAlpha(kInk, 235), kAmber, kCream, withAlpha(kCream, 190)},
+		auto t = make("clean-bar", Category::People,
+			      {withAlpha(kInk, 235), kAmber, kCream, withAlpha(kCream, 190)},
 			      F::BarlowCondensedSemiBold, F::BarlowRegular, M::Slide, M::Slide);
 		all.push_back(t);
 	}
 	{
-		auto t = make("accent-edge", Category::People, {withAlpha(kCream, 245), kBlue, kInk, withAlpha(kInk, 170)},
-			      F::BarlowCondensedBold, F::BarlowRegular, M::Wipe, M::Wipe);
+		auto t = make("accent-edge", Category::People,
+			      {withAlpha(kCream, 245), kBlue, kInk, withAlpha(kInk, 170)}, F::BarlowCondensedBold,
+			      F::BarlowRegular, M::Wipe, M::Wipe);
 		t.cornerRadius = 6;
 		all.push_back(t);
 	}
 	{
-		auto t = make("split-blocks", Category::People, {withAlpha(kInk, 240), kRed, kWhite, withAlpha(kWhite, 200)},
-			      F::BarlowCondensedBold, F::BarlowSemiBold, M::Slide, M::Slide);
+		auto t = make("split-blocks", Category::People,
+			      {withAlpha(kInk, 240), kRed, kWhite, withAlpha(kWhite, 200)}, F::BarlowCondensedBold,
+			      F::BarlowSemiBold, M::Slide, M::Slide);
 		all.push_back(t);
 	}
 	{
-		auto t = make("underline", Category::People, {withAlpha(kInk, 0), kGreen, kWhite, withAlpha(kWhite, 220)},
-			      F::BarlowCondensedSemiBold, F::BarlowRegular, M::Rise, M::Fade);
+		auto t = make("underline", Category::People,
+			      {withAlpha(kInk, 0), kGreen, kWhite, withAlpha(kWhite, 220)}, F::BarlowCondensedSemiBold,
+			      F::BarlowRegular, M::Rise, M::Fade);
 		all.push_back(t);
 	}
 	{
-		auto t = make("pop-card", Category::People, {withAlpha(kGraphite, 245), kAmber, kCream, withAlpha(kCream, 190)},
+		auto t = make("pop-card", Category::People,
+			      {withAlpha(kGraphite, 245), kAmber, kCream, withAlpha(kCream, 190)},
 			      F::BarlowCondensedSemiBold, F::BarlowRegular, M::Pop, M::Fade);
 		t.usesTag = true;
 		t.cornerRadius = 14;
 		all.push_back(t);
 	}
 	{
-		auto t = make("corner-tag", Category::People, {withAlpha(kNavy, 245), kGold, kWhite, withAlpha(kWhite, 205)},
-			      F::BarlowCondensedBold, F::BarlowRegular, M::Slide, M::Slide);
+		auto t = make("corner-tag", Category::People,
+			      {withAlpha(kNavy, 245), kGold, kWhite, withAlpha(kWhite, 205)}, F::BarlowCondensedBold,
+			      F::BarlowRegular, M::Slide, M::Slide);
 		t.usesTag = true;
 		all.push_back(t);
 	}
@@ -95,8 +101,9 @@ std::vector<TitleTemplate> buildAll()
 		all.push_back(t);
 	}
 	{
-		auto t = make("hairline", Category::People, {withAlpha(kInk, 0), kCream, kCream, withAlpha(kCream, 190)},
-			      F::BarlowSemiBold, F::BarlowRegular, M::Fade, M::Fade);
+		auto t = make("hairline", Category::People,
+			      {withAlpha(kInk, 0), kCream, kCream, withAlpha(kCream, 190)}, F::BarlowSemiBold,
+			      F::BarlowRegular, M::Fade, M::Fade);
 		all.push_back(t);
 	}
 
@@ -106,55 +113,66 @@ std::vector<TitleTemplate> buildAll()
 			      F::BaskervilleItalic, F::BarlowCondensedSemiBold, M::Rise, M::Fade);
 		t.usesLine2 = true; // line 1: the verse, line 2: the reference
 		t.cornerRadius = 0;
+		t.longText = true;
 		all.push_back(t);
 	}
 	{
-		auto t = make("verse-card", Category::Worship, {withAlpha(kBurgundy, 245), kGold, kCream, withAlpha(kCream, 210)},
-			      F::Baskerville, F::BarlowCondensedMedium, M::Fade, M::Fade);
+		auto t = make("verse-card", Category::Worship,
+			      {withAlpha(kBurgundy, 245), kGold, kCream, withAlpha(kCream, 210)}, F::Baskerville,
+			      F::BarlowCondensedMedium, M::Fade, M::Fade);
 		t.cornerRadius = 18;
+		t.longText = true;
 		all.push_back(t);
 	}
 	{
-		auto t = make("series-title", Category::Worship, {withAlpha(kInk, 0), kAmber, kWhite, withAlpha(kWhite, 220)},
-			      F::BebasNeue, F::BarlowSemiBold, M::Wipe, M::Wipe);
+		auto t = make("series-title", Category::Worship,
+			      {withAlpha(kInk, 0), kAmber, kWhite, withAlpha(kWhite, 220)}, F::BebasNeue,
+			      F::BarlowSemiBold, M::Wipe, M::Wipe);
 		t.holdSeconds = 9.0;
 		all.push_back(t);
 	}
 	{
-		auto t = make("song-lyric", Category::Worship, {withAlpha(kInk, 0), kAmber, kWhite, withAlpha(kWhite, 235)},
-			      F::BarlowSemiBold, F::BarlowSemiBold, M::Fade, M::Fade);
+		auto t = make("song-lyric", Category::Worship,
+			      {withAlpha(kInk, 0), kAmber, kWhite, withAlpha(kWhite, 235)}, F::BarlowSemiBold,
+			      F::BarlowSemiBold, M::Fade, M::Fade);
 		t.inSeconds = 0.5;
 		t.outSeconds = 0.35;
 		all.push_back(t);
 	}
 	{
-		auto t = make("big-quote", Category::Worship, {withAlpha(kInk, 0), kAmber, kWhite, withAlpha(kWhite, 210)},
-			      F::Baskerville, F::BarlowCondensedSemiBold, M::Rise, M::Fade);
+		auto t = make("big-quote", Category::Worship,
+			      {withAlpha(kInk, 0), kAmber, kWhite, withAlpha(kWhite, 210)}, F::Baskerville,
+			      F::BarlowCondensedSemiBold, M::Rise, M::Fade);
+		t.longText = true;
 		all.push_back(t);
 	}
 
 	// ---- Announce: events, alerts, social ----
 	{
-		auto t = make("announcement", Category::Announce, {withAlpha(kTeal, 245), kAmber, kWhite, withAlpha(kWhite, 220)},
-			      F::BarlowCondensedBold, F::BarlowRegular, M::Slide, M::Slide);
+		auto t = make("announcement", Category::Announce,
+			      {withAlpha(kTeal, 245), kAmber, kWhite, withAlpha(kWhite, 220)}, F::BarlowCondensedBold,
+			      F::BarlowRegular, M::Slide, M::Slide);
 		t.usesTag = true;
 		all.push_back(t);
 	}
 	{
-		auto t = make("breaking", Category::Announce, {withAlpha(kWhite, 248), kRed, kInk, withAlpha(kInk, 180)},
-			      F::BarlowCondensedBold, F::BarlowSemiBold, M::Slide, M::Slide);
+		auto t = make("breaking", Category::Announce,
+			      {withAlpha(kWhite, 248), kRed, kInk, withAlpha(kInk, 180)}, F::BarlowCondensedBold,
+			      F::BarlowSemiBold, M::Slide, M::Slide);
 		t.usesTag = true;
 		all.push_back(t);
 	}
 	{
-		auto t = make("news-bar", Category::Announce, {withAlpha(kSlate, 245), kBlue, kWhite, withAlpha(kWhite, 195)},
+		auto t = make("news-bar", Category::Announce,
+			      {withAlpha(kSlate, 245), kBlue, kWhite, withAlpha(kWhite, 195)},
 			      F::BarlowCondensedSemiBold, F::BarlowRegular, M::Slide, M::Slide);
 		t.usesTag = true;
 		all.push_back(t);
 	}
 	{
-		auto t = make("handle-pill", Category::Announce, {withAlpha(kInk, 235), kGreen, kCream, withAlpha(kCream, 190)},
-			      F::BarlowSemiBold, F::BarlowCondensedMedium, M::Pop, M::Fade);
+		auto t = make("handle-pill", Category::Announce,
+			      {withAlpha(kInk, 235), kGreen, kCream, withAlpha(kCream, 190)}, F::BarlowSemiBold,
+			      F::BarlowCondensedMedium, M::Pop, M::Fade);
 		t.usesLine2 = false;
 		t.usesTag = true;
 		t.cornerRadius = 40;
@@ -162,8 +180,9 @@ std::vector<TitleTemplate> buildAll()
 		all.push_back(t);
 	}
 	{
-		auto t = make("thank-you", Category::Announce, {withAlpha(kInk, 0), kAmber, kWhite, withAlpha(kWhite, 220)},
-			      F::BebasNeue, F::BarlowRegular, M::Fade, M::Fade);
+		auto t = make("thank-you", Category::Announce,
+			      {withAlpha(kInk, 0), kAmber, kWhite, withAlpha(kWhite, 220)}, F::BebasNeue,
+			      F::BarlowRegular, M::Fade, M::Fade);
 		t.fullHeight = true;
 		all.push_back(t);
 	}
@@ -175,6 +194,7 @@ std::vector<TitleTemplate> buildAll()
 		t.usesLine2 = false;
 		t.usesTag = true;
 		t.tickerSpeed = 150.0;
+		t.longText = true;
 		all.push_back(t);
 	}
 	{
@@ -183,6 +203,7 @@ std::vector<TitleTemplate> buildAll()
 		t.usesLine2 = false;
 		t.usesTag = true;
 		t.tickerSpeed = 130.0;
+		t.longText = true;
 		all.push_back(t);
 	}
 
@@ -222,7 +243,8 @@ const char *motionName(MotionKind m)
 
 bool motionFromName(const std::string &name, MotionKind &out)
 {
-	for (MotionKind m : {MotionKind::Slide, MotionKind::Rise, MotionKind::Fade, MotionKind::Pop, MotionKind::Wipe}) {
+	for (MotionKind m :
+	     {MotionKind::Slide, MotionKind::Rise, MotionKind::Fade, MotionKind::Pop, MotionKind::Wipe}) {
 		if (name == motionName(m)) {
 			out = m;
 			return true;

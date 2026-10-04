@@ -130,7 +130,8 @@ int main(int argc, char **argv)
 			frame(1.0, 0, 400, variant).save(out + "/" + id + "-hold.png");
 			frame(1.0, 0.4, 400, variant).save(out + "/" + id + "-out.png");
 		}
-		const QImage hold = frame(1.0, 0, 400, variant).scaled(cellW, cellH, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+		const QImage hold = frame(1.0, 0, 400, variant)
+					    .scaled(cellW, cellH, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 		sp.drawImage((index % cols) * cellW, (index / cols) * cellH, hold);
 		++index;
 	}

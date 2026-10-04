@@ -23,15 +23,15 @@ function(laycue_add_plugin name)
 
   target_sources(${name} PRIVATE ${ARG_SOURCES} "${CMAKE_CURRENT_BINARY_DIR}/${name}-support.c")
   target_include_directories(${name} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-  target_link_libraries(
-    ${name}
-    PRIVATE OBS::libobs OBS::obs-frontend-api laycue-common ${ARG_LIBS}
-  )
+  target_link_libraries(${name} PRIVATE OBS::libobs OBS::obs-frontend-api laycue-common ${ARG_LIBS})
   target_compile_options(
     ${name}
     PRIVATE $<$<C_COMPILER_ID:Clang,AppleClang>:-Wno-quoted-include-in-framework-header -Wno-comma>
   )
-  set_target_properties(${name} PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+  set_target_properties(
+    ${name}
+    PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON
+  )
 
   set_target_properties_plugin(${name} PROPERTIES OUTPUT_NAME ${name})
 endfunction()

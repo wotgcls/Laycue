@@ -59,4 +59,18 @@ QFont FontSet::font(FontFace face, double pixelSize) const
 	return font;
 }
 
+namespace {
+const FontSet *g_shared = nullptr;
+}
+
+const FontSet *sharedFonts()
+{
+	return g_shared;
+}
+
+void setSharedFonts(const FontSet *fonts)
+{
+	g_shared = fonts;
+}
+
 } // namespace laycue::titles

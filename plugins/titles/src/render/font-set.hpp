@@ -29,4 +29,8 @@ private:
 	int loaded_ = 0;
 };
 
+// The one FontSet of this plugin, set when the module loads. Null before that and after unload.
+const FontSet *sharedFonts();
+void setSharedFonts(const FontSet *fonts);
+
 } // namespace laycue::titles

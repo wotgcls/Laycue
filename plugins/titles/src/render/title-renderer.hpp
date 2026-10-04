@@ -37,8 +37,8 @@ struct RenderRequest {
 };
 
 struct RenderedTitle {
-	QImage image;  // premultiplied ARGB, canvasWidth wide
-	int x = 0;     // where the image goes on the canvas
+	QImage image; // premultiplied ARGB, canvasWidth wide
+	int x = 0;    // where the image goes on the canvas
 	int y = 0;
 };
 

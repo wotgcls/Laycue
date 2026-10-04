@@ -26,10 +26,6 @@ if(OS_MACOS)
   # One installer package holding every plugin of the pack.
   set(LAYCUE_PLUGIN_LIST laycue-scenes laycue-titles)
   configure_file(cmake/macos/resources/distribution.in "${CMAKE_CURRENT_BINARY_DIR}/distribution" @ONLY)
-  configure_file(
-    cmake/macos/resources/create-package.cmake.in
-    "${CMAKE_CURRENT_BINARY_DIR}/create-package.cmake"
-    @ONLY
-  )
+  configure_file(cmake/macos/resources/create-package.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/create-package.cmake" @ONLY)
   install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/create-package.cmake")
 endif()

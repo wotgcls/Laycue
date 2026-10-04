@@ -34,13 +34,10 @@ laycue_add_plugin(
     src/ui/tabs/overlays-tab.hpp
     src/ui/labels.cpp
     src/ui/labels.hpp
-    src/ui/pages/page-frame.cpp
-    src/ui/pages/page-frame.hpp
     src/ui/pages/add-pushback-page.cpp
     src/ui/pages/new-layout-page.cpp
     src/ui/pages/add-pushback-page.hpp
     src/ui/pages/new-layout-page.hpp
-    src/ui/pages/helpers.hpp
     src/ui/pages/settings-page.cpp
     src/ui/pages/settings-page.hpp
     src/ui/pages/overlay-setup-page.cpp

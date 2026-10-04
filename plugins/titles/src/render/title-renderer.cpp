@@ -18,8 +18,8 @@ namespace laycue::titles {
 namespace {
 
 constexpr double kDesignWidth = 1920.0;
-constexpr double kLeft = 110.0;   // left margin (inside the broadcast title-safe area)
-constexpr double kBottom = 96.0;  // distance from the bottom of the picture
+constexpr double kLeft = 110.0;  // left margin (inside the broadcast title-safe area)
+constexpr double kBottom = 96.0; // distance from the bottom of the picture
 constexpr double kRegionHeight = 360.0;
 constexpr double kTallRegionHeight = 560.0;
 
@@ -41,7 +41,7 @@ struct Ctx {
 	const TitleTemplate &t;
 	const TitleText &x;
 	const FontSet &fonts;
-	double W = kDesignWidth; // region width
+	double W = kDesignWidth;  // region width
 	double H = kRegionHeight; // region height
 	double in = 1.0;
 	double out = 0.0;
@@ -119,8 +119,8 @@ struct Wrapped {
 };
 
 // Wraps `s` at the largest size (down to `minPx`) at which it needs at most `maxLines` lines.
-Wrapped fitWrapped(const Ctx &c, FontFace face, double px, double minPx, const QString &s, double maxWidth, int maxLines,
-		   double leading)
+Wrapped fitWrapped(const Ctx &c, FontFace face, double px, double minPx, const QString &s, double maxWidth,
+		   int maxLines, double leading)
 {
 	Wrapped w;
 	for (double size = px;; size *= 0.94) {
@@ -192,8 +192,8 @@ void fillPanel(Ctx &c, const QRectF &r, double radius = 0.0)
 	if (c.panel.alpha() == 0 || r.width() <= 0.0 || r.height() <= 0.0)
 		return;
 	for (int i = 5; i >= 1; --i)
-		fillRect(c.p, r.adjusted(-i * 2.0, -i * 1.0 + 6.0, i * 2.0, i * 2.0 + 6.0), QColor(0, 0, 0, 9 + (6 - i) * 2),
-			 radius > 0.0 ? radius + i * 2.0 : i * 2.0);
+		fillRect(c.p, r.adjusted(-i * 2.0, -i * 1.0 + 6.0, i * 2.0, i * 2.0 + 6.0),
+			 QColor(0, 0, 0, 9 + (6 - i) * 2), radius > 0.0 ? radius + i * 2.0 : i * 2.0);
 	fillRect(c.p, r, c.panel, radius);
 }
 
@@ -281,7 +281,8 @@ void cleanBar(Ctx &c)
 	const double h = two ? 132 : 98;
 	const QFont f1 = fitFont(c, c.t.display, 62, 40, c.x.line1, 1250);
 	const QFont f2 = fitFont(c, c.t.body, 30, 22, c.x.line2, 1250);
-	const double w = std::max(560.0, capW + 2 * padX + std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
+	const double w =
+		std::max(560.0, capW + 2 * padX + std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
 	const double y = c.bottom() - h;
 	const double pw = w * c.part(0.0, 0.6);
 	fillPanel(c, QRectF(kLeft, y, pw, h));
@@ -291,10 +292,13 @@ void cleanBar(Ctx &c)
 	const double e1 = c.part(0.28, 0.5), e2 = c.part(0.4, 0.5);
 	const double tx = kLeft + capW + padX;
 	if (two) {
-		drawText(c.p, QRectF(tx + 28 * (1 - e1), y + 12, w, 70), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
-		drawText(c.p, QRectF(tx + 28 * (1 - e2), y + 80, w, 40), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter, e2);
+		drawText(c.p, QRectF(tx + 28 * (1 - e1), y + 12, w, 70), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 28 * (1 - e2), y + 80, w, 40), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
 	} else {
-		drawText(c.p, QRectF(tx + 28 * (1 - e1), y, w, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 28 * (1 - e1), y, w, h), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
 	}
 	c.p.restore();
 }
@@ -307,7 +311,8 @@ void accentEdge(Ctx &c)
 	const double h = two ? 138 : 104;
 	const QFont f1 = fitFont(c, c.t.display, 64, 40, c.x.line1, 1250);
 	const QFont f2 = fitFont(c, c.t.body, 30, 22, c.x.line2, 1250);
-	const double w = std::max(600.0, edge + 2 * padX + std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
+	const double w =
+		std::max(600.0, edge + 2 * padX + std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
 	const double y = c.bottom() - h;
 	const double eEdge = c.part(0.0, 0.4), eCard = c.part(0.18, 0.6);
 	fillRect(c.p, QRectF(kLeft, y, edge, h * eEdge), c.accent, c.t.cornerRadius);
@@ -320,10 +325,13 @@ void accentEdge(Ctx &c)
 	const double e1 = c.part(0.3, 0.5), e2 = c.part(0.42, 0.5);
 	const double tx = kLeft + edge + padX;
 	if (two) {
-		drawText(c.p, QRectF(tx, y + 14 + 18 * (1 - e1), w, 68), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
-		drawText(c.p, QRectF(tx, y + 82 + 18 * (1 - e2), w, 40), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter, e2);
+		drawText(c.p, QRectF(tx, y + 14 + 18 * (1 - e1), w, 68), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx, y + 82 + 18 * (1 - e2), w, 40), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
 	} else {
-		drawText(c.p, QRectF(tx, y + 18 * (1 - e1), w, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx, y + 18 * (1 - e1), w, h), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
 	}
 	c.p.restore();
 }
@@ -342,14 +350,15 @@ void splitBlocks(Ctx &c)
 	c.p.save();
 	c.p.setClipRect(QRectF(0, 0, kLeft + w1 * e1, c.H));
 	fillRect(c.p, QRectF(kLeft, y1, w1, h1), c.accent);
-	drawText(c.p, QRectF(kLeft + padX, y1, w1, h1), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, c.part(0.3, 0.45));
+	drawText(c.p, QRectF(kLeft + padX, y1, w1, h1), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
+		 c.part(0.3, 0.45));
 	c.p.restore();
 	if (h2 > 0) {
 		c.p.save();
 		c.p.setClipRect(QRectF(0, 0, kLeft + 44 + w2 * e2, c.H));
 		fillPanel(c, QRectF(kLeft + 44, y1 + h1, w2, h2));
-		drawText(c.p, QRectF(kLeft + 44 + padX, y1 + h1, w2, h2), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
-			 c.part(0.42, 0.45));
+		drawText(c.p, QRectF(kLeft + 44 + padX, y1 + h1, w2, h2), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.42, 0.45));
 		c.p.restore();
 	}
 }
@@ -365,11 +374,12 @@ void underline(Ctx &c)
 	const double y2 = base - (two ? 46 : 0);
 	const double lineY = y2 - 8;
 	const double y1 = lineY - 92;
-	drawShadowText(c.p, QRectF(kLeft, y1, w, 88), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, c.part(0.0, 0.5));
+	drawShadowText(c.p, QRectF(kLeft, y1, w, 88), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
+		       c.part(0.0, 0.5));
 	fillRect(c.p, QRectF(kLeft, lineY, w * c.part(0.12, 0.6), 5), c.accent);
 	if (two)
-		drawShadowText(c.p, QRectF(kLeft, lineY + 10, w, 44), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
-			       c.part(0.3, 0.5));
+		drawShadowText(c.p, QRectF(kLeft, lineY + 10, w, 44), c.x.line2, f2, c.sub,
+			       Qt::AlignLeft | Qt::AlignVCenter, c.part(0.3, 0.5));
 }
 
 // 5. Box Pop: a rounded card with a tag chip across its top edge. It pops in.
@@ -386,18 +396,21 @@ void popCard(Ctx &c)
 	fillPanel(c, QRectF(kLeft, y, w, h), c.t.cornerRadius);
 	const double e1 = c.part(0.18, 0.5), e2 = c.part(0.3, 0.5);
 	if (two) {
-		drawText(c.p, QRectF(kLeft + padX, y + 22, w, 66), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
-		drawText(c.p, QRectF(kLeft + padX, y + 88, w, 40), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter, e2);
+		drawText(c.p, QRectF(kLeft + padX, y + 22, w, 66), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(kLeft + padX, y + 88, w, 40), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
 	} else {
-		drawText(c.p, QRectF(kLeft + padX, y, w, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(kLeft + padX, y, w, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
+			 e1);
 	}
 	if (c.has(c.x.tag)) {
 		const QString tag = c.x.tag.toUpper();
 		const double tw = textWidth(ft, tag) + 22 * 2 + tag.size() * 2.4;
 		const double ey = c.partBack(0.1, 0.5);
 		fillRect(c.p, QRectF(kLeft + padX - 8, y - 17 + 8 * (1 - ey), tw, 34), c.accent, 8);
-		drawText(c.p, QRectF(kLeft + padX - 8, y - 17 + 8 * (1 - ey), tw, 34), tag, ft, QColor(17, 17, 16), Qt::AlignCenter,
-			 c.part(0.2, 0.4), 2.4);
+		drawText(c.p, QRectF(kLeft + padX - 8, y - 17 + 8 * (1 - ey), tw, 34), tag, ft, QColor(17, 17, 16),
+			 Qt::AlignCenter, c.part(0.2, 0.4), 2.4);
 	}
 }
 
@@ -416,7 +429,8 @@ void cornerTag(Ctx &c)
 	c.p.save();
 	c.p.setClipRect(QRectF(0, 0, kLeft + (w + skew) * e + 2, c.H));
 	QPolygonF block;
-	block << QPointF(kLeft + skew, y) << QPointF(kLeft + w + skew, y) << QPointF(kLeft + w, y + h) << QPointF(kLeft, y + h);
+	block << QPointF(kLeft + skew, y) << QPointF(kLeft + w + skew, y) << QPointF(kLeft + w, y + h)
+	      << QPointF(kLeft, y + h);
 	c.p.setPen(Qt::NoPen);
 	c.p.setBrush(c.panel);
 	c.p.drawPolygon(block);
@@ -428,16 +442,19 @@ void cornerTag(Ctx &c)
 		     << QPointF(kLeft + 26 + tw, y) << QPointF(kLeft + 26, y);
 		c.p.setBrush(c.accent);
 		c.p.drawPolygon(chip);
-		drawText(c.p, QRectF(kLeft + skew + 8, y - 44, tw, 44), tag, ft, QColor(17, 17, 16), Qt::AlignCenter, c.part(0.3, 0.4),
-			 3.0);
+		drawText(c.p, QRectF(kLeft + skew + 8, y - 44, tw, 44), tag, ft, QColor(17, 17, 16), Qt::AlignCenter,
+			 c.part(0.3, 0.4), 3.0);
 	}
 	const double e1 = c.part(0.28, 0.5), e2 = c.part(0.4, 0.5);
 	const double tx = kLeft + skew + padX - 20;
 	if (two) {
-		drawText(c.p, QRectF(tx + 24 * (1 - e1), y + 14, w, 70), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
-		drawText(c.p, QRectF(tx + 24 * (1 - e2), y + 82, w, 40), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter, e2);
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y + 14, w, 70), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 24 * (1 - e2), y + 82, w, 40), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
 	} else {
-		drawText(c.p, QRectF(tx + 24 * (1 - e1), y, w, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y, w, h), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
 	}
 	c.p.restore();
 }
@@ -454,8 +471,8 @@ void stackedPanels(Ctx &c)
 	const double y1 = c.bottom() - h1 - h2;
 	const double e1 = c.part(0.0, 0.55), e2 = c.part(0.16, 0.55);
 	fillPanel(c, QRectF(kLeft, y1 + 22 * (1 - e1), w1, h1));
-	drawText(c.p, QRectF(kLeft + padX, y1 + 22 * (1 - e1), w1, h1), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
-		 c.part(0.22, 0.45));
+	drawText(c.p, QRectF(kLeft + padX, y1 + 22 * (1 - e1), w1, h1), c.x.line1, f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.22, 0.45));
 	if (h2 > 0) {
 		fillRect(c.p, QRectF(kLeft + 70, y1 + h1 + 18 * (1 - e2), w2, h2), c.accent);
 		drawText(c.p, QRectF(kLeft + 70 + padX, y1 + h1 + 18 * (1 - e2), w2, h2), c.x.line2, f2, c.sub,
@@ -475,9 +492,11 @@ void hairline(Ctx &c)
 	const double y1 = y2 - 70;
 	const double lineY = y1 - 14;
 	fillRect(c.p, QRectF(kLeft, lineY, w * c.part(0.0, 0.7), 2), c.panel.alpha() ? c.panel : c.accent);
-	drawShadowText(c.p, QRectF(kLeft, y1, w, 66), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, c.part(0.2, 0.5));
+	drawShadowText(c.p, QRectF(kLeft, y1, w, 66), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
+		       c.part(0.2, 0.5));
 	if (two)
-		drawShadowText(c.p, QRectF(kLeft, y2, w, 42), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter, c.part(0.34, 0.5));
+		drawShadowText(c.p, QRectF(kLeft, y2, w, 42), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
+			       c.part(0.34, 0.5));
 }
 
 // 9. Scripture Bar: the verse, wrapped and fitted, with its reference above a thin rule.
@@ -497,13 +516,16 @@ void scriptureBar(Ctx &c)
 	double ty = y + padY;
 	if (refH > 0) {
 		const double er = c.part(0.15, 0.5);
-		drawText(c.p, QRectF(kLeft + padX, ty, w, 42), reference, fr, c.sub, Qt::AlignLeft | Qt::AlignVCenter, er, 4.0);
+		drawText(c.p, QRectF(kLeft + padX, ty, w, 42), reference, fr, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
+			 er, 4.0);
 		fillRect(c.p, QRectF(kLeft + padX, ty + 46, 120 * c.part(0.2, 0.5), 2), c.accent);
 		ty += refH + 8;
 	}
 	for (int i = 0; i < verse.lines.size(); ++i) {
 		const double ev = c.part(0.24 + 0.05 * i, 0.5);
-		drawText(c.p, QRectF(kLeft + padX, ty + i * verse.lineHeight + 14 * (1 - ev), w - 2 * padX, verse.lineHeight),
+		drawText(c.p,
+			 QRectF(kLeft + padX, ty + i * verse.lineHeight + 14 * (1 - ev), w - 2 * padX,
+				verse.lineHeight),
 			 verse.lines[i], verse.font, c.text, Qt::AlignLeft | Qt::AlignVCenter, ev);
 	}
 }
@@ -520,11 +542,13 @@ void verseCard(Ctx &c)
 	const double x = (c.W - w) / 2.0;
 	const double y = c.bottom() - h;
 	fillPanel(c, QRectF(x, y, w, h), c.t.cornerRadius);
-	drawText(c.p, QRectF(x + 28, y - 8 + 18 * (1 - c.part(0.1, 0.5)), 140, 170), QStringLiteral("“"), c.font(c.t.display, 170),
-		 withOpacity(c.accent, 0.55), Qt::AlignLeft | Qt::AlignTop, c.part(0.1, 0.5));
+	drawText(c.p, QRectF(x + 28, y - 8 + 18 * (1 - c.part(0.1, 0.5)), 140, 170), QStringLiteral("“"),
+		 c.font(c.t.display, 170), withOpacity(c.accent, 0.55), Qt::AlignLeft | Qt::AlignTop, c.part(0.1, 0.5));
 	for (int i = 0; i < verse.lines.size(); ++i) {
 		const double ev = c.part(0.2 + 0.05 * i, 0.5);
-		drawText(c.p, QRectF(x + padX, y + padY + i * verse.lineHeight + 12 * (1 - ev), w - 2 * padX, verse.lineHeight),
+		drawText(c.p,
+			 QRectF(x + padX, y + padY + i * verse.lineHeight + 12 * (1 - ev), w - 2 * padX,
+				verse.lineHeight),
 			 verse.lines[i], verse.font, c.text, Qt::AlignHCenter | Qt::AlignVCenter, ev);
 	}
 	if (refH > 0)
@@ -544,10 +568,11 @@ void seriesTitle(Ctx &c)
 	fillRect(c.p, QRectF(kLeft, y + (h1 + h2) * (1 - e), 12, (h1 + h2) * e), c.accent);
 	c.p.save();
 	c.p.setClipRect(QRectF(kLeft + 30, y - 10, (c.W - kLeft) * c.part(0.12, 0.7), h1 + h2 + 20));
-	drawShadowText(c.p, QRectF(kLeft + 36, y, c.W, h1), c.x.line1.toUpper(), f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, 1.0, 2.0);
+	drawShadowText(c.p, QRectF(kLeft + 36, y, c.W, h1), c.x.line1.toUpper(), f1, c.text,
+		       Qt::AlignLeft | Qt::AlignVCenter, 1.0, 2.0);
 	if (two)
-		drawShadowText(c.p, QRectF(kLeft + 40, y + h1, c.W, h2), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter, 1.0,
-			       1.0);
+		drawShadowText(c.p, QRectF(kLeft + 40, y + h1, c.W, h2), c.x.line2, f2, c.sub,
+			       Qt::AlignLeft | Qt::AlignVCenter, 1.0, 1.0);
 	c.p.restore();
 }
 
@@ -563,8 +588,12 @@ void songLyric(Ctx &c)
 		lines << c.x.line2;
 	if (lines.isEmpty())
 		return;
-	const QFont f = fitFont(c, c.t.display, 72, 40, lines.size() > 1 && textWidth(c.font(c.t.display, 72), lines[0]) <
-				 textWidth(c.font(c.t.display, 72), lines[1]) ? lines[1] : lines[0], w);
+	const QFont f = fitFont(c, c.t.display, 72, 40,
+				lines.size() > 1 && textWidth(c.font(c.t.display, 72), lines[0]) <
+							    textWidth(c.font(c.t.display, 72), lines[1])
+					? lines[1]
+					: lines[0],
+				w);
 	const double lh = f.pixelSize() * 1.3;
 	const double top = c.bottom() - lh * lines.size();
 	for (int i = 0; i < lines.size(); ++i) {
@@ -598,10 +627,13 @@ void announcement(Ctx &c)
 	const double tx = kLeft + tagW + padX;
 	const double e1 = c.part(0.22, 0.5), e2 = c.part(0.34, 0.5);
 	if (two) {
-		drawText(c.p, QRectF(tx + 24 * (1 - e1), y + 8, w - tagW - padX, 66), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
-		drawText(c.p, QRectF(tx + 24 * (1 - e2), y + 74, w - tagW - padX, 38), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter, e2);
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y + 8, w - tagW - padX, 66), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 24 * (1 - e2), y + 74, w - tagW - padX, 38), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
 	} else {
-		drawText(c.p, QRectF(tx + 24 * (1 - e1), y, w - tagW - padX, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y, w - tagW - padX, h), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
 	}
 }
 
@@ -624,16 +656,20 @@ void breaking(Ctx &c)
 		if (flash > 0.0 && c.in > 0.25)
 			fillRect(c.p, QRectF(kLeft, y, tagW, h), QColor(255, 255, 255, int(160 * flash)));
 	}
-	drawText(c.p, QRectF(kLeft, y, tagW, h), tag, ft, QColor(255, 255, 255), Qt::AlignCenter, c.part(0.2, 0.4), 3.0);
+	drawText(c.p, QRectF(kLeft, y, tagW, h), tag, ft, QColor(255, 255, 255), Qt::AlignCenter, c.part(0.2, 0.4),
+		 3.0);
 	const QFont f1 = fitFont(c, c.t.display, 56, 34, c.x.line1, w - tagW - 2 * padX);
 	const QFont f2 = fitFont(c, c.t.body, 28, 20, c.x.line2, w - tagW - 2 * padX);
 	const double e1 = c.part(0.3, 0.5), e2 = c.part(0.4, 0.5);
 	const double tx = kLeft + tagW + padX;
 	if (two) {
-		drawText(c.p, QRectF(tx + 24 * (1 - e1), y + 8, w - tagW - padX, 62), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
-		drawText(c.p, QRectF(tx + 24 * (1 - e2), y + 70, w - tagW - padX, 38), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter, e2);
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y + 8, w - tagW - padX, 62), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 24 * (1 - e2), y + 70, w - tagW - padX, 38), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
 	} else {
-		drawText(c.p, QRectF(tx + 24 * (1 - e1), y, w - tagW - padX, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y, w - tagW - padX, h), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
 	}
 }
 
@@ -655,17 +691,21 @@ void newsBar(Ctx &c)
 	c.p.setPen(Qt::NoPen);
 	c.p.setBrush(QColor(255, 255, 255));
 	c.p.drawEllipse(QPointF(kLeft + 38, y + h / 2), 8, 8);
-	drawText(c.p, QRectF(kLeft + 56, y, tagW, h), tag, ft, QColor(255, 255, 255), Qt::AlignLeft | Qt::AlignVCenter, 1.0, 3.0);
+	drawText(c.p, QRectF(kLeft + 56, y, tagW, h), tag, ft, QColor(255, 255, 255), Qt::AlignLeft | Qt::AlignVCenter,
+		 1.0, 3.0);
 	c.p.restore();
 	const QFont f1 = fitFont(c, c.t.display, 54, 34, c.x.line1, w - tagW - 2 * padX);
 	const QFont f2 = fitFont(c, c.t.body, 28, 20, c.x.line2, w - tagW - 2 * padX);
 	const double e1 = c.part(0.3, 0.5), e2 = c.part(0.4, 0.5);
 	const double tx = kLeft + tagW + padX;
 	if (two) {
-		drawText(c.p, QRectF(tx + 24 * (1 - e1), y + 8, w - tagW - padX, 62), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
-		drawText(c.p, QRectF(tx + 24 * (1 - e2), y + 68, w - tagW - padX, 38), c.x.line2, f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter, e2);
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y + 8, w - tagW - padX, 62), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 24 * (1 - e2), y + 68, w - tagW - padX, 38), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
 	} else {
-		drawText(c.p, QRectF(tx + 24 * (1 - e1), y, w - tagW - padX, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y, w - tagW - padX, h), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
 	}
 }
 
@@ -686,11 +726,13 @@ void handlePill(Ctx &c)
 	c.p.setBrush(c.accent);
 	c.p.drawEllipse(QPointF(kLeft + padL + 8, y + h / 2), 9 * e, 9 * e);
 	c.p.restore();
-	drawText(c.p, QRectF(kLeft + padL + 34, y, w, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, c.part(0.2, 0.5));
+	drawText(c.p, QRectF(kLeft + padL + 34, y, w, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
+		 c.part(0.2, 0.5));
 	if (tagW > 0) {
 		const double dx = kLeft + padL + 34 + textWidth(f1, c.x.line1) + 20;
 		fillRect(c.p, QRectF(dx, y + 22, 2, h - 44), withOpacity(c.sub, 0.5));
-		drawText(c.p, QRectF(dx + 20, y, tagW, h), tag, ft, c.sub, Qt::AlignLeft | Qt::AlignVCenter, c.part(0.3, 0.5), 2.0);
+		drawText(c.p, QRectF(dx + 20, y, tagW, h), tag, ft, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
+			 c.part(0.3, 0.5), 2.0);
 	}
 }
 
@@ -707,12 +749,13 @@ void thankYou(Ctx &c)
 	const bool two = c.has(c.x.line2);
 	const double h1 = 190, rule = 34, h2 = two ? 60 : 0;
 	const double top = (c.H - (h1 + rule + h2)) / 2.0;
-	drawShadowText(c.p, QRectF(0, top + 16 * (1 - c.part(0.1, 0.6)), c.W, h1), c.x.line1.toUpper(), f1, c.text, Qt::AlignCenter,
-		       c.part(0.1, 0.6), 4.0);
-	fillRect(c.p, QRectF(c.W / 2 - 60 * c.part(0.25, 0.5), top + h1 + rule / 2 - 2, 120 * c.part(0.25, 0.5), 4), c.accent);
+	drawShadowText(c.p, QRectF(0, top + 16 * (1 - c.part(0.1, 0.6)), c.W, h1), c.x.line1.toUpper(), f1, c.text,
+		       Qt::AlignCenter, c.part(0.1, 0.6), 4.0);
+	fillRect(c.p, QRectF(c.W / 2 - 60 * c.part(0.25, 0.5), top + h1 + rule / 2 - 2, 120 * c.part(0.25, 0.5), 4),
+		 c.accent);
 	if (two)
-		drawShadowText(c.p, QRectF(0, top + h1 + rule + 12 * (1 - c.part(0.35, 0.5)), c.W, h2), c.x.line2, f2, c.sub,
-			       Qt::AlignCenter, c.part(0.35, 0.5));
+		drawShadowText(c.p, QRectF(0, top + h1 + rule + 12 * (1 - c.part(0.35, 0.5)), c.W, h2), c.x.line2, f2,
+			       c.sub, Qt::AlignCenter, c.part(0.35, 0.5));
 }
 
 // The scrolling strip shared by both tickers.
@@ -728,7 +771,8 @@ void drawTickerText(Ctx &c, const QRectF &area, const QFont &font, const QColor 
 	c.p.setClipRect(area);
 	const double offset = std::fmod(c.tickerPx, strip);
 	for (double xPos = area.left() - offset; xPos < area.right(); xPos += strip)
-		drawText(c.p, QRectF(xPos, area.top(), tw + 4, area.height()), text, font, colour, Qt::AlignLeft | Qt::AlignVCenter);
+		drawText(c.p, QRectF(xPos, area.top(), tw + 4, area.height()), text, font, colour,
+			 Qt::AlignLeft | Qt::AlignVCenter);
 	c.p.restore();
 }
 
@@ -770,17 +814,18 @@ void bigQuote(Ctx &c)
 	const double h = q.lines.size() * q.lineHeight + attrH;
 	const double top = c.bottom() - h;
 	const double eq = c.part(0.0, 0.5);
-	drawShadowText(c.p, QRectF(kLeft - 14, top - 118 + 16 * (1 - eq), 200, 190), QStringLiteral("“"), c.font(c.t.display, 230),
-		       withOpacity(c.accent, 0.95), Qt::AlignLeft | Qt::AlignTop, eq);
+	drawShadowText(c.p, QRectF(kLeft - 14, top - 118 + 16 * (1 - eq), 200, 190), QStringLiteral("“"),
+		       c.font(c.t.display, 230), withOpacity(c.accent, 0.95), Qt::AlignLeft | Qt::AlignTop, eq);
 	for (int i = 0; i < q.lines.size(); ++i) {
 		const double e = c.part(0.15 + 0.06 * i, 0.5);
-		drawShadowText(c.p, QRectF(kLeft + 6, top + i * q.lineHeight + 14 * (1 - e), w, q.lineHeight), q.lines[i], q.font, c.text,
-			       Qt::AlignLeft | Qt::AlignVCenter, e);
+		drawShadowText(c.p, QRectF(kLeft + 6, top + i * q.lineHeight + 14 * (1 - e), w, q.lineHeight),
+			       q.lines[i], q.font, c.text, Qt::AlignLeft | Qt::AlignVCenter, e);
 	}
 	if (attrH > 0) {
 		const double e = c.part(0.4, 0.5);
 		drawShadowText(c.p, QRectF(kLeft + 6, top + q.lines.size() * q.lineHeight + 8, w, attrH - 8),
-			       QStringLiteral("—  ") + c.x.line2.toUpper(), fa, c.accent, Qt::AlignLeft | Qt::AlignVCenter, e, 3.0);
+			       QStringLiteral("—  ") + c.x.line2.toUpper(), fa, c.accent,
+			       Qt::AlignLeft | Qt::AlignVCenter, e, 3.0);
 	}
 }
 
@@ -859,8 +904,9 @@ RenderedTitle renderTitle(const FontSet &fonts, const RenderRequest &request)
 			return result;
 
 		const double scale = double(request.canvasWidth) / kDesignWidth;
-		const double regionH = std::min(regionDesignHeight(request.tpl, request.canvasWidth, request.canvasHeight),
-						 double(request.canvasHeight) / scale);
+		const double regionH =
+			std::min(regionDesignHeight(request.tpl, request.canvasWidth, request.canvasHeight),
+				 double(request.canvasHeight) / scale);
 		const int pixelH = std::max(1, int(std::lround(regionH * scale)));
 		QImage image(request.canvasWidth, pixelH, QImage::Format_ARGB32_Premultiplied);
 		image.fill(Qt::transparent);

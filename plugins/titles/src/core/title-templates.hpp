@@ -42,9 +42,9 @@ enum class Category { People, Worship, Announce, Ticker };
 enum class MotionKind { Slide, Rise, Fade, Pop, Wipe };
 
 struct Palette {
-	Rgba panel;  // the main surface behind the text (alpha 0 = no panel)
-	Rgba accent; // the one accent colour: a rule, a chip, a block
-	Rgba text;   // main line
+	Rgba panel;   // the main surface behind the text (alpha 0 = no panel)
+	Rgba accent;  // the one accent colour: a rule, a chip, a block
+	Rgba text;    // main line
 	Rgba subtext; // second line and tag text
 };
 
@@ -58,14 +58,15 @@ struct TitleTemplate {
 	MotionKind motionIn = MotionKind::Slide;
 	MotionKind motionOut = MotionKind::Slide;
 	double inSeconds = 0.8;
-	double outSeconds = 0.5; // exits are shorter than entrances: they get out of the way
+	double outSeconds = 0.5;  // exits are shorter than entrances: they get out of the way
 	double holdSeconds = 0.0; // 0 = stays until hidden
 	bool usesLine2 = true;
 	bool usesTag = false;
-	bool anchorTop = false;      // drawn in the top of the picture instead of the bottom
-	bool fullHeight = false;     // uses the whole picture, not just the lower part
-	double cornerRadius = 0.0;   // in 1920-wide design pixels
-	double tickerSpeed = 0.0;    // > 0 for tickers: pixels per second at 1920 wide
+	bool longText = false;     // line 1 is a sentence or more (a verse, a quote, a ticker): edited in a taller box
+	bool anchorTop = false;    // drawn in the top of the picture instead of the bottom
+	bool fullHeight = false;   // uses the whole picture, not just the lower part
+	double cornerRadius = 0.0; // in 1920-wide design pixels
+	double tickerSpeed = 0.0;  // > 0 for tickers: pixels per second at 1920 wide
 };
 
 // Locale keys are built from the id: "Laycue.Titles.T.<id>" is the name, ".S1" ".S2" ".S3" are the

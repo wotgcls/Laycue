@@ -60,6 +60,8 @@ QString panelStyleSheet()
 
 #LaycueContent QLineEdit { background: @recess; color: @cream; border: 1px solid rgba(255,255,255,30); border-radius: @radiusPx; padding: 0 10px; min-height: @controlPx; font-size: 13px; selection-background-color: @setup; }
 #LaycueContent[large="true"] QLineEdit { min-height: @touchPx; }
+#LaycueContent QPlainTextEdit { background: @recess; color: @cream; border: 1px solid rgba(255,255,255,30); border-radius: @radiusPx; padding: 6px 10px; font-size: 13px; selection-background-color: @setup; }
+#LaycueContent QPlainTextEdit:focus { border: 2px solid @setup; }
 #LaycueContent QLineEdit:focus { border: 2px solid @setup; }
 
 QMenu { background: @stage; color: @cream; border: 1px solid rgba(255,255,255,30); border-radius: 10px; padding: 4px; font-size: 13px; }

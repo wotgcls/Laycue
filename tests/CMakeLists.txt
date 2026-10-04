@@ -29,6 +29,7 @@ add_executable(
   "${LAYCUE_SRC}/core/config.cpp"
   "${LAYCUE_SRC}/core/layouts.cpp"
   "${TITLES_SRC}/core/easing.cpp"
+  "${TITLES_SRC}/core/library.cpp"
   "${TITLES_SRC}/core/title-clock.cpp"
   "${TITLES_SRC}/core/ticker.cpp"
   "${TITLES_SRC}/core/title-templates.cpp"
