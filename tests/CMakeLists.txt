@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 set(LAYCUE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/scenes/src")
+set(TITLES_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/titles/src")
 
 add_executable(
   laycue-tests
@@ -19,6 +20,7 @@ add_executable(
   test-exclusivity.cpp
   test-config.cpp
   test-layouts.cpp
+  test-titles.cpp
   "${LAYCUE_SRC}/core/cue-state.cpp"
   "${LAYCUE_SRC}/core/detect.cpp"
   "${LAYCUE_SRC}/core/geometry.cpp"
@@ -26,11 +28,15 @@ add_executable(
   "${LAYCUE_SRC}/core/exclusivity.cpp"
   "${LAYCUE_SRC}/core/config.cpp"
   "${LAYCUE_SRC}/core/layouts.cpp"
+  "${TITLES_SRC}/core/easing.cpp"
+  "${TITLES_SRC}/core/title-clock.cpp"
+  "${TITLES_SRC}/core/ticker.cpp"
+  "${TITLES_SRC}/core/title-templates.cpp"
   "${LAYCUE_SRC}/core/scene-model.cpp"
   "${LAYCUE_SRC}/core/source-kinds.cpp"
 )
 
-target_include_directories(laycue-tests PRIVATE "${LAYCUE_SRC}" "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(laycue-tests PRIVATE "${LAYCUE_SRC}" "${TITLES_SRC}" "${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_executable(laycue-fixture-tests test-fixtures.cpp "${LAYCUE_SRC}/core/detect.cpp")
 target_include_directories(laycue-fixture-tests PRIVATE "${LAYCUE_SRC}")

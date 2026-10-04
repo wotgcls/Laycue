@@ -20,10 +20,11 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
 # static library with the shared look and feel (brand tokens, controls, fonts).
 add_subdirectory(plugins/common)
 add_subdirectory(plugins/scenes)
+add_subdirectory(plugins/titles)
 
 if(OS_MACOS)
   # One installer package holding every plugin of the pack.
-  set(LAYCUE_PLUGIN_LIST laycue-scenes)
+  set(LAYCUE_PLUGIN_LIST laycue-scenes laycue-titles)
   configure_file(cmake/macos/resources/distribution.in "${CMAKE_CURRENT_BINARY_DIR}/distribution" @ONLY)
   configure_file(
     cmake/macos/resources/create-package.cmake.in
