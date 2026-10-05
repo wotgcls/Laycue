@@ -93,7 +93,7 @@ Overrides readOverrides(obs_data_t *settings)
 void applyClockConfig(TitleSource &s)
 {
 	s.clock.configure(s.tpl.inSeconds, s.tpl.outSeconds, s.tpl.holdSeconds);
-	s.ticker.configure(g_fonts ? tickerStripWidth(*g_fonts, s.tpl, s.text) : 1.0, s.tpl.tickerSpeed);
+	s.ticker.configure(g_fonts ? tickerStripWidth(*g_fonts, s.tpl, s.text) : 1.0, continuousSpeed(s.tpl));
 }
 
 const char *getName(void *)
@@ -208,7 +208,7 @@ void tick(void *data, float seconds)
 
 		const bool wasVisible = s->clock.visible();
 		s->clock.advance(seconds);
-		const bool ticking = s->tpl.tickerSpeed > 0.0 && s->clock.visible();
+		const bool ticking = isContinuous(s->tpl) && s->clock.visible();
 		if (ticking)
 			s->ticker.advance(seconds);
 

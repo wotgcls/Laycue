@@ -17,6 +17,8 @@ laycue_add_plugin(
     src/obs/title-source.cpp
     src/obs/title-source.hpp
     src/render/font-set.cpp
+    src/render/brand-icons.cpp
+    src/render/brand-icons.hpp
     src/render/font-set.hpp
     src/render/title-renderer.cpp
     src/render/title-renderer.hpp

@@ -5,7 +5,7 @@ Three small OBS plugins that share one look. Install any one, or all three.
 | Plugin | What it does for you | Panel in OBS |
 |---|---|---|
 | **Laycue Scenes** | One-button scene switching, layouts, rules that stop overlays colliding, cameras that fit into frame graphics | Docks > Laycue |
-| **Laycue Titles** | 20 broadcast-style lower thirds, scripture bars and scrolling tickers, shown live from OBS; make your own | Docks > Laycue Titles |
+| **Laycue Titles** | 28 broadcast-style lower thirds, live badges, social cards and scrolling tickers, shown live from OBS; make your own | Docks > Laycue Titles |
 | **Laycue Network** | Tests your upload, recommends a bitrate, watches the stream live, can lower and raise the bitrate for you, reports after each stream | Docks > Laycue Network |
 
 All three are native OBS plugins: no browser source, no web server, no account. Anything automatic is off until you turn it on. See [`docs/PACK.md`](docs/PACK.md) for what the pack is and why, [`docs/titles.md`](docs/titles.md) and [`docs/network.md`](docs/network.md) for how those two work, [`docs/NAMING.md`](docs/NAMING.md) for the name, and [`CLAUDE.md`](CLAUDE.md) for how it is built. The original Scenes product definition is [`PRD.md`](PRD.md).

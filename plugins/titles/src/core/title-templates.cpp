@@ -26,6 +26,10 @@ constexpr Rgba kNavy = rgb(0x0B, 0x25, 0x45);
 constexpr Rgba kGold = rgb(0xD4, 0xA8, 0x4B);
 constexpr Rgba kBurgundy = rgb(0x5A, 0x1A, 0x2B);
 constexpr Rgba kTeal = rgb(0x0F, 0x76, 0x6E);
+constexpr Rgba kNewsBlue = rgb(0x0A, 0x3C, 0xB8);
+constexpr Rgba kNewsRed = rgb(0xD4, 0x12, 0x1B);
+constexpr Rgba kNewsAmber = rgb(0xFF, 0xB4, 0x00);
+constexpr Rgba kPaper = rgb(0xEC, 0xF1, 0xF5);
 constexpr Rgba kSlate = rgb(0x1F, 0x29, 0x37);
 
 Rgba withAlpha(Rgba c, uint8_t a)
@@ -107,23 +111,7 @@ std::vector<TitleTemplate> buildAll()
 		all.push_back(t);
 	}
 
-	// ---- Worship: scripture, songs, series ----
-	{
-		auto t = make("scripture-bar", Category::Worship, {withAlpha(kNavy, 242), kGold, kWhite, kGold},
-			      F::BaskervilleItalic, F::BarlowCondensedSemiBold, M::Rise, M::Fade);
-		t.usesLine2 = true; // line 1: the verse, line 2: the reference
-		t.cornerRadius = 0;
-		t.longText = true;
-		all.push_back(t);
-	}
-	{
-		auto t = make("verse-card", Category::Worship,
-			      {withAlpha(kBurgundy, 245), kGold, kCream, withAlpha(kCream, 210)}, F::Baskerville,
-			      F::BarlowCondensedMedium, M::Fade, M::Fade);
-		t.cornerRadius = 18;
-		t.longText = true;
-		all.push_back(t);
-	}
+	// ---- Worship: series titles, songs, quotes ----
 	{
 		auto t = make("series-title", Category::Worship,
 			      {withAlpha(kInk, 0), kAmber, kWhite, withAlpha(kWhite, 220)}, F::BebasNeue,
@@ -156,21 +144,20 @@ std::vector<TitleTemplate> buildAll()
 		all.push_back(t);
 	}
 	{
-		auto t = make("breaking", Category::Announce,
-			      {withAlpha(kWhite, 248), kRed, kInk, withAlpha(kInk, 180)}, F::BarlowCondensedBold,
-			      F::BarlowSemiBold, M::Slide, M::Slide);
+		auto t = make("breaking", Category::News, {withAlpha(kWhite, 248), kRed, kInk, withAlpha(kInk, 180)},
+			      F::BarlowCondensedBold, F::BarlowSemiBold, M::Slide, M::Slide);
 		t.usesTag = true;
 		all.push_back(t);
 	}
 	{
-		auto t = make("news-bar", Category::Announce,
+		auto t = make("news-bar", Category::News,
 			      {withAlpha(kSlate, 245), kBlue, kWhite, withAlpha(kWhite, 195)},
 			      F::BarlowCondensedSemiBold, F::BarlowRegular, M::Slide, M::Slide);
 		t.usesTag = true;
 		all.push_back(t);
 	}
 	{
-		auto t = make("handle-pill", Category::Announce,
+		auto t = make("handle-pill", Category::Social,
 			      {withAlpha(kInk, 235), kGreen, kCream, withAlpha(kCream, 190)}, F::BarlowSemiBold,
 			      F::BarlowCondensedMedium, M::Pop, M::Fade);
 		t.usesLine2 = false;
@@ -204,6 +191,68 @@ std::vector<TitleTemplate> buildAll()
 		t.usesTag = true;
 		t.tickerSpeed = 130.0;
 		t.longText = true;
+		all.push_back(t);
+	}
+
+	// ---- News: tabbed headline bars in the broadcast-news style ----
+	{
+		// An amber tab ("NEW AT 5") over a blue headline bar.
+		auto t = make("news-flash", Category::News, {kNewsBlue, kNewsAmber, kWhite, rgb(0x0B, 0x25, 0x45)},
+			      F::BarlowCondensedBold, F::BarlowSemiBold, M::Slide, M::Slide);
+		t.usesLine2 = false;
+		t.usesTag = true;
+		all.push_back(t);
+	}
+	{
+		// A red tab ("BREAKING NEWS"), a light bar with headline and detail line, and a red LIVE block.
+		auto t = make("news-report", Category::News,
+			      {rgb(0xE6, 0xE6, 0xE6), kNewsRed, rgb(0x11, 0x11, 0x10), rgb(0x33, 0x33, 0x33)},
+			      F::BarlowCondensedBold, F::BarlowSemiBold, M::Slide, M::Slide);
+		t.usesTag = true;
+		t.pulseSeconds = 1.4;
+		all.push_back(t);
+	}
+	{
+		// A blue LIVE block, a white headline bar with a blue tab ("CURRENT NEWS") and a strip under it.
+		auto t = make("news-desk", Category::News,
+			      {kPaper, rgb(0x0B, 0x57, 0xD0), rgb(0x11, 0x11, 0x10), kWhite}, F::BarlowCondensedBold,
+			      F::BarlowSemiBold, M::Slide, M::Slide);
+		t.usesTag = true;
+		t.pulseSeconds = 1.4;
+		all.push_back(t);
+	}
+
+	// ---- Live: show that the stream is on air ----
+	{
+		// A small badge in the top corner with a pulsing light. Line 1 is the word ("LIVE", "ON AIR",
+		// "REPLAY"), line 2 an optional name beside it.
+		auto t = make("live-badge", Category::Live,
+			      {withAlpha(kInk, 230), kRed, kWhite, withAlpha(kWhite, 210)}, F::BarlowCondensedBold,
+			      F::BarlowSemiBold, M::Pop, M::Fade);
+		t.usesTag = false;
+		t.anchorTop = true;
+		t.cornerRadius = 12;
+		t.pulseSeconds = 1.4;
+		all.push_back(t);
+	}
+	{
+		// A wider lower-third: a red LIVE block, the title of the broadcast and a line under it.
+		auto t = make("on-air", Category::Live, {withAlpha(kInk, 238), kRed, kCream, withAlpha(kCream, 190)},
+			      F::BarlowCondensedSemiBold, F::BarlowRegular, M::Slide, M::Slide);
+		t.usesTag = true;
+		t.pulseSeconds = 1.4;
+		all.push_back(t);
+	}
+
+	// ---- Social: where to find you (each carries the platform's own icon) ----
+	// Line 1 is the handle, line 2 the call to action ("Subscribe"), the tag the platform's name.
+	for (const char *id :
+	     {"social-youtube", "social-instagram", "social-tiktok", "social-facebook", "social-mixlr"}) {
+		auto t = make(id, Category::Social, {withAlpha(kInk, 238), kAmber, kCream, withAlpha(kCream, 190)},
+			      F::BarlowCondensedSemiBold, F::BarlowRegular, M::Slide, M::Slide);
+		t.usesTag = true;
+		t.cornerRadius = 18;
+		t.holdSeconds = 10.0;
 		all.push_back(t);
 	}
 
@@ -346,6 +395,12 @@ const char *categoryKey(Category category)
 		return "Laycue.Titles.Cat.Announce";
 	case Category::Ticker:
 		return "Laycue.Titles.Cat.Ticker";
+	case Category::Live:
+		return "Laycue.Titles.Cat.Live";
+	case Category::Social:
+		return "Laycue.Titles.Cat.Social";
+	case Category::News:
+		return "Laycue.Titles.Cat.News";
 	}
 	return "Laycue.Titles.Cat.People";
 }

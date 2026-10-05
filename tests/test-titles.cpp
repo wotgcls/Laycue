@@ -5,6 +5,7 @@
 #include "core/title-clock.hpp"
 #include "core/title-templates.hpp"
 
+#include <map>
 #include <set>
 
 using namespace laycue::titles;
@@ -128,10 +129,10 @@ TEST_CASE("titles: the ticker wraps and says how many copies fill the view")
 	CHECK(ticker.offset() >= 0.0);
 }
 
-TEST_CASE("titles: there are 20 built-in templates with unique ids and sensible values")
+TEST_CASE("titles: there are 28 built-in templates with unique ids and sensible values")
 {
 	const auto &all = builtInTemplates();
-	CHECK_EQ(int(all.size()), 20);
+	CHECK_EQ(int(all.size()), 28);
 	std::set<std::string> ids;
 	for (const auto &t : all) {
 		ids.insert(t.id);
@@ -141,8 +142,36 @@ TEST_CASE("titles: there are 20 built-in templates with unique ids and sensible 
 		if (t.tickerSpeed > 0.0)
 			CHECK(t.category == Category::Ticker);
 	}
-	CHECK_EQ(int(ids.size()), 20);
+	CHECK_EQ(int(ids.size()), 28);
 	CHECK(findTemplate("nope") == nullptr);
+}
+
+TEST_CASE("titles: every category has templates, the Live and Social ones are where they belong, no scripture")
+{
+	std::map<Category, int> perCategory;
+	for (const auto &t : builtInTemplates())
+		++perCategory[t.category];
+	for (Category c : {Category::People, Category::Worship, Category::Announce, Category::Ticker, Category::Live,
+			   Category::Social, Category::News})
+		CHECK(perCategory[c] >= 2);
+	CHECK_EQ(perCategory[Category::Social], 6); // the generic handle and the five platforms
+	for (const char *id :
+	     {"social-youtube", "social-instagram", "social-tiktok", "social-facebook", "social-mixlr"}) {
+		const TitleTemplate *t = findTemplate(id);
+		CHECK(t != nullptr);
+		if (t)
+			CHECK(t->category == Category::Social && t->usesTag);
+	}
+	for (const char *id : {"live-badge", "on-air"}) {
+		const TitleTemplate *t = findTemplate(id);
+		CHECK(t != nullptr);
+		if (t) {
+			CHECK(t->category == Category::Live);
+			CHECK(isContinuous(*t)); // the light pulses, so it is redrawn every frame
+		}
+	}
+	CHECK(findTemplate("scripture-bar") == nullptr);
+	CHECK(findTemplate("verse-card") == nullptr);
 }
 
 TEST_CASE("titles: colours parse and print")

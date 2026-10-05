@@ -95,9 +95,9 @@ void Segmented::setItems(const QStringList &labels)
 
 void Segmented::setCurrent(int index)
 {
-	if (index == current_ || index < 0 || index >= labels_.size())
+	if (index == current_ || index < -1 || index >= labels_.size())
 		return;
-	current_ = index;
+	current_ = index; // -1 = nothing selected (for rows that share one choice)
 	update();
 }
 

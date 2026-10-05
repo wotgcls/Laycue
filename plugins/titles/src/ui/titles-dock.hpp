@@ -119,6 +119,7 @@ private:
 	QWidget *openedPage_ = nullptr;
 	laycue::ui::Segmented *tabs_ = nullptr;
 	laycue::ui::Segmented *categories_ = nullptr;
+	laycue::ui::Segmented *categories2_ = nullptr; // second row of category choices; only one row has a selection
 	QLabel *statusLabel_ = nullptr;
 	QWidget *statusDot_ = nullptr;
 	TitlePreview *preview_ = nullptr;
@@ -146,7 +147,7 @@ private:
 	QWidget *toast_ = nullptr;
 	QLabel *toastText_ = nullptr;
 
-	int categoryFilter_ = 0; // 0 = all
+	int categoryFilter_ = 0; // 0 = all, then the categories in order (People = 1 ...)
 	Tab tab_ = Tab::Templates;
 	bool shuttingDown_ = false;
 };

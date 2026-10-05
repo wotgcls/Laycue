@@ -1,6 +1,7 @@
 #include "render/title-renderer.hpp"
 
 #include "core/easing.hpp"
+#include "render/brand-icons.hpp"
 
 #include <QFontMetricsF>
 #include <QHash>
@@ -535,63 +536,6 @@ void hairline(Ctx &c)
 			       c.part(0.34, 0.5));
 }
 
-// 9. Scripture Bar: the verse, wrapped and fitted, with its reference above a thin rule.
-void scriptureBar(Ctx &c)
-{
-	const double padX = 52, padY = 34;
-	const double w = c.W - 2 * kLeft;
-	const QString reference = c.x.line2.toUpper();
-	const QFont fr = c.font(c.t.body, 34);
-	const Wrapped verse = fitWrapped(c, c.t.display, 48, 32, c.x.line1, w - 2 * padX, 4, 1.38);
-	const double refH = c.has(reference) ? 50 : 0;
-	const double h = 2 * padY + refH + verse.lines.size() * verse.lineHeight + (refH > 0 ? 8 : 0);
-	const double y = c.bottom() - h;
-	const double e = c.part(0.0, 0.6);
-	fillPanel(c, QRectF(kLeft, y, w, h));
-	fillRect(c.p, QRectF(kLeft, y, 9, h * e), c.accent);
-	double ty = y + padY;
-	if (refH > 0) {
-		const double er = c.part(0.15, 0.5);
-		drawText(c.p, QRectF(kLeft + padX, ty, w, 42), reference, fr, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
-			 er, 4.0);
-		fillRect(c.p, QRectF(kLeft + padX, ty + 46, 120 * c.part(0.2, 0.5), 2), c.accent);
-		ty += refH + 8;
-	}
-	for (int i = 0; i < verse.lines.size(); ++i) {
-		const double ev = c.part(0.24 + 0.05 * i, 0.5);
-		drawText(c.p,
-			 QRectF(kLeft + padX, ty + i * verse.lineHeight + 14 * (1 - ev), w - 2 * padX,
-				verse.lineHeight),
-			 verse.lines[i], verse.font, c.text, Qt::AlignLeft | Qt::AlignVCenter, ev);
-	}
-}
-
-// 10. Verse Card: a centred card with a large quotation mark.
-void verseCard(Ctx &c)
-{
-	const double w = std::min(1380.0, c.W - 2 * kLeft);
-	const double padX = 90, padY = 46;
-	const Wrapped verse = fitWrapped(c, c.t.display, 44, 30, c.x.line1, w - 2 * padX, 4, 1.42);
-	const QFont fr = c.font(c.t.body, 30);
-	const double refH = c.has(c.x.line2) ? 56 : 0;
-	const double h = 2 * padY + verse.lines.size() * verse.lineHeight + refH;
-	const double x = (c.W - w) / 2.0;
-	const double y = c.bottom() - h;
-	fillPanel(c, QRectF(x, y, w, h), c.t.cornerRadius);
-	drawText(c.p, QRectF(x + 28, y - 8 + 18 * (1 - c.part(0.1, 0.5)), 140, 170), QStringLiteral("“"),
-		 c.font(c.t.display, 170), withOpacity(c.accent, 0.55), Qt::AlignLeft | Qt::AlignTop, c.part(0.1, 0.5));
-	for (int i = 0; i < verse.lines.size(); ++i) {
-		const double ev = c.part(0.2 + 0.05 * i, 0.5);
-		drawText(c.p,
-			 QRectF(x + padX, y + padY + i * verse.lineHeight + 12 * (1 - ev), w - 2 * padX,
-				verse.lineHeight),
-			 verse.lines[i], verse.font, c.text, Qt::AlignHCenter | Qt::AlignVCenter, ev);
-	}
-	if (refH > 0)
-		drawText(c.p, QRectF(x + padX, y + padY + verse.lines.size() * verse.lineHeight + 6, w - 2 * padX, 44),
-			 c.x.line2.toUpper(), fr, c.accent, Qt::AlignHCenter | Qt::AlignVCenter, c.part(0.4, 0.5), 4.0);
-}
-
 // 11. Sermon Series: a tall condensed title with a vertical accent bar. For the start of a message.
 void seriesTitle(Ctx &c)
 {
@@ -794,6 +738,358 @@ void thankYou(Ctx &c)
 			       c.sub, Qt::AlignCenter, c.part(0.35, 0.5));
 }
 
+// ---- Live: the stream is on air ------------------------------------------------------------------
+
+// Where the pulse is, 0..1, from the steadily growing position the renderer is given (100 px per second).
+double pulsePhase(const Ctx &c)
+{
+	const double seconds = c.t.pulseSeconds > 0.0 ? c.t.pulseSeconds : 1.4;
+	return std::fmod(c.tickerPx / 100.0 / seconds, 1.0);
+}
+
+// The light: a solid dot that breathes, with a ring that grows and fades once per pulse.
+void drawLiveDot(Ctx &c, QPointF centre, double radius, const QColor &colour, double appear)
+{
+	const double ph = pulsePhase(c);
+	const double breathe = 0.78 + 0.22 * (0.5 + 0.5 * std::cos(ph * 2.0 * M_PI));
+	c.p.save();
+	c.p.setPen(Qt::NoPen);
+	QColor ring = colour;
+	ring.setAlphaF(std::clamp((1.0 - ph) * 0.55, 0.0, 1.0) * appear);
+	c.p.setBrush(ring);
+	const double rr = radius * (1.0 + 1.1 * ph);
+	c.p.drawEllipse(centre, rr, rr);
+	QColor dot = colour;
+	dot.setAlphaF(breathe * appear);
+	c.p.setBrush(dot);
+	c.p.drawEllipse(centre, radius * appear, radius * appear);
+	c.p.restore();
+}
+
+// 21. Live Badge: a small red block with a pulsing light in the top corner; the word is the operator's.
+void liveBadge(Ctx &c)
+{
+	const double h = 64, top = 64, padL = 22, dotArea = 34, padR = 26;
+	const QString word = (c.has(c.x.line1) ? c.x.line1 : QStringLiteral("LIVE")).toUpper();
+	const QFont fw = c.font(c.t.display, 40);
+	const double ww = textWidth(fw, word) + word.size() * 3.0;
+	const double bw = padL + dotArea + ww + padR;
+	const double e = c.part(0.0, 0.5);
+	const QRectF block(kLeft, top, bw * e, h);
+	fillPanel(c, block, 12);
+	c.p.save();
+	c.p.setClipRect(block);
+	fillRect(c.p, QRectF(kLeft, top, bw, h), c.accent, 12);
+	drawLiveDot(c, QPointF(kLeft + padL + 10, top + h / 2), 10, QColor(255, 255, 255), c.part(0.15, 0.4));
+	drawText(c.p, QRectF(kLeft + padL + dotArea, top, ww + 10, h), word, fw, QColor(255, 255, 255),
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.2, 0.4), 3.0);
+	c.p.restore();
+	if (c.has(c.x.line2)) {
+		const QFont fn = fitFont(c, c.t.body, 30, 22, c.x.line2, 760);
+		const double nw = textWidth(fn, c.x.line2) + 2 * 26;
+		const double e2 = c.part(0.3, 0.5);
+		const QRectF pill(kLeft + bw - 6, top, (nw + 6) * e2, h);
+		c.p.save();
+		c.p.setClipRect(pill);
+		fillRect(c.p, QRectF(kLeft + bw - 12, top, nw + 12, h), c.panel, 12);
+		drawText(c.p, QRectF(kLeft + bw + 20, top, nw, h), c.x.line2, fn, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.4, 0.4));
+		c.p.restore();
+	}
+}
+
+// 22. On Air: a lower third with a red LIVE block, the broadcast's title and a line under it.
+void onAir(Ctx &c)
+{
+	const double padX = 36, blockW = 214;
+	const bool two = c.has(c.x.line2);
+	const double h = two ? 124 : 96;
+	const QString word = (c.has(c.x.tag) ? c.x.tag : QStringLiteral("LIVE")).toUpper();
+	const QFont fw = c.font(c.t.display, 44);
+	const QFont f1 = fitFont(c, c.t.display, 56, 36, c.x.line1, 1150);
+	const QFont f2 = fitFont(c, c.t.body, 28, 22, c.x.line2, 1150);
+	const double w =
+		std::max(700.0, blockW + 2 * padX + std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
+	const double y = c.bottom() - h;
+	const double pw = w * c.part(0.0, 0.6);
+	fillPanel(c, QRectF(kLeft, y, pw, h));
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y, pw, h));
+	fillRect(c.p, QRectF(kLeft, y, blockW, h), c.accent);
+	drawLiveDot(c, QPointF(kLeft + 46, y + h / 2), 11, QColor(255, 255, 255), c.part(0.2, 0.4));
+	drawText(c.p, QRectF(kLeft + 74, y, blockW - 74, h), word, fw, QColor(255, 255, 255),
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.25, 0.4), 3.0);
+	const double e1 = c.part(0.3, 0.5), e2 = c.part(0.42, 0.5);
+	const double tx = kLeft + blockW + padX;
+	if (two) {
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y + 10, w, 66), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 24 * (1 - e2), y + 76, w, 36), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
+	} else {
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y, w, h), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+	}
+	c.p.restore();
+}
+
+// ---- Social: where to find the operator -------------------------------------------------------------
+
+enum class Platform { YouTube, Instagram, TikTok, Facebook, Mixlr };
+
+void fillBrandIcon(QPainter &p, Brand brand, const QRectF &box, const QColor &colour)
+{
+	p.save();
+	p.translate(box.topLeft());
+	p.scale(box.width() / 24.0, box.height() / 24.0);
+	p.setPen(Qt::NoPen);
+	p.setBrush(colour);
+	p.drawPath(brandIconPath(brand));
+	p.restore();
+}
+
+// The platform's tile: its colour (Instagram's gradient) with its icon on top. Mixlr's logo is not in any
+// open icon set, so it gets a neutral tile with a sound-wave mark until the official file is added.
+void drawPlatformTile(Ctx &c, Platform platform, const QRectF &tile)
+{
+	c.p.save();
+	c.p.setPen(Qt::NoPen);
+	const double r = 16;
+	switch (platform) {
+	case Platform::YouTube:
+		c.p.setBrush(QColor(0xFF, 0x00, 0x00));
+		c.p.drawRoundedRect(tile, r, r);
+		fillBrandIcon(c.p, Brand::YouTube, tile.adjusted(12, 12, -12, -12), QColor(255, 255, 255));
+		break;
+	case Platform::Instagram: {
+		QLinearGradient g(tile.bottomLeft(), tile.topRight());
+		g.setColorAt(0.0, QColor(0xFE, 0xDA, 0x77));
+		g.setColorAt(0.25, QColor(0xF5, 0x85, 0x29));
+		g.setColorAt(0.5, QColor(0xDD, 0x2A, 0x7B));
+		g.setColorAt(0.75, QColor(0x81, 0x34, 0xAF));
+		g.setColorAt(1.0, QColor(0x51, 0x5B, 0xD4));
+		c.p.setBrush(g);
+		c.p.drawRoundedRect(tile, r, r);
+		fillBrandIcon(c.p, Brand::Instagram, tile.adjusted(13, 13, -13, -13), QColor(255, 255, 255));
+		break;
+	}
+	case Platform::TikTok: {
+		c.p.setBrush(QColor(0, 0, 0));
+		c.p.drawRoundedRect(tile, r, r);
+		const QRectF box = tile.adjusted(14, 14, -14, -14);
+		fillBrandIcon(c.p, Brand::TikTok, box.translated(-2.2, -2.2), QColor(0x25, 0xF4, 0xEE));
+		fillBrandIcon(c.p, Brand::TikTok, box.translated(2.2, 2.2), QColor(0xFE, 0x2C, 0x55));
+		fillBrandIcon(c.p, Brand::TikTok, box, QColor(255, 255, 255));
+		break;
+	}
+	case Platform::Facebook:
+		c.p.setBrush(QColor(0x08, 0x66, 0xFF));
+		c.p.drawRoundedRect(tile, r, r);
+		fillBrandIcon(c.p, Brand::Facebook, tile.adjusted(10, 10, -10, -10), QColor(255, 255, 255));
+		break;
+	case Platform::Mixlr: {
+		c.p.setBrush(QColor(0x2C, 0x2A, 0x27));
+		c.p.drawRoundedRect(tile, r, r);
+		static const double heights[] = {0.30, 0.55, 0.85, 0.55, 0.30};
+		const double bw = tile.width() * 0.085, gap = tile.width() * 0.075;
+		const double total = 5 * bw + 4 * gap;
+		double x = tile.center().x() - total / 2.0;
+		c.p.setBrush(c.accent);
+		for (double hFrac : heights) {
+			const double bh = tile.height() * 0.62 * hFrac + 6;
+			c.p.drawRoundedRect(QRectF(x, tile.center().y() - bh / 2.0, bw, bh), bw / 2, bw / 2);
+			x += bw + gap;
+		}
+		break;
+	}
+	}
+	c.p.restore();
+}
+
+// 23-27. Social cards: the platform's tile, its name, the operator's handle and a call to action.
+void socialCard(Ctx &c, Platform platform)
+{
+	const double h = 100, pad = 14, tileS = h - 2 * pad, gapT = 26, padR = 28;
+	const QString platformName = c.has(c.x.tag) ? c.x.tag.toUpper() : QString();
+	const QFont fh = fitFont(c, c.t.display, 46, 28, c.x.line1, 760);
+	const QFont ftag = c.font(c.t.body, 20);
+	const QFont fcta = c.font(c.t.display, 28);
+	const bool cta = c.has(c.x.line2);
+	const QString ctaText = c.x.line2.toUpper();
+	const double ctaW = cta ? textWidth(fcta, ctaText) + ctaText.size() * 2.0 + 44 : 0.0;
+	const double textW =
+		std::max(textWidth(fh, c.x.line1), textWidth(ftag, platformName) + platformName.size() * 3.0);
+	const double w = pad + tileS + gapT + textW + (cta ? 30 + ctaW : 0.0) + padR;
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.55);
+	fillPanel(c, QRectF(kLeft, y, w * e, h), c.t.cornerRadius);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y, w * e + 1, h));
+	fillRect(c.p, QRectF(kLeft, y, w, h), c.panel, c.t.cornerRadius);
+	// The tile pops in a little after the card starts to open.
+	const double pop = c.partBack(0.08, 0.45);
+	const QRectF tile(kLeft + pad, y + pad, tileS, tileS);
+	c.p.save();
+	c.p.translate(tile.center());
+	c.p.scale(std::max(pop, 0.001), std::max(pop, 0.001));
+	c.p.translate(-tile.center());
+	drawPlatformTile(c, platform, tile);
+	c.p.restore();
+	const double tx = kLeft + pad + tileS + gapT;
+	const double e1 = c.part(0.25, 0.5), e2 = c.part(0.34, 0.5);
+	if (!platformName.isEmpty()) {
+		drawText(c.p, QRectF(tx + 20 * (1 - e1), y + 12, textW + 40, 30), platformName, ftag, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1, 3.0);
+		drawText(c.p, QRectF(tx + 20 * (1 - e2), y + 40, textW + 40, 52), c.x.line1, fh, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
+	} else {
+		drawText(c.p, QRectF(tx + 20 * (1 - e2), y, textW + 40, h), c.x.line1, fh, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
+	}
+	if (cta) {
+		const double e3 = c.partBack(0.45, 0.4);
+		const QRectF chip(kLeft + w - padR - ctaW, y + (h - 52) / 2.0, ctaW, 52);
+		c.p.save();
+		c.p.translate(chip.center());
+		c.p.scale(std::max(e3, 0.001), std::max(e3, 0.001));
+		c.p.translate(-chip.center());
+		fillRect(c.p, chip, c.accent, 12);
+		drawText(c.p, chip, ctaText, fcta, QColor(17, 17, 16), Qt::AlignCenter, 1.0, 2.0);
+		c.p.restore();
+	}
+	c.p.restore();
+}
+
+// ---- News: tabbed headline bars -------------------------------------------------------------------------
+
+QColor darker(const QColor &c, int percent)
+{
+	return c.darker(percent);
+}
+
+// A tab sitting on top of a bar: a label in a small solid block.
+void drawTab(Ctx &c, const QRectF &rect, const QString &label, const QFont &font, const QColor &fill, const QColor &ink,
+	     double amount)
+{
+	if (rect.width() <= 0.0)
+		return;
+	c.p.save();
+	c.p.translate(0, -16 * (1.0 - amount));
+	fillRect(c.p, rect, fill);
+	drawText(c.p, rect, label, font, ink, Qt::AlignCenter, amount, 1.5);
+	c.p.restore();
+}
+
+// 28. News Flash: an amber tab over a blue headline bar.
+void newsFlash(Ctx &c)
+{
+	const double padX = 34, h = 92, tabH = 44;
+	const QFont f1 = fitFont(c, c.t.display, 60, 38, c.x.line1.toUpper(), 1300);
+	const QFont ft = c.font(c.t.display, 30);
+	const QString tag = c.x.tag.toUpper();
+	const double w = std::max(560.0, 2 * padX + textWidth(f1, c.x.line1.toUpper()) + 40);
+	const double y = c.bottom() - h;
+	const double pw = w * c.part(0.0, 0.6);
+	if (c.has(tag))
+		drawTab(c, QRectF(kLeft, y - tabH, textWidth(ft, tag) + 2 * 26 + tag.size() * 1.5, tabH), tag, ft,
+			c.accent, c.sub, c.part(0.25, 0.4));
+	QLinearGradient g(kLeft, 0, kLeft + w, 0);
+	g.setColorAt(0.0, c.panel);
+	g.setColorAt(1.0, darker(c.panel, 170));
+	c.p.save();
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(g);
+	c.p.drawRect(QRectF(kLeft, y, pw, h));
+	c.p.setClipRect(QRectF(kLeft, y, pw, h));
+	const double e = c.part(0.2, 0.5);
+	drawText(c.p, QRectF(kLeft + padX + 24 * (1 - e), y, w, h), c.x.line1.toUpper(), f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, e);
+	c.p.restore();
+}
+
+// 29. News Report: a red tab, a light bar with headline and detail, and a red LIVE block on the right.
+void newsReport(Ctx &c)
+{
+	const double padX = 30, h = 116, tabH = 44, blockW = 200;
+	const bool two = c.has(c.x.line2);
+	const QFont f1 = fitFont(c, c.t.display, 62, 38, c.x.line1.toUpper(), 1200);
+	const QFont f2 = fitFont(c, c.t.body, 26, 20, c.x.line2.toUpper(), 1200);
+	const QFont ft = c.font(c.t.display, 30);
+	const QFont fw = c.font(c.t.display, 38);
+	const QString tag = c.x.tag.toUpper();
+	const double w = std::max(
+		900.0,
+		2 * padX + std::max(textWidth(f1, c.x.line1.toUpper()), textWidth(f2, c.x.line2.toUpper())) + blockW);
+	const double y = c.bottom() - h;
+	const double pw = w * c.part(0.0, 0.6);
+	if (c.has(tag))
+		drawTab(c, QRectF(kLeft, y - tabH, textWidth(ft, tag) + 2 * 26 + tag.size() * 1.5, tabH), tag, ft,
+			c.accent, QColor(255, 255, 255), c.part(0.25, 0.4));
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y, pw, h + 6));
+	QLinearGradient g(0, y, 0, y + h);
+	g.setColorAt(0.0, c.panel.lighter(112));
+	g.setColorAt(1.0, c.panel.darker(118));
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(g);
+	c.p.drawRect(QRectF(kLeft, y, w, h));
+	fillRect(c.p, QRectF(kLeft, y + h - 4, w - blockW, 4), c.accent);
+	const double e1 = c.part(0.3, 0.5), e2 = c.part(0.4, 0.5);
+	const double tx = kLeft + padX;
+	if (two) {
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y + 6, w, 70), c.x.line1.toUpper(), f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 24 * (1 - e2), y + 72, w, 34), c.x.line2.toUpper(), f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
+	} else {
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y, w, h), c.x.line1.toUpper(), f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+	}
+	const QRectF block(kLeft + w - blockW, y, blockW, h);
+	fillRect(c.p, block, c.accent);
+	drawLiveDot(c, QPointF(block.left() + 44, block.center().y()), 10, QColor(255, 255, 255), c.part(0.5, 0.4));
+	drawText(c.p, QRectF(block.left() + 70, y, blockW - 70, h), QStringLiteral("LIVE"), fw, QColor(255, 255, 255),
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.5, 0.4), 2.0);
+	c.p.restore();
+}
+
+// 30. News Desk: a blue LIVE block, a white headline bar with a tab above it and a detail strip under it.
+void newsDesk(Ctx &c)
+{
+	const double padX = 36, h = 96, blockW = 230, stripH = 38, tabH = 44;
+	const bool strip = c.has(c.x.line2);
+	const QFont f1 = fitFont(c, c.t.display, 62, 38, c.x.line1.toUpper(), 1200);
+	const QFont f2 = c.font(c.t.body, 22);
+	const QFont ft = c.font(c.t.display, 30);
+	const QFont fw = c.font(c.t.display, 42);
+	const QString tag = c.x.tag.toUpper();
+	const double totalH = h + (strip ? stripH : 0.0);
+	const double w = std::max(900.0, blockW + 2 * padX + textWidth(f1, c.x.line1.toUpper()));
+	const double y = c.bottom() - totalH;
+	const double pw = w * c.part(0.0, 0.6);
+	if (c.has(tag))
+		drawTab(c, QRectF(kLeft + blockW, y - tabH, textWidth(ft, tag) + 2 * 26 + tag.size() * 1.5, tabH), tag,
+			ft, c.accent, QColor(255, 255, 255), c.part(0.25, 0.4));
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y, pw, totalH));
+	fillRect(c.p, QRectF(kLeft + blockW, y, w - blockW, h), c.panel);
+	fillRect(c.p, QRectF(kLeft, y, blockW, totalH), c.accent.darker(125));
+	drawLiveDot(c, QPointF(kLeft + 58, y + h / 2), 12, QColor(255, 255, 255), c.part(0.2, 0.4));
+	drawText(c.p, QRectF(kLeft + 88, y, blockW - 88, h), QStringLiteral("LIVE"), fw, QColor(255, 255, 255),
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.25, 0.4), 2.0);
+	const double e1 = c.part(0.3, 0.5);
+	drawText(c.p, QRectF(kLeft + blockW + padX + 24 * (1 - e1), y, w, h), c.x.line1.toUpper(), f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, e1);
+	if (strip) {
+		const double e2 = c.part(0.4, 0.5);
+		fillRect(c.p, QRectF(kLeft + blockW, y + h, w - blockW, stripH), c.accent.lighter(135));
+		drawText(c.p, QRectF(kLeft + blockW + padX + 24 * (1 - e2), y + h, w, stripH),
+			 QStringLiteral("\u25B6  ") + c.x.line2.toUpper(), f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
+			 e2, 1.0);
+	}
+	c.p.restore();
+}
+
 // The scrolling strip shared by both tickers.
 void drawTickerText(Ctx &c, const QRectF &area, const QFont &font, const QColor &colour)
 {
@@ -883,8 +1179,6 @@ const std::vector<StyleInfo> &styles()
 		{"corner-tag", cornerTag},
 		{"stacked-panels", stackedPanels},
 		{"hairline", hairline},
-		{"scripture-bar", scriptureBar},
-		{"verse-card", verseCard},
 		{"series-title", seriesTitle},
 		{"song-lyric", songLyric},
 		{"big-quote", bigQuote},
@@ -893,6 +1187,31 @@ const std::vector<StyleInfo> &styles()
 		{"news-bar", newsBar},
 		{"handle-pill", handlePill},
 		{"thank-you", thankYou},
+		{"news-flash", newsFlash},
+		{"news-report", newsReport},
+		{"news-desk", newsDesk},
+		{"live-badge", liveBadge},
+		{"on-air", onAir},
+		{"social-youtube",
+		 [](Ctx &c) {
+			 socialCard(c, Platform::YouTube);
+		 }},
+		{"social-instagram",
+		 [](Ctx &c) {
+			 socialCard(c, Platform::Instagram);
+		 }},
+		{"social-tiktok",
+		 [](Ctx &c) {
+			 socialCard(c, Platform::TikTok);
+		 }},
+		{"social-facebook",
+		 [](Ctx &c) {
+			 socialCard(c, Platform::Facebook);
+		 }},
+		{"social-mixlr",
+		 [](Ctx &c) {
+			 socialCard(c, Platform::Mixlr);
+		 }},
 		{"crawl-ticker", crawlTicker, true},
 		{"headline-ticker", headlineTicker, true},
 	};
@@ -914,7 +1233,9 @@ double regionDesignHeight(const TitleTemplate &tpl, int canvasWidth, int canvasH
 {
 	if (tpl.fullHeight || tpl.id == "thank-you")
 		return kDesignWidth * double(canvasHeight) / double(std::max(canvasWidth, 1));
-	if (tpl.id == "scripture-bar" || tpl.id == "big-quote" || tpl.id == "verse-card" || tpl.id == "series-title")
+	if (tpl.id == "live-badge")
+		return 200.0;
+	if (tpl.id == "big-quote" || tpl.id == "series-title")
 		return kTallRegionHeight;
 	return kRegionHeight;
 }
@@ -922,7 +1243,7 @@ double regionDesignHeight(const TitleTemplate &tpl, int canvasWidth, int canvasH
 double tickerStripWidth(const FontSet &fonts, const TitleTemplate &tpl, const TitleText &text)
 {
 	if (tpl.tickerSpeed <= 0.0)
-		return 0.0;
+		return tpl.pulseSeconds > 0.0 ? 100.0 * tpl.pulseSeconds : 0.0; // a pulse repeats every strip
 	const double px = tpl.id == "headline-ticker" ? 40 : 42;
 	const QFont font = fonts.font(tpl.display, px);
 	return textWidth(font, text.line1.simplified()) + 180.0;

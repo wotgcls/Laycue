@@ -15,6 +15,7 @@ add_executable(
   "${TITLES_SRC}/core/ticker.cpp"
   "${TITLES_SRC}/core/title-clock.cpp"
   "${TITLES_SRC}/core/title-templates.cpp"
+  "${TITLES_SRC}/render/brand-icons.cpp"
   "${TITLES_SRC}/render/font-set.cpp"
   "${TITLES_SRC}/render/title-renderer.cpp"
 )

@@ -40,7 +40,7 @@ public:
 	explicit Segmented(QWidget *parent = nullptr);
 
 	void setItems(const QStringList &labels);
-	void setCurrent(int index); // does not emit changed()
+	void setCurrent(int index); // does not emit changed(); -1 selects nothing
 	int current() const { return current_; }
 	void setSegmentEnabled(int index, bool enabled);
 

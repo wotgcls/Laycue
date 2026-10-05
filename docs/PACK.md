@@ -6,7 +6,7 @@ nothing else at run time, so any one of them can be used alone.
 | Plugin | Job | Folder |
 |---|---|---|
 | **Laycue Scenes** | Run scenes and layers without mistakes: Go Live, overlay rules, layouts, pushbacks | `plugins/scenes` |
-| **Laycue Titles** | Broadcast-quality lower thirds, tickers and scripture bars, made inside OBS | `plugins/titles` |
+| **Laycue Titles** | Broadcast-quality lower thirds, live badges, social cards and tickers, made inside OBS | `plugins/titles` |
 | **Laycue Network** | Choose the right bitrate, watch the connection live, protect the stream | `plugins/network` |
 
 ## What problem each one solves (and what OBS and others already do)
@@ -25,12 +25,12 @@ reviews and church-streaming guides.
 ### Titles
 - **Problem (demand evidence):** "it is difficult to have lower third graphics controlled independently
   from camera scenes" (OBS forum). Churches work around it with Stream Deck + browser sources + separate
-  graphics apps. Scripture and speaker names are needed every week.
+  graphics apps. Speaker names are needed every week.
 - **OBS has:** text sources and a browser source. No lower-third system, no animation, no templates.
 - **Others:** browser-source based tools (HTML/CSS), web servers inside OBS (Smart Lower Thirds), a paid
   web app (StreamSlayers). All need a browser source or a web server.
-- **Laycue adds:** a *native* OBS source (no browser, no web server, no network), 20 designed templates
-  that look broadcast-grade, a custom template editor, scrolling tickers, scripture bars with
+- **Laycue adds:** a *native* OBS source (no browser, no web server, no network), 28 designed templates
+  that look broadcast-grade, a custom template editor, scrolling tickers, live and social cards with
   auto-fit text, show/hide with animation from the dock or hotkeys, a queue ("next up"), and one click to add
   the title layer to every scene so it stays on air while cameras switch.
 
@@ -65,7 +65,7 @@ Ranked by evidence of demand and by how much they reduce on-air mistakes.
 
 1. Lower thirds that stay up while cameras switch (Titles: one-click "add to every scene").
 2. Control from a Stream Deck or any hotkey box (every plugin registers OBS hotkeys; Stream Deck can press them).
-3. Scripture and song-line titles with automatic text fitting (Titles).
+3. Song-line titles and name bars with automatic text fitting (Titles).
 4. A queue: prepare the next title while one is on air (Titles).
 5. A pre-service checklist: "is the stream ready?" (Network pre-flight; Scenes lock).
 6. Volunteer mode: lock setup so nothing gets rearranged mid-service (Scenes, already built).

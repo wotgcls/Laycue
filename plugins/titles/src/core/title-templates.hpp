@@ -35,7 +35,7 @@ enum class FontFace {
 };
 
 // What a template is for: how the gallery groups them.
-enum class Category { People, Worship, Announce, Ticker };
+enum class Category { People, Worship, Announce, Ticker, Live, Social, News };
 
 // How a title arrives and leaves. Every template also has its own signature choreography inside
 // this (stagger, wipe, accent growing); this is the movement of the whole group.
@@ -67,7 +67,19 @@ struct TitleTemplate {
 	bool fullHeight = false;   // uses the whole picture, not just the lower part
 	double cornerRadius = 0.0; // in 1920-wide design pixels
 	double tickerSpeed = 0.0;  // > 0 for tickers: pixels per second at 1920 wide
+	double pulseSeconds = 0.0; // > 0 for titles with a pulsing light (the LIVE dot): seconds per pulse
 };
+
+// Titles that need a new picture every frame while on air: tickers scroll, live lights pulse. The renderer
+// is given a steadily growing "position" for both; for a pulse it is 100 px per second.
+inline bool isContinuous(const TitleTemplate &t)
+{
+	return t.tickerSpeed > 0.0 || t.pulseSeconds > 0.0;
+}
+inline double continuousSpeed(const TitleTemplate &t)
+{
+	return t.tickerSpeed > 0.0 ? t.tickerSpeed : (t.pulseSeconds > 0.0 ? 100.0 : 0.0);
+}
 
 // Locale keys are built from the id: "Laycue.Titles.T.<id>" is the name, ".S1" ".S2" ".S3" are the
 // sample line 1, line 2 and tag the gallery shows, and ".F1" ".F2" ".F3" label the fields.

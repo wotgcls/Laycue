@@ -45,7 +45,7 @@ void TitlePreview::configureClock()
 {
 	clock_.configure(tpl_.inSeconds, tpl_.outSeconds, 0.0); // the panel decides when to hide, not the preview
 	const FontSet *fonts = sharedFonts();
-	ticker_.configure(fonts ? tickerStripWidth(*fonts, tpl_, text_) : 1.0, tpl_.tickerSpeed);
+	ticker_.configure(fonts ? tickerStripWidth(*fonts, tpl_, text_) : 1.0, continuousSpeed(tpl_));
 }
 
 void TitlePreview::setTitle(const TitleTemplate &tpl, const TitleText &text, bool useBrand, const Rgba &brand)
@@ -95,7 +95,7 @@ void TitlePreview::tick()
 	const double dt = std::min(0.1, double(now - lastMs_) / 1000.0);
 	lastMs_ = now;
 	clock_.advance(dt);
-	if (tpl_.tickerSpeed > 0.0 && clock_.visible())
+	if (isContinuous(tpl_) && clock_.visible())
 		ticker_.advance(dt);
 	if (!clock_.visible()) {
 		playing_ = false;

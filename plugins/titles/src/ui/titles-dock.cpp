@@ -289,16 +289,29 @@ QWidget *TitlesDock::buildTabs()
 	auto *t = new QVBoxLayout(templatesTab_);
 	t->setContentsMargins(0, 0, 0, 0);
 	t->setSpacing(size::gapSmall + 2);
+	// Seven choices do not fit on one row at a narrow panel width, so they sit on two rows that act as one
+	// control: picking one on a row clears the other.
 	categories_ = new Segmented(templatesTab_);
 	categories_->setItems({lt("Laycue.Titles.CatAll"), lt(categoryKey(Category::People)),
-			       lt(categoryKey(Category::Worship)), lt(categoryKey(Category::Announce)),
-			       lt(categoryKey(Category::Ticker))});
+			       lt(categoryKey(Category::Worship)), lt(categoryKey(Category::Announce))});
 	categories_->setAccessibleName(lt("Laycue.Titles.CategoriesAccessible"));
+	categories2_ = new Segmented(templatesTab_);
+	categories2_->setItems({lt(categoryKey(Category::Ticker)), lt(categoryKey(Category::Live)),
+				lt(categoryKey(Category::Social)), lt(categoryKey(Category::News))});
+	categories2_->setAccessibleName(lt("Laycue.Titles.CategoriesAccessible"));
+	categories2_->setCurrent(-1);
 	connect(categories_, &Segmented::changed, this, [this](int i) {
+		categories2_->setCurrent(-1);
 		categoryFilter_ = i;
 		layoutTemplates();
 	});
+	connect(categories2_, &Segmented::changed, this, [this](int i) {
+		categories_->setCurrent(-1);
+		categoryFilter_ = 4 + i; // after All, People, Worship, Announce
+		layoutTemplates();
+	});
 	t->addWidget(categories_);
+	t->addWidget(categories2_);
 	gridHost_ = new QWidget(templatesTab_);
 	grid_ = new QGridLayout(gridHost_);
 	grid_->setContentsMargins(0, 2, 0, 2);
