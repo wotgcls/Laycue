@@ -40,6 +40,14 @@ struct TitleSource {
 	TickerState ticker;
 	bool dirty = true; // the picture must be drawn again
 
+	// Cueing. A title that is "shown" while its scene is not on the program output yet (it is only in
+	// Preview) is cued: it waits there, drawn fully on screen so the operator can check it, and plays its
+	// arrival when the scene goes live. Without this the animation would run in Preview and be over by
+	// the time of the cut.
+	bool armed = false;   // the operator has shown it and has not hidden it since
+	bool wasLive = false; // was the source on the program output at the last tick
+	bool showing = false; // a picture is being drawn (live, or cued in Preview)
+
 	// The drawn picture, and the GPU copy of it.
 	QImage image;
 	int imageX = 0;
@@ -90,6 +98,28 @@ Overrides readOverrides(obs_data_t *settings)
 		}
 	}
 	return fromMap(values);
+}
+
+// With the source's mutex held.
+bool isLive(const TitleSource &s)
+{
+	return s.source && obs_source_active(s.source);
+}
+
+// "Show": play the arrival now if the title is on the program output, otherwise wait (cued) for it.
+void cueLocked(TitleSource &s)
+{
+	s.armed = true;
+	if (isLive(s)) {
+		s.wasLive = true;
+		s.clock.show();
+	}
+	s.dirty = true;
+}
+
+bool isCued(const TitleSource &s)
+{
+	return s.armed && !s.clock.visible() && !isLive(s);
 }
 
 void applyClockConfig(TitleSource &s)
@@ -155,7 +185,7 @@ void update(void *data, obs_data_t *settings)
 		// "on_air" is a one-shot command (used by scenes saved with a title on air, and by simple
 		// scripts): it is read once and cleared, so a later settings change never shows a title again.
 		if (obs_data_get_bool(settings, key::onAir)) {
-			s->clock.show();
+			cueLocked(*s);
 			obs_data_set_bool(settings, key::onAir, false);
 		}
 	} catch (...) {
@@ -214,29 +244,46 @@ void tick(void *data, float seconds)
 			s->dirty = true;
 		}
 
-		const bool wasVisible = s->clock.visible();
+		// Going live starts the arrival of a cued title; leaving the program output ends it without a show.
+		const bool live = isLive(*s);
+		if (live && !s->wasLive && s->armed) {
+			s->clock.reset();
+			s->clock.show();
+			s->dirty = true;
+		} else if (!live && s->wasLive && s->clock.visible()) {
+			s->clock.reset();
+			s->dirty = true;
+		}
+		s->wasLive = live;
+
+		const bool wasShowing = s->showing;
+		const bool wasPlaying = s->clock.visible();
 		s->clock.advance(seconds);
-		const bool ticking = isContinuous(s->tpl) && s->clock.visible();
+		if (wasPlaying && !s->clock.visible())
+			s->armed = false; // it finished leaving: it does not come back by itself
+		const bool still = s->armed && !live && !s->clock.visible(); // cued: drawn fully on, no animation
+		const bool visible = s->clock.visible() || still;
+		const bool ticking = isContinuous(s->tpl) && visible;
 		if (ticking)
 			s->ticker.advance(seconds);
 
-		const bool visible = s->clock.visible();
+		s->showing = visible;
 		if (!visible) {
-			if (wasVisible) { // it just finished leaving: drop the picture, free nothing else
+			if (wasShowing) { // it just finished leaving: drop the picture, free nothing else
 				s->image = QImage();
 				s->uploadPending = false;
 			}
 			s->dirty = false;
 			return;
 		}
-		if (!(s->dirty || s->clock.animating() || ticking || !wasVisible))
+		if (!(s->dirty || s->clock.animating() || ticking || !wasShowing))
 			return;
 
 		RenderRequest request;
 		request.tpl = s->tpl;
 		request.text = s->text;
-		request.frame.in = s->clock.in();
-		request.frame.out = s->clock.out();
+		request.frame.in = still ? 1.0 : s->clock.in();
+		request.frame.out = still ? 0.0 : s->clock.out();
 		request.frame.tickerPx = s->ticker.offset();
 		request.canvasWidth = int(s->canvasW);
 		request.canvasHeight = int(s->canvasH);
@@ -263,7 +310,7 @@ void render(void *data, gs_effect_t *effect)
 	auto *s = static_cast<TitleSource *>(data);
 	try {
 		std::lock_guard<std::mutex> lock(s->mutex);
-		if (!s->clock.visible() || s->image.isNull())
+		if (!s->showing || s->image.isNull())
 			return;
 		const uint32_t w = uint32_t(s->image.width());
 		const uint32_t h = uint32_t(s->image.height());
@@ -301,14 +348,15 @@ void render(void *data, gs_effect_t *effect)
 void showTitle(TitleSource &s)
 {
 	std::lock_guard<std::mutex> lock(s.mutex);
-	s.clock.show();
-	s.dirty = true;
+	cueLocked(s);
 }
 
 void hideTitle(TitleSource &s)
 {
 	std::lock_guard<std::mutex> lock(s.mutex);
+	s.armed = false;
 	s.clock.hide();
+	s.dirty = true;
 }
 
 void procShow(void *data, calldata_t *)
@@ -327,7 +375,8 @@ void procState(void *data, calldata_t *cd)
 {
 	auto *s = static_cast<TitleSource *>(data);
 	std::lock_guard<std::mutex> lock(s->mutex);
-	calldata_set_int(cd, "phase", static_cast<long long>(s->clock.phase()));
+	// 0 hidden, 1 arriving, 2 on air, 3 leaving, 4 cued (waiting in Preview for its scene to go live)
+	calldata_set_int(cd, "phase", isCued(*s) ? 4 : static_cast<long long>(s->clock.phase()));
 	calldata_set_float(cd, "hold_remaining", s->clock.holdRemaining());
 }
 
@@ -339,7 +388,7 @@ void toggleHotkey(void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed)
 	bool visible;
 	{
 		std::lock_guard<std::mutex> lock(s->mutex);
-		visible = s->clock.visible() && s->clock.phase() != TitleClock::Phase::Out;
+		visible = (s->clock.visible() && s->clock.phase() != TitleClock::Phase::Out) || isCued(*s);
 	}
 	if (visible)
 		hideTitle(*s);

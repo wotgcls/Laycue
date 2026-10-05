@@ -264,6 +264,27 @@ QWidget *TitlesDock::buildStage()
 	pv->addWidget(bigger);
 	v->addWidget(placementBox_);
 
+	// How long it stays on screen before it leaves by itself.
+	holdBox_ = new QWidget(stage);
+	auto *hv = new QHBoxLayout(holdBox_);
+	hv->setContentsMargins(0, 2, 0, 2);
+	hv->setSpacing(size::gapSmall);
+	hv->addWidget(makeLabel(holdBox_, lt("Laycue.Titles.StaysOnScreen"), 13, 600, color::cream), 1);
+	auto *shorter = button(holdBox_, QStringLiteral("\u2212"), "laycueSecondary");
+	shorter->setAccessibleName(lt("Laycue.Titles.Less"));
+	connect(shorter, &QAbstractButton::clicked, this, [this]() { changeHold(-1); });
+	hv->addWidget(shorter);
+	holdValue_ = makeLabel(holdBox_, QString(), 13, 600, color::cream);
+	holdValue_->setAlignment(Qt::AlignCenter);
+	holdValue_->setMinimumWidth(96);
+	holdValue_->setWordWrap(false);
+	hv->addWidget(holdValue_);
+	auto *longer = button(holdBox_, QStringLiteral("+"), "laycueSecondary");
+	longer->setAccessibleName(lt("Laycue.Titles.More"));
+	connect(longer, &QAbstractButton::clicked, this, [this]() { changeHold(+1); });
+	hv->addWidget(longer);
+	v->addWidget(holdBox_);
+
 	auto *row = new QHBoxLayout();
 	row->setSpacing(size::gapSmall);
 	primary_ = new ActionButton(lt("Laycue.Titles.ShowOnAir"), ActionButton::Kind::Primary, stage);
@@ -464,6 +485,7 @@ void TitlesDock::updatePreview()
 	const Placement placement = placementFor(library_, library_.selected);
 	preview_->setPlacement(placement.align, placement.percent);
 	refreshPlacement();
+	refreshHold();
 }
 
 void TitlesDock::fieldsEdited()
@@ -636,8 +658,13 @@ bool TitlesDock::applyAndShow()
 	onAirContent_ = library_.draft;
 	onAirStyle_ = library_.selected;
 	onAirPlacement_ = placementFor(library_, library_.selected);
-	preview_->play();
-	preview_->setOnAir(true);
+	const TitleStatus st = statusOf(target());
+	if (st.live()) {
+		preview_->play();
+		preview_->setOnAir(true);
+	} else {
+		toast(lt("Laycue.Titles.CuedToast")); // waiting in Preview: it plays when its scene goes live
+	}
 	pollStatus();
 	return true;
 }
@@ -790,18 +817,26 @@ void TitlesDock::pollStatus()
 		if (preview_->onAir())
 			preview_->stop();
 	}
-	preview_->setOnAir(status_.onAir());
+	preview_->setOnAir(status_.live());
+	if (status_.live() && !prevLive_)
+		preview_->play(); // the scene just went live: the panel's picture arrives with it
+	prevLive_ = status_.live();
 	updateStatus();
 	updateButtons();
 }
 
 void TitlesDock::updateStatus()
 {
-	static_cast<StatusDot *>(statusDot_)->setOn(status_.onAir());
+	static_cast<StatusDot *>(statusDot_)->setOn(status_.live());
 	if (!status_.found) {
 		statusLabel_->setText(sources_.empty() ? lt("Laycue.Titles.StatusNoLayer")
 						       : lt("Laycue.Titles.StatusHidden"));
 		statusLabel_->setStyleSheet(labelStyle(color::textTertiary, statusLabel_->font()));
+		return;
+	}
+	if (status_.phase == TitleStatus::Phase::Cued) {
+		statusLabel_->setText(lt("Laycue.Titles.StatusCued"));
+		statusLabel_->setStyleSheet(labelStyle(color::next, statusLabel_->font()));
 		return;
 	}
 	if (status_.onAir()) {
@@ -828,10 +863,14 @@ void TitlesDock::updateButtons()
 		primary_->setKind(ActionButton::Kind::Primary);
 		hint_->setText(lt("Laycue.Titles.AddLayerHint"));
 	} else if (onAir) {
-		primary_->setText(changed ? lt("Laycue.Titles.UpdateOnAir") : lt("Laycue.Titles.HideTitle"));
+		const bool cued = status_.phase == TitleStatus::Phase::Cued;
+		primary_->setText(changed ? lt("Laycue.Titles.UpdateOnAir")
+					  : lt(cued ? "Laycue.Titles.CancelCue" : "Laycue.Titles.HideTitle"));
 		primary_->setKind(changed ? ActionButton::Kind::Primary : ActionButton::Kind::Secondary);
 		primary_->setEnabled(true);
-		hint_->setText(changed ? lt("Laycue.Titles.UpdateHint") : QString());
+		hint_->setText(changed                                     ? lt("Laycue.Titles.UpdateHint")
+			       : status_.phase == TitleStatus::Phase::Cued ? lt("Laycue.Titles.CuedHint")
+									   : QString());
 	} else {
 		primary_->setText(lt("Laycue.Titles.ShowOnAir"));
 		primary_->setKind(ActionButton::Kind::Primary);
@@ -1055,15 +1094,34 @@ void TitlesDock::changePlacement(int align, int percentDelta)
 	scheduleSave();
 }
 
+void TitlesDock::refreshHold()
+{
+	const TitleTemplate t = resolveStyle(library_, library_.selected);
+	const int hold = library_.holdOverride;
+	QString text;
+	if (hold == 0 || (hold < 0 && t.holdSeconds <= 0.0))
+		text = lt("Laycue.Titles.HoldNever");
+	else if (hold < 0)
+		text = lt("Laycue.Titles.HoldDefault").arg(int(t.holdSeconds + 0.5));
+	else
+		text = lt("Laycue.Titles.HoldSeconds").arg(hold);
+	holdValue_->setText(text);
+}
+
 void TitlesDock::changeHold(int delta)
 {
-	int hold = library_.holdOverride;
-	// -1 (template) -> 0 (never) -> 3 -> 4 ... : never is a deliberate choice, so it sits next to the template default.
-	if (delta > 0)
-		hold = hold < 0 ? 0 : hold == 0 ? 3 : std::min(hold + 1, 120);
-	else
-		hold = hold <= 0 ? -1 : hold == 3 ? 0 : hold - 1;
-	library_.holdOverride = hold;
+	// The template's own time, then "until I hide it", then 3 seconds and up in steps that grow.
+	static const int steps[] = {-1, 0, 3, 4, 5, 6, 8, 10, 12, 15, 20, 30, 45, 60, 90, 120};
+	constexpr int n = int(sizeof(steps) / sizeof(steps[0]));
+	int at = 0;
+	for (int i = 0; i < n; ++i)
+		if (steps[i] <= library_.holdOverride)
+			at = i;
+	at = std::clamp(at + (delta > 0 ? 1 : -1), 0, n - 1);
+	library_.holdOverride = steps[at];
+	refreshHold();
+	if (status_.onAir() && !onAirStyle_.empty()) // a title is up: the new time applies to it now, its text stays
+		applyToSource(target(), library_, onAirStyle_, onAirContent_);
 	rebuildSetup();
 	scheduleSave();
 }

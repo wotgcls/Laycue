@@ -133,6 +133,7 @@ TitleStatus statusOf(const std::string &sourceName)
 		status.phase = phase == 1   ? TitleStatus::Phase::In
 			       : phase == 2 ? TitleStatus::Phase::Hold
 			       : phase == 3 ? TitleStatus::Phase::Out
+			       : phase == 4 ? TitleStatus::Phase::Cued
 					    : TitleStatus::Phase::Hidden;
 		status.holdRemaining = calldata_float(&cd, "hold_remaining");
 	}

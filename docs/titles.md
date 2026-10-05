@@ -22,6 +22,19 @@ Mixlr and a generic handle, each with the platform's icon, see `ICONS.md`) and *
 removed: the pack is for names and status, not verses.
 They are data (`TitleTemplate`), not code per template, which keeps custom templates simple.
 
+## Cueing: the animation plays when the scene goes live
+A title is a source in a scene. When the operator presses **Show on air** while that scene is not on the program
+output yet (it is only in Preview in Studio Mode), the title is **cued**: it sits fully drawn in Preview so it can be
+checked and positioned, and its arrival animation plays when the scene goes live (Cut or Transition). Before this,
+the animation ran in Preview and was over by the time of the cut. If the scene is already live, or the title layer
+is in every scene, Show plays the animation immediately.
+The source polls `obs_source_active()` once per frame: going live starts the arrival, leaving the program output
+ends it quietly, and a title that has finished leaving does not come back by itself. Hide cancels a cue.
+
+## Time on screen
+The panel has a **Stays on screen** control (template default, until hidden by hand, or 3 seconds to 2 minutes). The
+time counts from the end of the arrival, so a cued title does not use it up while waiting in Preview.
+
 ## Position and size
 Every title that does not span the picture (all but the tickers and Thank You) can sit on the left, in the centre or on
 the right, and be made 50% to 150% of its normal size. The choice is remembered per template, so a social card can sit

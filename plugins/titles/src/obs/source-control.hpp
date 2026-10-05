@@ -10,11 +10,13 @@
 namespace laycue::titles {
 
 struct TitleStatus {
-	enum class Phase { Hidden, In, Hold, Out };
+	// Cued: shown by the operator but waiting in Preview; its arrival plays when its scene goes live.
+	enum class Phase { Hidden, In, Hold, Out, Cued };
 	bool found = false;
 	Phase phase = Phase::Hidden;
-	double holdRemaining = -1.0; // seconds before it hides itself; negative = never
-	bool onAir() const { return phase != Phase::Hidden; }
+	double holdRemaining = -1.0;                          // seconds before it hides itself; negative = never
+	bool onAir() const { return phase != Phase::Hidden; } // on air or cued
+	bool live() const { return phase != Phase::Hidden && phase != Phase::Cued; }
 };
 
 // Names of every Laycue Title source in this scene collection.

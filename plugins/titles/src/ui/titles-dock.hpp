@@ -87,6 +87,7 @@ private:
 	void deleteSelectedCustom();
 	void pickBrandColour();
 	void changeHold(int delta);
+	void refreshHold();
 	void changePlacement(int align, int percentDelta); // align -1 keeps it; percentDelta in steps of 10
 	void refreshPlacement();
 
@@ -122,6 +123,9 @@ private:
 	QWidget *openedPage_ = nullptr;
 	laycue::ui::Segmented *tabs_ = nullptr;
 	laycue::ui::Segmented *categories_ = nullptr;
+	QWidget *holdBox_ = nullptr; // how long it stays on screen
+	QLabel *holdValue_ = nullptr;
+	bool prevLive_ = false;
 	QWidget *placementBox_ = nullptr; // Position and Size, for titles that do not span the picture
 	laycue::ui::Segmented *alignSeg_ = nullptr;
 	QLabel *sizeValue_ = nullptr;
