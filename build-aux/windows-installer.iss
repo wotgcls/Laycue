@@ -20,6 +20,9 @@ AppPublisherURL=https://github.com/wotgcls/Laycue
 ; OBS loads plugins from this machine-wide folder (OBS 28 and newer).
 DefaultDirName={commonappdata}\obs-studio\plugins
 DisableDirPage=yes
+; Always install to the plugins folder itself. Without this, an upgrade from the old single-plugin installer
+; reuses its old folder (plugins\laycue) and the new plugins end up one level too deep for OBS to find.
+UsePreviousAppDir=no
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
