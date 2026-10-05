@@ -169,6 +169,18 @@ void update(void *data, obs_data_t *settings)
 		s->text.line1 = QString::fromUtf8(obs_data_get_string(settings, key::line1));
 		s->text.line2 = QString::fromUtf8(obs_data_get_string(settings, key::line2));
 		s->text.tag = QString::fromUtf8(obs_data_get_string(settings, key::tag));
+		s->text.note = QString::fromUtf8(obs_data_get_string(settings, key::note));
+		s->text.logoPath = QString::fromUtf8(obs_data_get_string(settings, key::logo));
+		s->text.rows.clear();
+		{
+			OBSDataArrayAutoRelease rows = obs_data_get_array(settings, key::rows);
+			const size_t n = rows ? std::min<size_t>(obs_data_array_count(rows), 8) : 0;
+			for (size_t i = 0; i < n; ++i) {
+				OBSDataAutoRelease item = obs_data_array_item(rows, i);
+				s->text.rows.append({QString::fromUtf8(obs_data_get_string(item, "label")),
+						     QString::fromUtf8(obs_data_get_string(item, "value"))});
+			}
+		}
 		s->useAccent = obs_data_get_bool(settings, key::accentOn);
 		s->accent = fromObsColour(uint32_t(obs_data_get_int(settings, key::accent)));
 

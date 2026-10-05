@@ -87,6 +87,10 @@ private:
 	void deleteSelectedCustom();
 	void pickBrandColour();
 	void changeHold(int delta);
+	void rebuildRows();
+	void chooseLogo();
+	void clearLogo();
+	void draftChanged(); // the draft was changed by something other than the text boxes
 	void refreshHold();
 	void changePlacement(int align, int percentDelta); // align -1 keeps it; percentDelta in steps of 10
 	void refreshPlacement();
@@ -136,6 +140,12 @@ private:
 	QLabel *label1_ = nullptr;
 	QLabel *label2_ = nullptr;
 	QLabel *label3_ = nullptr;
+	QLabel *label4_ = nullptr; // the note under the title (sort code)
+	QLineEdit *edit4_ = nullptr;
+	QWidget *logoBox_ = nullptr; // choose a logo picture
+	QLabel *logoName_ = nullptr;
+	QWidget *rowsBox_ = nullptr; // the accounts: label and number pairs, as many as the operator adds
+	QVBoxLayout *rowsLayout_ = nullptr;
 	QLineEdit *edit1_ = nullptr;
 	QPlainTextEdit *long1_ = nullptr;
 	QLineEdit *edit2_ = nullptr;

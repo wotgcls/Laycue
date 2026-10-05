@@ -17,6 +17,7 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <vector>
 
 namespace laycue::titles::ui {
 
@@ -158,6 +159,14 @@ void CustomizePage::refreshPreview()
 		return QString::fromUtf8(obs_module_text(sampleKey(*base, field).c_str()));
 	};
 	TitleText sample{text(1), t.usesLine2 ? text(2) : QString(), t.usesTag ? text(3) : QString()};
+	if (t.usesNote)
+		sample.note = text(4);
+	for (int r = 1; r <= t.maxRows; ++r) {
+		const std::string rowKey = nameKey(*base) + ".R" + std::to_string(r);
+		const QString value = QString::fromUtf8(obs_module_text((rowKey + "V").c_str()));
+		if (!value.isEmpty() && value != QString::fromStdString(rowKey + "V"))
+			sample.rows.append({QString::fromUtf8(obs_module_text((rowKey + "L").c_str())), value});
+	}
 	preview_->setTitle(t, sample, false, Rgba());
 }
 
@@ -213,28 +222,53 @@ void CustomizePage::rebuild()
 	{
 		QVBoxLayout *v = group(lt("Laycue.Titles.CustomColours"));
 		struct ColourRow {
+			const char *role; // names the template's own label for it: Laycue.Titles.T.<id>.C.<role>
 			const char *labelKey;
 			Rgba Palette::*member;
 			bool Overrides::*has;
 			bool alpha;
+			QString label;
 		};
-		const ColourRow rows[] = {
-			{"Laycue.Titles.ColourPanel", &Palette::panel, &Overrides::hasPanel, true},
-			{"Laycue.Titles.ColourAccent", &Palette::accent, &Overrides::hasAccent, false},
-			{"Laycue.Titles.ColourText", &Palette::text, &Overrides::hasText, false},
-			{"Laycue.Titles.ColourSubtext", &Palette::subtext, &Overrides::hasSubtext, false},
+		std::vector<ColourRow> rows = {
+			{"panel", "Laycue.Titles.ColourPanel", &Palette::panel, &Overrides::hasPanel, true, {}},
+			{"accent", "Laycue.Titles.ColourAccent", &Palette::accent, &Overrides::hasAccent, false, {}},
+			{"text", "Laycue.Titles.ColourText", &Palette::text, &Overrides::hasText, false, {}},
+			{"subtext", "Laycue.Titles.ColourSubtext", &Palette::subtext, &Overrides::hasSubtext, false, {}},
 		};
+		if (t.usesShape2)
+			rows.push_back({"shape2",
+					"Laycue.Titles.ColourShape2",
+					&Palette::shape2,
+					&Overrides::hasShape2,
+					false,
+					{}});
+		if (t.usesShape3)
+			rows.push_back({"shape3",
+					"Laycue.Titles.ColourShape3",
+					&Palette::shape3,
+					&Overrides::hasShape3,
+					false,
+					{}});
+		if (t.usesInk)
+			rows.push_back(
+				{"ink", "Laycue.Titles.ColourInk", &Palette::ink, &Overrides::hasInk, false, {}});
+		for (ColourRow &r : rows) {
+			// A template can name its own colours ("Tab above the bar"); otherwise the general name is used.
+			const std::string key = nameKey(t) + ".C." + r.role;
+			const char *own = obs_module_text(key.c_str());
+			r.label = own && key != own ? QString::fromUtf8(own) : lt(r.labelKey);
+		}
 		for (const ColourRow &r : rows) {
 			auto *h = new QHBoxLayout();
 			h->setSpacing(size::gapSmall + 2);
 			h->addWidget(new Swatch(toQ(t.palette.*r.member), controls_));
-			h->addWidget(innerLabel(controls_, lt(r.labelKey), 13, 500, color::cream), 1);
+			h->addWidget(innerLabel(controls_, r.label, 13, 500, color::cream), 1);
 			auto *pick = button(controls_, lt("Laycue.Titles.Change"), "laycueSecondary");
 			connect(pick, &QAbstractButton::clicked, this, [this, r, t]() {
 				const QColorDialog::ColorDialogOptions options =
 					r.alpha ? QColorDialog::ShowAlphaChannel : QColorDialog::ColorDialogOptions();
 				const QColor chosen =
-					QColorDialog::getColor(toQ(t.palette.*r.member), this, lt(r.labelKey), options);
+					QColorDialog::getColor(toQ(t.palette.*r.member), this, r.label, options);
 				if (!chosen.isValid())
 					return;
 				o_.palette.*r.member = fromQ(chosen);

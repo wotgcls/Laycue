@@ -22,6 +22,9 @@ constexpr const char *custom = "custom";            // an obs_data object: the c
 constexpr const char *accentOn = "accent_on";       // use the brand colour below instead of the template's accent
 constexpr const char *accent = "accent";            // colour (OBS colour int)
 constexpr const char *hold = "hold";                // seconds on air before it hides itself; -1 = the template's own
+constexpr const char *note = "note";                // an extra line under the title
+constexpr const char *logo = "logo";                // path of a logo picture
+constexpr const char *rows = "rows";                // an array of {label, value}
 constexpr const char *align = "align";              // 0 left, 1 center, 2 right
 constexpr const char *sizePercent = "size_percent"; // 50..150
 constexpr const char *onAir = "on_air";             // set by the panel to show or hide; never saved

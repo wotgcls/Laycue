@@ -1,5 +1,7 @@
 #include "store/library-io.hpp"
 
+#include <algorithm>
+
 #include <obs-module.h>
 #include <obs.hpp>
 #include <plugin-support.h>
@@ -30,6 +32,16 @@ OBSData contentToData(const TitleContent &c)
 	obs_data_set_string(d, "line1", c.line1.c_str());
 	obs_data_set_string(d, "line2", c.line2.c_str());
 	obs_data_set_string(d, "tag", c.tag.c_str());
+	obs_data_set_string(d, "note", c.note.c_str());
+	obs_data_set_string(d, "logo", c.logo.c_str());
+	OBSDataArrayAutoRelease rows = obs_data_array_create();
+	for (const Row &r : c.rows) {
+		OBSDataAutoRelease item = obs_data_create();
+		obs_data_set_string(item, "label", r.label.c_str());
+		obs_data_set_string(item, "value", r.value.c_str());
+		obs_data_array_push_back(rows, item);
+	}
+	obs_data_set_array(d, "rows", rows);
 	return d;
 }
 
@@ -41,6 +53,14 @@ TitleContent contentFromData(obs_data_t *d)
 	c.line1 = str(obs_data_get_string(d, "line1"));
 	c.line2 = str(obs_data_get_string(d, "line2"));
 	c.tag = str(obs_data_get_string(d, "tag"));
+	c.note = str(obs_data_get_string(d, "note"));
+	c.logo = str(obs_data_get_string(d, "logo"));
+	OBSDataArrayAutoRelease rows = obs_data_get_array(d, "rows");
+	const size_t n = rows ? std::min(obs_data_array_count(rows), kMaxRows) : 0;
+	for (size_t i = 0; i < n; ++i) {
+		OBSDataAutoRelease item = obs_data_array_item(rows, i);
+		c.rows.push_back({str(obs_data_get_string(item, "label")), str(obs_data_get_string(item, "value"))});
+	}
 	return c;
 }
 

@@ -14,6 +14,22 @@ void clip(std::string &s)
 		s.resize(kMaxText);
 }
 
+void clipContent(TitleContent &c)
+{
+	clip(c.line1);
+	clip(c.line2);
+	clip(c.tag);
+	clip(c.note);
+	if (c.logo.size() > 1024)
+		c.logo.clear();
+	if (c.rows.size() > kMaxRows)
+		c.rows.resize(kMaxRows);
+	for (Row &r : c.rows) {
+		clip(r.label);
+		clip(r.value);
+	}
+}
+
 } // namespace
 
 std::string customId(const std::string &name)
@@ -194,15 +210,11 @@ void sanitize(Library &lib)
 	for (QueueItem &q : lib.queue) {
 		if (!valid(q.styleId))
 			q.styleId = builtInTemplates().front().id;
-		clip(q.content.line1);
-		clip(q.content.line2);
-		clip(q.content.tag);
+		clipContent(q.content);
 	}
 	if (lib.queue.size() > kMaxQueue)
 		lib.queue.resize(kMaxQueue);
-	clip(lib.draft.line1);
-	clip(lib.draft.line2);
-	clip(lib.draft.tag);
+	clipContent(lib.draft);
 	if (lib.holdOverride < -1 || lib.holdOverride > 600)
 		lib.holdOverride = -1;
 }

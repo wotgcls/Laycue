@@ -129,10 +129,10 @@ TEST_CASE("titles: the ticker wraps and says how many copies fill the view")
 	CHECK(ticker.offset() >= 0.0);
 }
 
-TEST_CASE("titles: there are 28 built-in templates with unique ids and sensible values")
+TEST_CASE("titles: there are 30 built-in templates with unique ids and sensible values")
 {
 	const auto &all = builtInTemplates();
-	CHECK_EQ(int(all.size()), 28);
+	CHECK_EQ(int(all.size()), 30);
 	std::set<std::string> ids;
 	for (const auto &t : all) {
 		ids.insert(t.id);
@@ -142,7 +142,7 @@ TEST_CASE("titles: there are 28 built-in templates with unique ids and sensible 
 		if (t.tickerSpeed > 0.0)
 			CHECK(t.category == Category::Ticker);
 	}
-	CHECK_EQ(int(ids.size()), 28);
+	CHECK_EQ(int(ids.size()), 30);
 	CHECK(findTemplate("nope") == nullptr);
 }
 
@@ -228,6 +228,17 @@ TEST_CASE("titles: broken custom data is repaired, never trusted")
 
 #include "core/library.hpp"
 
+namespace {
+laycue::titles::TitleContent contentOf(const std::string &a, const std::string &b, const std::string &c)
+{
+	laycue::titles::TitleContent t;
+	t.line1 = a;
+	t.line2 = b;
+	t.tag = c;
+	return t;
+}
+} // namespace
+
 TEST_CASE("titles library: custom templates are saved, replaced by name, and removed safely")
 {
 	Library lib;
@@ -241,7 +252,7 @@ TEST_CASE("titles library: custom templates are saved, replaced by name, and rem
 	CHECK_EQ(uniqueCustomName(lib, "Easter"), std::string("Easter"));
 
 	lib.selected = customId("Sunday");
-	lib.queue.push_back({customId("Sunday"), {"A", "B", ""}});
+	lib.queue.push_back({customId("Sunday"), contentOf("A", "B", "")});
 	std::string base;
 	const auto resolved = resolveStyle(lib, lib.selected, &base);
 	CHECK_EQ(base, std::string("pop-card"));
@@ -268,7 +279,7 @@ TEST_CASE("titles library: the queue keeps its order and has a limit")
 {
 	Library lib;
 	for (int i = 0; i < 3; ++i)
-		CHECK(enqueue(lib, {"clean-bar", {std::to_string(i), "", ""}}));
+		CHECK(enqueue(lib, {"clean-bar", contentOf(std::to_string(i), "", "")}));
 	CHECK(moveInQueue(lib, 2, 0));
 	CHECK_EQ(lib.queue[0].content.line1, std::string("2"));
 	CHECK(!moveInQueue(lib, 5, 0));
@@ -292,7 +303,7 @@ TEST_CASE("titles library: sanitize repairs a damaged file")
 	Library lib;
 	lib.selected = "custom:ghost";
 	lib.holdOverride = 99999;
-	lib.queue.push_back({"nope", {std::string(5000, 'x'), "", ""}});
+	lib.queue.push_back({"nope", contentOf(std::string(5000, 'x'), "", "")});
 	Overrides nameless;
 	nameless.baseId = "clean-bar";
 	lib.customs.push_back(nameless);
@@ -330,4 +341,38 @@ TEST_CASE("titles: placement is remembered per style, kept in range and only for
 	CHECK(!supportsPlacement(*findTemplate("crawl-ticker")));
 	CHECK(!supportsPlacement(*findTemplate("headline-ticker")));
 	CHECK(!supportsPlacement(*findTemplate("thank-you")));
+}
+
+TEST_CASE("titles: the giving card takes rows, a note and a logo; extra colours can be overridden and saved")
+{
+	const TitleTemplate *g = findTemplate("giving");
+	CHECK(g != nullptr);
+	if (g) {
+		CHECK(g->maxRows >= 2 && g->usesNote && g->usesLogo && g->usesShape2 && g->usesShape3 && g->usesInk);
+		CHECK(g->category == Category::Announce);
+	}
+	CHECK(findTemplate("guest-minister") != nullptr);
+
+	Overrides o;
+	o.baseId = "giving";
+	o.name = "Mine";
+	o.hasShape2 = o.hasShape3 = o.hasInk = true;
+	o.palette.shape2 = Rgba{1, 2, 3, 255};
+	o.palette.shape3 = Rgba{4, 5, 6, 255};
+	o.palette.ink = Rgba{7, 8, 9, 255};
+	const Overrides back = fromMap(toMap(o));
+	CHECK(back.hasShape2 && back.hasShape3 && back.hasInk);
+	CHECK(back.palette.shape3 == o.palette.shape3);
+	const TitleTemplate resolved = resolve(*g, back);
+	CHECK(resolved.palette.ink == o.palette.ink);
+	CHECK(resolved.palette.shape2 == o.palette.shape2);
+
+	Library lib;
+	for (size_t i = 0; i < kMaxRows + 4; ++i)
+		lib.draft.rows.push_back({"Label", std::string(2000, '7')});
+	lib.draft.note = std::string(5000, 'n');
+	sanitize(lib);
+	CHECK_EQ(lib.draft.rows.size(), kMaxRows);
+	CHECK(lib.draft.rows[0].value.size() <= 600);
+	CHECK(lib.draft.note.size() <= 600);
 }

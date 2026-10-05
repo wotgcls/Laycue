@@ -8,6 +8,8 @@
 #include "render/font-set.hpp"
 
 #include <QImage>
+#include <QList>
+#include <QPair>
 #include <QString>
 
 namespace laycue::titles {
@@ -17,6 +19,9 @@ struct TitleText {
 	QString line1;
 	QString line2;
 	QString tag;
+	QString note;                        // an extra line under the title (sort code...)
+	QString logoPath;                    // a logo picture, or empty
+	QList<QPair<QString, QString>> rows; // label and value pairs (bank accounts)
 };
 
 // Where the title is in its animation: filled from TitleClock (in, out) and TickerState (tickerPx).

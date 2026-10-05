@@ -12,11 +12,27 @@
 
 namespace laycue::titles {
 
+// One line of a list: a label and a value ("N NAIRA", "4091959745").
+struct Row {
+	std::string label;
+	std::string value;
+	bool operator==(const Row &o) const { return label == o.label && value == o.value; }
+};
+
+constexpr size_t kMaxRows = 6;
+
 struct TitleContent {
 	std::string line1;
 	std::string line2;
 	std::string tag;
-	bool operator==(const TitleContent &o) const { return line1 == o.line1 && line2 == o.line2 && tag == o.tag; }
+	std::string note; // an extra line (sort code...)
+	std::string logo; // path of a logo picture, or empty
+	std::vector<Row> rows;
+	bool operator==(const TitleContent &o) const
+	{
+		return line1 == o.line1 && line2 == o.line2 && tag == o.tag && note == o.note && logo == o.logo &&
+		       rows == o.rows;
+	}
 };
 
 // A title prepared for later. `styleId` is a built-in id or "custom:<name>".

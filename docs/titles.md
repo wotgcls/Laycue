@@ -22,6 +22,18 @@ Mixlr and a generic handle, each with the platform's icon, see `ICONS.md`) and *
 removed: the pack is for names and status, not verses.
 They are data (`TitleTemplate`), not code per template, which keeps custom templates simple.
 
+## Guest Minister and Giving
+Two cards in the style of broadcast graphics with a logo, tabs above and below the bar and several columns.
+- **Guest Minister** (People): an orange tab ("Now ministering"), the name on a blue bar with an optional logo, and a white tab
+  under it for the church.
+- **Giving** (Announce): a tab with a heart, the account holder and bank, then **one column per account** the operator adds
+  (up to four; **Add account** in the panel), and a note tab under the bar for a sort code. The numbers shrink in steps until
+  the whole bar fits inside the title-safe width, so two accounts and four accounts both look finished.
+- **Logo:** the operator chooses a picture (PNG, JPG, WebP). It is read once and kept; its path is saved with the title.
+- **Colours:** every template can be recoloured under **Customize** (main shape, accent shape, main text, small text), and
+  templates with more shapes add a second shape, a third shape (logo block) and the text on the shapes. A template can name
+  its own colours ("Tab above the bar", "Note tab") in the locale file.
+
 ## Cueing: the animation plays when the scene goes live
 A title is a source in a scene. When the operator presses **Show on air** while that scene is not on the program
 output yet (it is only in Preview in Studio Mode), the title is **cued**: it sits fully drawn in Preview so it can be

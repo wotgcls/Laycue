@@ -17,6 +17,8 @@
 #include <QApplication>
 #include <QColorDialog>
 #include <QEvent>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -39,6 +41,20 @@ using laycue::ui::page::button;
 using laycue::ui::page::innerLabel;
 
 namespace {
+
+// What the renderer draws, from what the panel holds.
+TitleText toText(const TitleContent &c)
+{
+	TitleText t;
+	t.line1 = QString::fromStdString(c.line1);
+	t.line2 = QString::fromStdString(c.line2);
+	t.tag = QString::fromStdString(c.tag);
+	t.note = QString::fromStdString(c.note);
+	t.logoPath = QString::fromStdString(c.logo);
+	for (const Row &r : c.rows)
+		t.rows.append({QString::fromStdString(r.label), QString::fromStdString(r.value)});
+	return t;
+}
 
 constexpr int kPollMs = 250;
 constexpr int kSaveMs = 700;
@@ -238,6 +254,35 @@ QWidget *TitlesDock::buildStage()
 	v->addWidget(edit3_);
 	connect(edit3_, &QLineEdit::textEdited, this, &TitlesDock::fieldsEdited);
 
+	field(label4_, lt("Laycue.Titles.Note"));
+	edit4_ = new QLineEdit(stage);
+	v->addWidget(edit4_);
+	connect(edit4_, &QLineEdit::textEdited, this, &TitlesDock::fieldsEdited);
+
+	// A logo picture.
+	logoBox_ = new QWidget(stage);
+	auto *lv = new QHBoxLayout(logoBox_);
+	lv->setContentsMargins(0, 2, 0, 2);
+	lv->setSpacing(size::gapSmall);
+	lv->addWidget(makeLabel(logoBox_, lt("Laycue.Titles.Logo"), 13, 600, color::cream));
+	logoName_ = makeLabel(logoBox_, QString(), 12, 400, color::textTertiary);
+	logoName_->setWordWrap(false);
+	lv->addWidget(logoName_, 1);
+	auto *pickLogo = button(logoBox_, lt("Laycue.Titles.ChooseLogo"), "laycueSecondary");
+	connect(pickLogo, &QAbstractButton::clicked, this, &TitlesDock::chooseLogo);
+	lv->addWidget(pickLogo);
+	auto *clearLogoButton = button(logoBox_, lt("Laycue.Titles.RemoveLogo"), "laycueLink");
+	connect(clearLogoButton, &QAbstractButton::clicked, this, &TitlesDock::clearLogo);
+	lv->addWidget(clearLogoButton);
+	v->addWidget(logoBox_);
+
+	// The accounts.
+	rowsBox_ = new QWidget(stage);
+	rowsLayout_ = new QVBoxLayout(rowsBox_);
+	rowsLayout_->setContentsMargins(0, 0, 0, 0);
+	rowsLayout_->setSpacing(size::gapSmall);
+	v->addWidget(rowsBox_);
+
 	// Position and size: only for titles that do not span the whole picture.
 	placementBox_ = new QWidget(stage);
 	auto *pv = new QHBoxLayout(placementBox_);
@@ -417,6 +462,9 @@ TitleContent TitlesDock::currentContent() const
 	c.line1 = toStd(t.longText ? long1_->toPlainText() : edit1_->text());
 	c.line2 = toStd(edit2_->text());
 	c.tag = toStd(edit3_->text());
+	c.note = toStd(edit4_->text());
+	c.logo = library_.draft.logo; // chosen with the button
+	c.rows = library_.draft.rows; // edited in place
 	return c;
 }
 
@@ -428,6 +476,14 @@ TitleContent TitlesDock::sampleFor(const std::string &styleId) const
 	c.line1 = localised(sampleKey(t, 1));
 	c.line2 = t.usesLine2 ? localised(sampleKey(t, 2)) : std::string();
 	c.tag = t.usesTag ? localised(sampleKey(t, 3)) : std::string();
+	if (t.usesNote)
+		c.note = localised(sampleKey(t, 4));
+	for (int r = 1; r <= t.maxRows; ++r) {
+		const std::string base = nameKey(t) + ".R" + std::to_string(r);
+		const std::string value = localised(base + "V");
+		if (!value.empty() && value != base + "V")
+			c.rows.push_back({localised(base + "L"), value});
+	}
 	return c;
 }
 
@@ -458,6 +514,17 @@ void TitlesDock::refreshFields()
 	edit2_->setVisible(t.usesLine2);
 	label3_->setVisible(t.usesTag);
 	edit3_->setVisible(t.usesTag);
+	label(label4_, 4, "Laycue.Titles.Note");
+	label4_->setVisible(t.usesNote);
+	edit4_->setVisible(t.usesNote);
+	edit4_->setText(fromStd(library_.draft.note));
+	edit4_->setPlaceholderText(fromStd(localised(sampleKey(t, 4))));
+	logoBox_->setVisible(t.usesLogo);
+	logoName_->setText(library_.draft.logo.empty() ? lt("Laycue.Titles.NoLogo")
+						       : QFileInfo(fromStd(library_.draft.logo)).fileName());
+	rowsBox_->setVisible(t.maxRows > 0);
+	if (t.maxRows > 0)
+		rebuildRows();
 
 	const QString l1 = fromStd(library_.draft.line1);
 	if (t.longText) {
@@ -477,10 +544,7 @@ void TitlesDock::refreshFields()
 void TitlesDock::updatePreview()
 {
 	const TitleTemplate t = resolveStyle(library_, library_.selected);
-	TitleText text;
-	text.line1 = fromStd(library_.draft.line1);
-	text.line2 = fromStd(library_.draft.line2);
-	text.tag = fromStd(library_.draft.tag);
+	const TitleText text = toText(library_.draft);
 	preview_->setTitle(t, text, library_.useBrand, library_.brand);
 	const Placement placement = placementFor(library_, library_.selected);
 	preview_->setPlacement(placement.align, placement.percent);
@@ -532,7 +596,7 @@ QImage TitlesDock::thumbnailFor(const std::string &styleId)
 		const TitleContent sample = sampleFor(baseId);
 		RenderRequest req;
 		req.tpl = t;
-		req.text = {fromStd(sample.line1), fromStd(sample.line2), fromStd(sample.tag)};
+		req.text = toText(sample);
 		req.frame = {1.0, 0.0, 300.0};
 		req.canvasWidth = 480;
 		req.canvasHeight = 270;
@@ -1106,6 +1170,87 @@ void TitlesDock::refreshHold()
 	else
 		text = lt("Laycue.Titles.HoldSeconds").arg(hold);
 	holdValue_->setText(text);
+}
+
+void TitlesDock::draftChanged()
+{
+	updatePreview();
+	updateButtons();
+	scheduleSave();
+}
+
+void TitlesDock::rebuildRows()
+{
+	page::clear(rowsLayout_);
+	const TitleTemplate t = resolveStyle(library_, library_.selected);
+	rowsLayout_->addWidget(makeLabel(rowsBox_, lt("Laycue.Titles.Accounts"), 11, 600, color::textTertiary));
+	auto &rows = library_.draft.rows;
+	for (size_t i = 0; i < rows.size(); ++i) {
+		auto *line = new QWidget(rowsBox_);
+		auto *h = new QHBoxLayout(line);
+		h->setContentsMargins(0, 0, 0, 0);
+		h->setSpacing(size::gapSmall);
+		auto *label = new QLineEdit(line);
+		label->setText(fromStd(rows[i].label));
+		label->setPlaceholderText(lt("Laycue.Titles.AccountLabel"));
+		label->setAccessibleName(lt("Laycue.Titles.AccountLabel"));
+		connect(label, &QLineEdit::textEdited, this, [this, i](const QString &text) {
+			if (i < library_.draft.rows.size()) {
+				library_.draft.rows[i].label = toStd(text);
+				draftChanged();
+			}
+		});
+		h->addWidget(label, 2);
+		auto *value = new QLineEdit(line);
+		value->setText(fromStd(rows[i].value));
+		value->setPlaceholderText(lt("Laycue.Titles.AccountNumber"));
+		value->setAccessibleName(lt("Laycue.Titles.AccountNumber"));
+		connect(value, &QLineEdit::textEdited, this, [this, i](const QString &text) {
+			if (i < library_.draft.rows.size()) {
+				library_.draft.rows[i].value = toStd(text);
+				draftChanged();
+			}
+		});
+		h->addWidget(value, 3);
+		auto *remove = button(line, QStringLiteral("\u2715"), "laycueSecondary");
+		remove->setAccessibleName(lt("Laycue.Titles.RemoveAccount"));
+		connect(remove, &QAbstractButton::clicked, this, [this, i]() {
+			if (i < library_.draft.rows.size()) {
+				library_.draft.rows.erase(library_.draft.rows.begin() + std::ptrdiff_t(i));
+				rebuildRows();
+				draftChanged();
+			}
+		});
+		h->addWidget(remove);
+		rowsLayout_->addWidget(line);
+	}
+	if (rows.size() < size_t(t.maxRows)) {
+		auto *add = button(rowsBox_, lt("Laycue.Titles.AddAccount"), "laycueSecondary");
+		connect(add, &QAbstractButton::clicked, this, [this]() {
+			library_.draft.rows.push_back({});
+			rebuildRows();
+			draftChanged();
+		});
+		rowsLayout_->addWidget(add, 0, Qt::AlignLeft);
+	}
+}
+
+void TitlesDock::chooseLogo()
+{
+	const QString file = QFileDialog::getOpenFileName(this, lt("Laycue.Titles.ChooseLogo"), QString(),
+							  lt("Laycue.Titles.PictureFiles"));
+	if (file.isEmpty())
+		return;
+	library_.draft.logo = toStd(file);
+	logoName_->setText(QFileInfo(file).fileName());
+	draftChanged();
+}
+
+void TitlesDock::clearLogo()
+{
+	library_.draft.logo.clear();
+	logoName_->setText(lt("Laycue.Titles.NoLogo"));
+	draftChanged();
 }
 
 void TitlesDock::changeHold(int delta)

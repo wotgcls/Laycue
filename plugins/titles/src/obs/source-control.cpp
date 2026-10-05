@@ -75,6 +75,18 @@ bool applyToSource(const std::string &sourceName, const Library &lib, const std:
 	obs_data_set_string(settings, key::line1, content.line1.c_str());
 	obs_data_set_string(settings, key::line2, content.line2.c_str());
 	obs_data_set_string(settings, key::tag, content.tag.c_str());
+	obs_data_set_string(settings, key::note, content.note.c_str());
+	obs_data_set_string(settings, key::logo, content.logo.c_str());
+	{
+		OBSDataArrayAutoRelease rows = obs_data_array_create();
+		for (const Row &r : content.rows) {
+			OBSDataAutoRelease item = obs_data_create();
+			obs_data_set_string(item, "label", r.label.c_str());
+			obs_data_set_string(item, "value", r.value.c_str());
+			obs_data_array_push_back(rows, item);
+		}
+		obs_data_set_array(settings, key::rows, rows);
+	}
 	obs_data_set_bool(settings, key::accentOn, lib.useBrand);
 	obs_data_set_int(settings, key::accent, toObsColour(lib.brand));
 	obs_data_set_int(settings, key::hold, lib.holdOverride);

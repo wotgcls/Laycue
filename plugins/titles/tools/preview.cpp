@@ -159,6 +159,13 @@ int main(int argc, char **argv)
 		txt.line1 = text(loc, nk + ".S1");
 		txt.line2 = text(loc, nk + ".S2");
 		txt.tag = text(loc, nk + ".S3");
+		txt.note = text(loc, nk + ".S4");
+		for (int r = 1; r <= 4; ++r) {
+			const QString v = text(loc, nk + QString(".R%1V").arg(r));
+			if (!v.isEmpty())
+				txt.rows.append({text(loc, nk + QString(".R%1L").arg(r)), v});
+		}
+		txt.logoPath = qEnvironmentVariable("LAYCUE_PREVIEW_LOGO");
 
 		const auto frame = [&](double in, double out, double tick, int variant) {
 			RenderRequest req;

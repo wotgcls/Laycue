@@ -46,6 +46,10 @@ struct Palette {
 	Rgba accent;  // the one accent colour: a rule, a chip, a block
 	Rgba text;    // main line
 	Rgba subtext; // second line and tag text
+	// Extra colours, used only by templates that have more shapes (flagged usesShape2 / usesShape3 / usesInk).
+	Rgba shape2{255, 255, 255, 255}; // a second shape: a tab under the bar, the note tab
+	Rgba shape3{107, 31, 143, 255};  // a third shape: the logo block
+	Rgba ink{17, 17, 16, 255};       // text that sits on the tabs and blocks
 };
 
 // One of the built-in designs. `id` is saved in scenes and never changes.
@@ -68,6 +72,12 @@ struct TitleTemplate {
 	double cornerRadius = 0.0; // in 1920-wide design pixels
 	double tickerSpeed = 0.0;  // > 0 for tickers: pixels per second at 1920 wide
 	double pulseSeconds = 0.0; // > 0 for titles with a pulsing light (the LIVE dot): seconds per pulse
+	bool usesNote = false;     // an extra line under the title (a sort code, a web address)
+	bool usesLogo = false;     // the operator can choose a logo picture
+	int maxRows = 0;           // > 0: a list of label and value rows (bank accounts), up to this many
+	bool usesShape2 = false;   // the colour pickers offer the extra colours below
+	bool usesShape3 = false;
+	bool usesInk = false;
 };
 
 // Titles that need a new picture every frame while on air: tickers scroll, live lights pulse. The renderer
@@ -111,6 +121,9 @@ struct Overrides {
 	bool hasAccent = false;
 	bool hasText = false;
 	bool hasSubtext = false;
+	bool hasShape2 = false;
+	bool hasShape3 = false;
+	bool hasInk = false;
 	Palette palette; // only the parts whose has* flag is set count
 	bool hasDisplay = false;
 	FontFace display = FontFace::BarlowCondensedSemiBold;

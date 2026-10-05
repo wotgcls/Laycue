@@ -3,6 +3,7 @@
 #include "core/easing.hpp"
 #include "render/brand-icons.hpp"
 
+#include <QFileInfo>
 #include <QFontMetricsF>
 #include <QHash>
 #include <QImage>
@@ -54,6 +55,10 @@ struct Ctx {
 	QColor accent;
 	QColor text;
 	QColor sub;
+	QColor shape2;
+	QColor shape3;
+	QColor ink;
+	QColor palette_ink() const { return ink; }
 
 	// How far one element has got (0..1). Elements enter one after another (`delay`, `length` are
 	// shares of the enter animation) but all leave together.
@@ -1088,6 +1093,236 @@ void newsDesk(Ctx &c)
 	c.p.restore();
 }
 
+// ---- Guest and giving cards -------------------------------------------------------------------------------
+
+// Logo pictures are read from disk once and kept (per thread), at a size that is plenty for a title.
+QImage logoImage(const QString &path)
+{
+	if (path.isEmpty())
+		return QImage();
+	thread_local QHash<QString, QImage> cache;
+	const QFileInfo info(path);
+	const QString key = path + QLatin1Char('|') + QString::number(info.lastModified().toSecsSinceEpoch()) +
+			    QLatin1Char('|') + QString::number(info.size());
+	const auto found = cache.constFind(key);
+	if (found != cache.constEnd())
+		return found.value();
+	if (cache.size() > 8)
+		cache.clear();
+	QImage img(path);
+	if (!img.isNull() && (img.width() > 600 || img.height() > 600))
+		img = img.scaled(600, 600, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+	if (!img.isNull())
+		img = img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+	cache.insert(key, img);
+	return img;
+}
+
+// A logo, fitted inside `box` and centred.
+void drawLogo(QPainter &p, const QImage &logo, const QRectF &box, double opacity)
+{
+	if (logo.isNull() || opacity <= 0.0)
+		return;
+	const double s = std::min(box.width() / logo.width(), box.height() / logo.height());
+	const QSizeF size(logo.width() * s, logo.height() * s);
+	const QRectF target(box.center().x() - size.width() / 2, box.center().y() - size.height() / 2, size.width(),
+			    size.height());
+	p.save();
+	p.setOpacity(p.opacity() * opacity);
+	p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+	p.drawImage(target, logo);
+	p.restore();
+}
+
+// A small heart, for the "giving" tab.
+void drawHeart(QPainter &p, const QPointF &centre, double size, const QColor &colour)
+{
+	QPainterPath path;
+	const double s = size / 2.0;
+	path.moveTo(centre.x(), centre.y() + s * 0.9);
+	path.cubicTo(centre.x() - s * 1.6, centre.y() - s * 0.2, centre.x() - s * 0.7, centre.y() - s * 1.2, centre.x(),
+		     centre.y() - s * 0.35);
+	path.cubicTo(centre.x() + s * 0.7, centre.y() - s * 1.2, centre.x() + s * 1.6, centre.y() - s * 0.2, centre.x(),
+		     centre.y() + s * 0.9);
+	p.save();
+	p.setPen(Qt::NoPen);
+	p.setBrush(colour);
+	p.drawPath(path);
+	p.restore();
+}
+
+// 31. Guest Minister: an orange tab over a blue bar (logo and name), a white tab under it.
+void guestMinister(Ctx &c)
+{
+	const double h = 100, padX = 30, tabH = 42, tab2H = 38;
+	const QImage logo = logoImage(c.x.logoPath);
+	const double logoW = logo.isNull() ? 0.0 : h - 24;
+	const QString name = c.x.line1.toUpper();
+	const QFont f1 = fitFont(c, c.t.display, 66, 38, name, 1150);
+	const QFont ft = c.font(c.t.display, 28);
+	const QFont fb = c.font(c.t.display, 26);
+	const double w = std::max(520.0, padX + (logo.isNull() ? 0.0 : logoW + 26) + textWidth(f1, name) + padX);
+	const bool hasBottom = c.has(c.x.line2);
+	const double y = c.bottom() - h - (hasBottom ? tab2H : 0.0);
+	const double e = c.part(0.0, 0.6);
+	QLinearGradient g(kLeft, 0, kLeft + w, 0);
+	g.setColorAt(0.0, c.panel);
+	g.setColorAt(1.0, c.panel.darker(150));
+	c.p.save();
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(g);
+	fillPanel(c, QRectF(kLeft, y, w * e, h));
+	c.p.drawRect(QRectF(kLeft, y, w * e, h));
+	c.p.setClipRect(QRectF(kLeft, y, w * e, h));
+	double tx = kLeft + padX;
+	if (!logo.isNull()) {
+		drawLogo(c.p, logo, QRectF(tx, y + 12, logoW, h - 24), c.part(0.15, 0.4));
+		tx += logoW + 26;
+	}
+	drawText(c.p, QRectF(tx + 24 * (1 - c.part(0.25, 0.5)), y, w, h), name, f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.25, 0.5));
+	c.p.restore();
+	const QString tag = c.x.tag.toUpper();
+	if (c.has(tag)) {
+		const double tw = textWidth(ft, tag) + 2 * 28 + tag.size() * 1.5;
+		const double tabX = kLeft + std::min(w - tw, padX + (logo.isNull() ? 20.0 : logoW + 34));
+		drawTab(c, QRectF(tabX, y - tabH, tw, tabH), tag, ft, c.accent, c.palette_ink(), c.part(0.25, 0.4));
+	}
+	if (hasBottom) {
+		const QString note = c.x.line2.toUpper();
+		const double tw = textWidth(fb, note) + 2 * 30 + note.size() * 1.5;
+		const double a = c.part(0.4, 0.4);
+		c.p.save();
+		c.p.translate(0, 12 * (1.0 - a));
+		fillRect(c.p, QRectF(kLeft + (w - tw) / 2, y + h, tw, tab2H), c.shape2);
+		drawText(c.p, QRectF(kLeft + (w - tw) / 2, y + h, tw, tab2H), note, fb, c.ink, Qt::AlignCenter, a, 1.5);
+		c.p.restore();
+	}
+}
+
+// 32. Giving: where to give. The account holder, then one column per account the operator added; the bar
+// grows with them and the numbers shrink to keep everything on the screen.
+void giving(Ctx &c)
+{
+	QList<QPair<QString, QString>> rows;
+	for (const auto &r : c.x.rows)
+		if (c.has(r.second))
+			rows.append(r);
+	const double h = 116, tabH = 44, noteH = 36, padX = 30, maxTotal = kDesignWidth - 2 * kLeft;
+	const QImage logo = logoImage(c.x.logoPath);
+	const double blockW = logo.isNull() ? 0.0 : h;
+	const bool hasName = c.has(c.x.line1) || c.has(c.x.line2);
+	const QString bank = c.x.line2.toUpper();
+	const QFont fBank = c.font(c.t.body, 20);
+	const Wrapped name = c.has(c.x.line1) ? fitWrapped(c, c.t.display, 38, 24, c.x.line1.toUpper(), 340, 2, 1.0)
+					      : Wrapped();
+	double nameW = 0.0;
+	if (hasName) {
+		nameW = std::max(textWidth(fBank, bank) + bank.size() * 2.5, 0.0);
+		for (const QString &line : name.lines)
+			nameW = std::max(nameW, textWidth(name.font, line));
+		nameW += 2 * padX;
+	}
+	// The numbers shrink, one step at a time, until the whole bar fits.
+	double px = 68.0;
+	QFont fNum = c.font(c.t.display, px);
+	const QFont fLabel = c.font(c.t.body, 20);
+	std::vector<double> colW;
+	double total = 0.0;
+	const auto measure = [&]() {
+		colW.clear();
+		total = blockW + nameW;
+		for (const auto &r : rows) {
+			const double wCol = std::max(textWidth(fNum, r.second),
+						     textWidth(fLabel, r.first.toUpper()) + r.first.size() * 2.5) +
+					    2 * 28.0;
+			colW.push_back(wCol);
+			total += wCol;
+		}
+	};
+	measure();
+	while (total > maxTotal && px > 28.0) {
+		px *= 0.94;
+		fNum = c.font(c.t.display, px);
+		measure();
+	}
+	if (total < 460.0)
+		total = 460.0; // an empty card still has a body
+	const double y = c.bottom() - h - (c.has(c.x.note) ? noteH : 0.0);
+	const double e = c.part(0.0, 0.6);
+	const QRectF bar(kLeft, y, total, h);
+	QLinearGradient g(bar.left(), 0, bar.right(), 0);
+	g.setColorAt(0.0, c.panel);
+	g.setColorAt(0.5, c.panel.lighter(112));
+	g.setColorAt(1.0, c.panel.darker(150));
+	fillPanel(c, QRectF(kLeft, y, total * e, h));
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y, total * e, h));
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(g);
+	c.p.drawRect(bar);
+	fillRect(c.p, QRectF(kLeft, y + h - 4, total, 4), c.sub);
+	double x = kLeft;
+	if (!logo.isNull()) {
+		fillRect(c.p, QRectF(x, y, blockW, h - 4), c.shape3);
+		drawLogo(c.p, logo, QRectF(x + 12, y + 12, blockW - 24, h - 28), c.part(0.1, 0.4));
+		x += blockW;
+	}
+	if (hasName) {
+		const double en = c.part(0.2, 0.5);
+		if (c.has(bank))
+			drawText(c.p, QRectF(x + padX, y + 12, nameW, 26), bank, fBank, c.sub,
+				 Qt::AlignLeft | Qt::AlignVCenter, en, 2.5);
+		const double top = y + (c.has(bank) ? 40 : 0);
+		const double lh = name.lineHeight;
+		const double blockH = lh * name.lines.size();
+		const double avail = (y + h - 4) - top;
+		for (int i = 0; i < name.lines.size(); ++i)
+			drawText(c.p, QRectF(x + padX, top + (avail - blockH) / 2 + i * lh, nameW, lh), name.lines[i],
+				 name.font, c.text, Qt::AlignLeft | Qt::AlignVCenter, en);
+		x += nameW;
+	}
+	for (int i = 0; i < rows.size(); ++i) {
+		const double ec = c.part(0.3 + 0.08 * i, 0.4);
+		fillRect(c.p, QRectF(x, y + 16, 1.5, h - 36), QColor(255, 255, 255, 40));
+		drawText(c.p, QRectF(x + 28, y + 14, colW[i], 28), rows[i].first.toUpper(), fLabel, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, ec, 2.5);
+		drawText(c.p, QRectF(x + 28, y + 38 + 6 * (1 - ec), colW[i], h - 46), rows[i].second, fNum, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, ec);
+		x += colW[i];
+	}
+	c.p.restore();
+	// The tab above the bar: a heart and the words.
+	const QString tag = c.x.tag.toUpper();
+	if (c.has(tag)) {
+		const QFont ft = c.font(c.t.body, 24);
+		const double tw = textWidth(ft, tag) + tag.size() * 4.0 + 2 * 28 + 40;
+		const double a = c.part(0.25, 0.4);
+		const QRectF tab(kLeft + (total - tw) / 2, y - tabH, tw, tabH);
+		c.p.save();
+		c.p.translate(0, -16 * (1.0 - a));
+		fillRect(c.p, tab, c.accent);
+		c.p.setOpacity(c.p.opacity() * a);
+		drawHeart(c.p, QPointF(tab.left() + 30, tab.center().y()), 20, c.ink);
+		drawText(c.p, QRectF(tab.left() + 52, tab.top(), tab.width() - 60, tabH), tag, ft, c.ink,
+			 Qt::AlignLeft | Qt::AlignVCenter, 1.0, 4.0);
+		c.p.restore();
+	}
+	// The note tab under the bar.
+	if (c.has(c.x.note)) {
+		const QFont fn = c.font(c.t.body, 22);
+		const QString note = c.x.note.toUpper();
+		const double tw = textWidth(fn, note) + note.size() * 4.0 + 2 * 30;
+		const double a = c.part(0.45, 0.4);
+		const QRectF tab(kLeft + (total - tw) / 2, y + h, tw, noteH);
+		c.p.save();
+		c.p.translate(0, 12 * (1.0 - a));
+		fillRect(c.p, tab, c.shape2);
+		drawText(c.p, tab, note, fn, c.ink, Qt::AlignCenter, a, 4.0);
+		c.p.restore();
+	}
+}
+
 // The scrolling strip shared by both tickers.
 void drawTickerText(Ctx &c, const QRectF &area, const QFont &font, const QColor &colour)
 {
@@ -1185,6 +1420,8 @@ const std::vector<StyleInfo> &styles()
 		{"news-bar", newsBar},
 		{"handle-pill", handlePill},
 		{"thank-you", thankYou},
+		{"guest-minister", guestMinister},
+		{"giving", giving},
 		{"news-flash", newsFlash},
 		{"news-report", newsReport},
 		{"news-desk", newsDesk},
@@ -1261,12 +1498,16 @@ RenderedTitle renderImpl(const FontSet &fonts, const RenderRequest &request, boo
 // only changes when the words, fonts or picture size do.
 Extent measureExtent(const FontSet &fonts, const RenderRequest &request)
 {
-	const QString key = QStringLiteral("%1|%2|%3|%4|%5|%6|%7|%8|%9")
-				    .arg(QString::fromStdString(request.tpl.id), request.text.line1, request.text.line2,
-					 request.text.tag, QString::number(int(request.tpl.display)),
-					 QString::number(int(request.tpl.body)),
-					 QString::number(request.tpl.cornerRadius),
-					 QString::number(request.canvasWidth), QString::number(request.canvasHeight));
+	QString rowsKey;
+	for (const auto &row : request.text.rows)
+		rowsKey += row.first + QLatin1Char('=') + row.second + QLatin1Char(';');
+	const QString key =
+		QStringLiteral("%1|%2|%3|%4|%5|%6|%7|%8|%9")
+			.arg(QString::fromStdString(request.tpl.id),
+			     request.text.line1 + request.text.note + request.text.logoPath + rowsKey,
+			     request.text.line2, request.text.tag, QString::number(int(request.tpl.display)),
+			     QString::number(int(request.tpl.body)), QString::number(request.tpl.cornerRadius),
+			     QString::number(request.canvasWidth), QString::number(request.canvasHeight));
 	thread_local QHash<QString, Extent> cache;
 	const auto found = cache.constFind(key);
 	if (found != cache.constEnd())
@@ -1353,6 +1594,9 @@ RenderedTitle renderImpl(const FontSet &fonts, const RenderRequest &request, boo
 		ctx.accent = toQ(request.useAccentOverride ? request.accentOverride : request.tpl.palette.accent);
 		ctx.text = toQ(request.tpl.palette.text);
 		ctx.sub = toQ(request.tpl.palette.subtext);
+		ctx.shape2 = toQ(request.tpl.palette.shape2);
+		ctx.shape3 = toQ(request.tpl.palette.shape3);
+		ctx.ink = toQ(request.tpl.palette.ink);
 
 		painter.save();
 		const double size = std::clamp(request.scale, 0.5, 1.5);

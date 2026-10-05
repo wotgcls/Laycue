@@ -29,6 +29,9 @@ constexpr Rgba kNewsBlue = rgb(0x0A, 0x3C, 0xB8);
 constexpr Rgba kNewsRed = rgb(0xD4, 0x12, 0x1B);
 constexpr Rgba kNewsAmber = rgb(0xFF, 0xB4, 0x00);
 constexpr Rgba kPaper = rgb(0xEC, 0xF1, 0xF5);
+constexpr Rgba kGiveBlue = rgb(0x12, 0x2F, 0x8A);
+constexpr Rgba kGiveOrange = rgb(0xFF, 0x6A, 0x13);
+constexpr Rgba kGivePurple = rgb(0x6B, 0x1F, 0x8F);
 constexpr Rgba kSlate = rgb(0x1F, 0x29, 0x37);
 
 Rgba withAlpha(Rgba c, uint8_t a)
@@ -107,6 +110,37 @@ std::vector<TitleTemplate> buildAll()
 		auto t = make("hairline", Category::People,
 			      {withAlpha(kInk, 0), kCream, kCream, withAlpha(kCream, 190)}, F::BarlowSemiBold,
 			      F::BarlowRegular, M::Fade, M::Fade);
+		all.push_back(t);
+	}
+
+	// ---- Guest and giving cards (a logo, tabs above and below the bar) ----
+	{
+		// An orange tab ("NOW MINISTERING") over a blue bar with the name, and a white tab ("church name") under it.
+		auto t = make("guest-minister", Category::People, {kGiveBlue, kGiveOrange, kWhite, kWhite},
+			      F::BarlowCondensedBold, F::BarlowSemiBold, M::Slide, M::Slide);
+		t.palette.shape2 = kWhite;
+		t.palette.ink = rgb(0x0B, 0x25, 0x45);
+		t.usesTag = true;
+		t.usesLogo = true;
+		t.usesShape2 = true;
+		t.usesInk = true;
+		all.push_back(t);
+	}
+	{
+		// Where to give: a tab ("OFFERING · TITHE"), a bar with the account holder and one column per account
+		// (as many as the operator adds), and a note tab under it (a sort code).
+		auto t = make("giving", Category::Announce, {kGiveBlue, kGiveOrange, kWhite, kAmber}, F::BebasNeue,
+			      F::BarlowCondensedBold, M::Slide, M::Slide);
+		t.palette.shape2 = rgb(0xF4, 0xEE, 0xE3);
+		t.palette.shape3 = kGivePurple;
+		t.palette.ink = rgb(0x0B, 0x25, 0x45);
+		t.usesTag = true;
+		t.usesNote = true;
+		t.usesLogo = true;
+		t.maxRows = 4;
+		t.usesShape2 = true;
+		t.usesShape3 = true;
+		t.usesInk = true;
 		all.push_back(t);
 	}
 
@@ -430,6 +464,12 @@ TitleTemplate resolve(const TitleTemplate &base, const Overrides &o)
 		t.palette.text = o.palette.text;
 	if (o.hasSubtext)
 		t.palette.subtext = o.palette.subtext;
+	if (o.hasShape2)
+		t.palette.shape2 = o.palette.shape2;
+	if (o.hasShape3)
+		t.palette.shape3 = o.palette.shape3;
+	if (o.hasInk)
+		t.palette.ink = o.palette.ink;
 	if (o.hasDisplay)
 		t.display = o.display;
 	if (o.hasBody)
@@ -460,6 +500,12 @@ std::map<std::string, std::string> toMap(const Overrides &o)
 		m["text"] = colourToString(o.palette.text);
 	if (o.hasSubtext)
 		m["subtext"] = colourToString(o.palette.subtext);
+	if (o.hasShape2)
+		m["shape2"] = colourToString(o.palette.shape2);
+	if (o.hasShape3)
+		m["shape3"] = colourToString(o.palette.shape3);
+	if (o.hasInk)
+		m["ink"] = colourToString(o.palette.ink);
 	if (o.hasDisplay)
 		m["display"] = faceName(o.display);
 	if (o.hasBody)
@@ -496,6 +542,12 @@ Overrides fromMap(const std::map<std::string, std::string> &values)
 		o.hasText = parseColour(*v, o.palette.text);
 	if (const auto *v = get("subtext"))
 		o.hasSubtext = parseColour(*v, o.palette.subtext);
+	if (const auto *v = get("shape2"))
+		o.hasShape2 = parseColour(*v, o.palette.shape2);
+	if (const auto *v = get("shape3"))
+		o.hasShape3 = parseColour(*v, o.palette.shape3);
+	if (const auto *v = get("ink"))
+		o.hasInk = parseColour(*v, o.palette.ink);
 	if (const auto *v = get("display"))
 		o.hasDisplay = faceFromName(*v, o.display);
 	if (const auto *v = get("body"))
