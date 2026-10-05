@@ -20,6 +20,7 @@ namespace laycue::titles {
 
 namespace {
 
+constexpr double kPi = 3.14159265358979323846; // M_PI is not defined by default on MSVC
 constexpr double kDesignWidth = 1920.0;
 constexpr double kLeft = 110.0;  // left margin (inside the broadcast title-safe area)
 constexpr double kBottom = 96.0; // distance from the bottom of the picture
@@ -751,7 +752,7 @@ double pulsePhase(const Ctx &c)
 void drawLiveDot(Ctx &c, QPointF centre, double radius, const QColor &colour, double appear)
 {
 	const double ph = pulsePhase(c);
-	const double breathe = 0.78 + 0.22 * (0.5 + 0.5 * std::cos(ph * 2.0 * M_PI));
+	const double breathe = 0.78 + 0.22 * (0.5 + 0.5 * std::cos(ph * 2.0 * kPi));
 	c.p.save();
 	c.p.setPen(Qt::NoPen);
 	QColor ring = colour;
