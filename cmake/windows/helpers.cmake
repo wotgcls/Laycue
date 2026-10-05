@@ -70,33 +70,26 @@ function(target_install_resources target)
     list(APPEND _data_dirs "${LAYCUE_COMMON_DATA_DIR}")
   endif()
   foreach(_dir IN LISTS _data_dirs)
-  if(EXISTS "${_dir}")
-    file(GLOB_RECURSE data_files "${_dir}/*")
-    foreach(data_file IN LISTS data_files)
-      cmake_path(
-        RELATIVE_PATH
-        data_file
-        BASE_DIRECTORY "${_dir}/"
-        OUTPUT_VARIABLE relative_path
+    if(EXISTS "${_dir}")
+      file(GLOB_RECURSE data_files "${_dir}/*")
+      foreach(data_file IN LISTS data_files)
+        cmake_path(RELATIVE_PATH data_file BASE_DIRECTORY "${_dir}/" OUTPUT_VARIABLE relative_path)
+        cmake_path(GET relative_path PARENT_PATH relative_path)
+        target_sources(${target} PRIVATE "${data_file}")
+        source_group("Resources/${relative_path}" FILES "${data_file}")
+      endforeach()
+
+      install(DIRECTORY "${_dir}/" DESTINATION "${target}/data" USE_SOURCE_PERMISSIONS)
+
+      add_custom_command(
+        TARGET ${target}
+        POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/rundir/$<CONFIG>/${target}"
+        COMMAND "${CMAKE_COMMAND}" -E copy_directory "${_dir}" "${CMAKE_CURRENT_BINARY_DIR}/rundir/$<CONFIG>/${target}"
+        COMMENT "Copy ${target} resources to rundir"
+        VERBATIM
       )
-      cmake_path(GET relative_path PARENT_PATH relative_path)
-      target_sources(${target} PRIVATE "${data_file}")
-      source_group("Resources/${relative_path}" FILES "${data_file}")
-    endforeach()
-
-    install(DIRECTORY "${_dir}/" DESTINATION "${target}/data" USE_SOURCE_PERMISSIONS)
-
-    add_custom_command(
-      TARGET ${target}
-      POST_BUILD
-      COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/rundir/$<CONFIG>/${target}"
-      COMMAND
-        "${CMAKE_COMMAND}" -E copy_directory "${_dir}"
-        "${CMAKE_CURRENT_BINARY_DIR}/rundir/$<CONFIG>/${target}"
-      COMMENT "Copy ${target} resources to rundir"
-      VERBATIM
-    )
-  endif()
+    endif()
   endforeach()
 endfunction()
 

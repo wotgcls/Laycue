@@ -78,21 +78,16 @@ function(target_install_resources target)
     list(APPEND _data_dirs "${LAYCUE_COMMON_DATA_DIR}")
   endif()
   foreach(_dir IN LISTS _data_dirs)
-  if(EXISTS "${_dir}")
-    file(GLOB_RECURSE data_files "${_dir}/*")
-    foreach(data_file IN LISTS data_files)
-      cmake_path(
-        RELATIVE_PATH
-        data_file
-        BASE_DIRECTORY "${_dir}/"
-        OUTPUT_VARIABLE relative_path
-      )
-      cmake_path(GET relative_path PARENT_PATH relative_path)
-      target_sources(${target} PRIVATE "${data_file}")
-      set_property(SOURCE "${data_file}" PROPERTY MACOSX_PACKAGE_LOCATION "Resources/${relative_path}")
-      source_group("Resources/${relative_path}" FILES "${data_file}")
-    endforeach()
-  endif()
+    if(EXISTS "${_dir}")
+      file(GLOB_RECURSE data_files "${_dir}/*")
+      foreach(data_file IN LISTS data_files)
+        cmake_path(RELATIVE_PATH data_file BASE_DIRECTORY "${_dir}/" OUTPUT_VARIABLE relative_path)
+        cmake_path(GET relative_path PARENT_PATH relative_path)
+        target_sources(${target} PRIVATE "${data_file}")
+        set_property(SOURCE "${data_file}" PROPERTY MACOSX_PACKAGE_LOCATION "Resources/${relative_path}")
+        source_group("Resources/${relative_path}" FILES "${data_file}")
+      endforeach()
+    endif()
   endforeach()
 endfunction()
 
