@@ -28,6 +28,7 @@ void AdaptiveController::start(int currentKbps)
 	badRun_ = goodRun_ = 0;
 	lastDropAt_ = lastRaiseAt_ = -1000000;
 	raisedFrom_ = 0;
+	raiseBackoff_ = 0;
 	softCeiling_ = 0;
 	softCeilingUntil_ = -1;
 	verifying_ = false;
@@ -51,6 +52,7 @@ void AdaptiveController::resetLimits()
 	softCeiling_ = 0;
 	softCeilingUntil_ = -1;
 	raisedFrom_ = 0;
+	raiseBackoff_ = 0;
 	lastDropAt_ = -1000000;
 	goodRun_ = std::max(goodRun_, config_.raiseAfterGoodSeconds);
 }
@@ -104,9 +106,10 @@ AdaptiveDecision AdaptiveController::update(const AdaptiveSample &s)
 			return d;
 		}
 		// Trouble soon after a raise: that level is too much for now. Remember it.
-		if (now_ - lastRaiseAt_ <= 25 && raisedFrom_ > 0) {
+		if (now_ - lastRaiseAt_ <= 60 && raisedFrom_ > 0) {
 			softCeiling_ = raisedFrom_;
 			softCeilingUntil_ = now_ + config_.probeMemorySeconds;
+			raiseBackoff_ = std::min(raiseBackoff_ + 1, 3);
 		}
 		current_ = next;
 		lastDropAt_ = now_;
@@ -123,9 +126,13 @@ AdaptiveDecision AdaptiveController::update(const AdaptiveSample &s)
 	}
 
 	const int limit = effectiveCeiling();
-	if (goodRun_ >= config_.raiseAfterGoodSeconds && current_ < limit &&
-	    now_ - lastDropAt_ >= config_.cooldownSeconds) {
-		const int step = std::max(config_.minStepUpKbps, (limit - current_) / 3);
+	if (raiseBackoff_ > 0 && now_ - lastDropAt_ >= 180)
+		raiseBackoff_ = 0; // a long calm stretch: forgive
+	const int calmNeeded = config_.raiseAfterGoodSeconds << raiseBackoff_;
+	if (goodRun_ >= calmNeeded && current_ < limit && now_ - lastDropAt_ >= config_.cooldownSeconds) {
+		// Steps are a third of the way to the limit, but never more than a quarter of the current rate, so a
+		// raise that turns out too high overshoots only a little.
+		const int step = std::max(config_.minStepUpKbps, std::min((limit - current_) / 3, current_ / 4));
 		const int next = std::min(limit, current_ + step);
 		AdaptiveDecision d;
 		d.change = true;

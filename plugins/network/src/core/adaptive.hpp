@@ -6,7 +6,8 @@
 // (minutes), forgets nothing it learned, works for RTMP only, and cannot say why it changed. This one:
 //  * has a floor you set (never below it) and a ceiling (never above what you chose),
 //  * recovers on a short, bounded ramp,
-//  * learns: if a raise is followed by trouble, it caps itself just under that level for a while,
+//  * learns: if a raise is followed by trouble, it caps itself just under that level for a while and waits
+//    twice as long before trying again (up to 8 times the normal wait),
 //  * checks that the encoder really obeyed a lowering and stops, saying so, if it did not (no loops),
 //  * tells you the reason for every change.
 #pragma once
@@ -75,6 +76,7 @@ private:
 	long lastDropAt_ = -1000000;
 	long lastRaiseAt_ = -1000000;
 	int raisedFrom_ = 0;
+	int raiseBackoff_ = 0; // each failed raise doubles the calm time needed before the next one (up to 8x)
 	int softCeiling_ = 0;
 	long softCeilingUntil_ = -1;
 

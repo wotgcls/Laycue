@@ -55,11 +55,46 @@ QLabel *makeLabel(QWidget *parent, const QString &text, int px, int weight, cons
 	return innerLabel(parent, text, px, weight, colour);
 }
 
+// A label that paints its own text. The panel style sheet pins every QLabel to a small size, which would
+// shrink the big numbers, so this one draws with its own font.
+class NumberLabel : public QLabel {
+public:
+	NumberLabel(QWidget *parent, const QString &text, int px, const QColor &colour)
+		: QLabel(text, parent),
+		  px_(px),
+		  colour_(colour)
+	{
+		setFont(uiFont(px, 600));
+		setAttribute(Qt::WA_TransparentForMouseEvents, true);
+	}
+
+	QSize sizeHint() const override
+	{
+		const QFontMetrics fm(uiFont(px_, 600));
+		return {fm.horizontalAdvance(text()) + 2, fm.height() + 2};
+	}
+	QSize minimumSizeHint() const override { return sizeHint(); }
+
+protected:
+	void paintEvent(QPaintEvent *) override
+	{
+		QPainter p(this);
+		p.setRenderHint(QPainter::TextAntialiasing, true);
+		p.setPen(colour_);
+		p.setFont(uiFont(px_, 600));
+		p.drawText(rect(), Qt::AlignLeft | Qt::AlignVCenter, text());
+	}
+
+private:
+	int px_;
+	QColor colour_;
+};
+
 QLabel *monoLabel(QWidget *parent, const QString &text, int px, const QColor &colour)
 {
-	auto *l = new QLabel(text, parent);
-	l->setFont(monoFont(px));
-	l->setStyleSheet(labelStyle(colour, l->font()));
+	if (px >= 18)
+		return new NumberLabel(parent, text, px, colour);
+	QLabel *l = innerLabel(parent, text, px, 600, colour);
 	l->setWordWrap(false);
 	return l;
 }

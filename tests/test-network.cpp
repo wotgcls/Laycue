@@ -394,3 +394,20 @@ TEST_CASE("network settings: history keeps only the newest")
 	CHECK(s.history.size() == kMaxHistory);
 	CHECK(s.history.back().when == int(kMaxHistory) + 4);
 }
+
+TEST_CASE("network adaptive: after failed raises it waits longer before trying again")
+{
+	AdaptiveController c = makeController(500, 3000);
+	// A link that carries 1200 kbps, while the encoder starts at 3000: every raise above ~1200 fails.
+	const Run run = simulate(c, 1800, [](int) { return 1200.0; }, false, 3000);
+	int firstHalf = 0, secondHalf = 0;
+	for (int t = 1; t < 1800; ++t)
+		if (run.bitrate[t] != run.bitrate[t - 1])
+			(t < 900 ? firstHalf : secondHalf) += 1;
+	CHECK(secondHalf <= firstHalf);
+	int overshoot = 0; // seconds spent clearly above what the link carries
+	for (int kbps : run.bitrate)
+		overshoot += kbps > 1400 ? 1 : 0;
+	CHECK(overshoot < 100); // under 6% of the half hour
+	CHECK(run.bitrate.back() <= 1300);
+}
