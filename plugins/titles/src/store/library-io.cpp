@@ -92,6 +92,24 @@ Library loadLibrary()
 				lib.queue.push_back(std::move(q));
 			}
 		}
+		{
+			OBSDataAutoRelease placements = obs_data_get_obj(root, "placements");
+			if (placements) {
+				for (obs_data_item_t *entry = obs_data_first(placements); entry;
+				     obs_data_item_next(&entry)) {
+					const char *name = obs_data_item_get_name(entry);
+					if (!name || obs_data_item_gettype(entry) != OBS_DATA_OBJECT)
+						continue;
+					OBSDataAutoRelease item = obs_data_item_get_obj(entry);
+					Placement p;
+					p.align = int(obs_data_get_int(item, "align"));
+					p.percent = obs_data_has_user_value(item, "percent")
+							    ? int(obs_data_get_int(item, "percent"))
+							    : 100;
+					lib.placements[name] = p;
+				}
+			}
+		}
 		sanitize(lib);
 	} catch (...) {
 		obs_log(LOG_WARNING, "Laycue Titles: could not read the saved library");
@@ -113,6 +131,16 @@ bool saveLibrary(const Library &lib)
 		obs_data_set_int(root, "hold", lib.holdOverride);
 		obs_data_set_string(root, "target", lib.targetSource.c_str());
 		obs_data_set_string(root, "brand", colourToString(lib.brand).c_str());
+		{
+			OBSDataAutoRelease placements = obs_data_create();
+			for (const auto &kv : lib.placements) {
+				OBSDataAutoRelease item = obs_data_create();
+				obs_data_set_int(item, "align", kv.second.align);
+				obs_data_set_int(item, "percent", kv.second.percent);
+				obs_data_set_obj(placements, kv.first.c_str(), item);
+			}
+			obs_data_set_obj(root, "placements", placements);
+		}
 		{
 			OBSData draft = contentToData(lib.draft);
 			obs_data_set_obj(root, "draft", draft);

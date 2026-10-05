@@ -10,7 +10,7 @@ Three small OBS plugins that share one look. Install any one, or all three.
 
 All three are native OBS plugins: no browser source, no web server, no account. Anything automatic is off until you turn it on. See [`docs/PACK.md`](docs/PACK.md) for what the pack is and why, [`docs/titles.md`](docs/titles.md) and [`docs/network.md`](docs/network.md) for how those two work, [`docs/NAMING.md`](docs/NAMING.md) for the name, and [`CLAUDE.md`](CLAUDE.md) for how it is built. The original Scenes product definition is [`PRD.md`](PRD.md).
 
-![The 20 Laycue Titles templates](docs/img/titles-templates.png)
+![The Laycue Titles templates, captured from OBS](docs/img/titles-in-obs.jpg)
 
 **Status:** working beta. Scenes and Titles are tested in real OBS. Network is tested in real OBS against a local test server (speed test, live monitor, auto-adjust, report); it has not yet met a real streaming platform.
 

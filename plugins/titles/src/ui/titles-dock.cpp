@@ -238,6 +238,32 @@ QWidget *TitlesDock::buildStage()
 	v->addWidget(edit3_);
 	connect(edit3_, &QLineEdit::textEdited, this, &TitlesDock::fieldsEdited);
 
+	// Position and size: only for titles that do not span the whole picture.
+	placementBox_ = new QWidget(stage);
+	auto *pv = new QHBoxLayout(placementBox_);
+	pv->setContentsMargins(0, 2, 0, 2);
+	pv->setSpacing(size::gapSmall);
+	alignSeg_ = new Segmented(placementBox_);
+	alignSeg_->setItems(
+		{lt("Laycue.Titles.AlignLeft"), lt("Laycue.Titles.AlignCenter"), lt("Laycue.Titles.AlignRight")});
+	alignSeg_->setAccessibleName(lt("Laycue.Titles.Position"));
+	connect(alignSeg_, &Segmented::changed, this, [this](int i) { changePlacement(i, 0); });
+	pv->addWidget(alignSeg_, 1);
+	auto *smaller = button(placementBox_, QStringLiteral("\u2212"), "laycueSecondary");
+	smaller->setAccessibleName(lt("Laycue.Titles.Smaller"));
+	connect(smaller, &QAbstractButton::clicked, this, [this]() { changePlacement(-1, -1); });
+	pv->addWidget(smaller);
+	sizeValue_ = makeLabel(placementBox_, QStringLiteral("100%"), 13, 600, color::cream);
+	sizeValue_->setAlignment(Qt::AlignCenter);
+	sizeValue_->setMinimumWidth(52);
+	sizeValue_->setWordWrap(false);
+	pv->addWidget(sizeValue_);
+	auto *bigger = button(placementBox_, QStringLiteral("+"), "laycueSecondary");
+	bigger->setAccessibleName(lt("Laycue.Titles.Bigger"));
+	connect(bigger, &QAbstractButton::clicked, this, [this]() { changePlacement(-1, +1); });
+	pv->addWidget(bigger);
+	v->addWidget(placementBox_);
+
 	auto *row = new QHBoxLayout();
 	row->setSpacing(size::gapSmall);
 	primary_ = new ActionButton(lt("Laycue.Titles.ShowOnAir"), ActionButton::Kind::Primary, stage);
@@ -435,6 +461,9 @@ void TitlesDock::updatePreview()
 	text.line2 = fromStd(library_.draft.line2);
 	text.tag = fromStd(library_.draft.tag);
 	preview_->setTitle(t, text, library_.useBrand, library_.brand);
+	const Placement placement = placementFor(library_, library_.selected);
+	preview_->setPlacement(placement.align, placement.percent);
+	refreshPlacement();
 }
 
 void TitlesDock::fieldsEdited()
@@ -606,6 +635,7 @@ bool TitlesDock::applyAndShow()
 	}
 	onAirContent_ = library_.draft;
 	onAirStyle_ = library_.selected;
+	onAirPlacement_ = placementFor(library_, library_.selected);
 	preview_->play();
 	preview_->setOnAir(true);
 	pollStatus();
@@ -621,7 +651,8 @@ void TitlesDock::primaryClicked()
 	if (status_.onAir() && status_.phase != TitleStatus::Phase::Out) {
 		// On air already. Nothing changed: this button says "Hide". Something changed: it says "Update",
 		// and only the text changes; nothing re-arrives.
-		if (onAirContent_ == library_.draft && onAirStyle_ == library_.selected) {
+		if (onAirContent_ == library_.draft && onAirStyle_ == library_.selected &&
+		    onAirPlacement_ == placementFor(library_, library_.selected)) {
 			hideClicked();
 			return;
 		}
@@ -635,6 +666,7 @@ void TitlesDock::primaryClicked()
 		}
 		applyToSource(target(), library_, library_.selected, library_.draft);
 		onAirContent_ = library_.draft;
+		onAirPlacement_ = placementFor(library_, library_.selected);
 		toast(lt("Laycue.Titles.Updated"));
 		updateButtons();
 		return;
@@ -751,6 +783,7 @@ void TitlesDock::pollStatus()
 		// A title is on air that this panel didn't show (a saved scene, a hotkey): treat the text now in the boxes as it.
 		onAirContent_ = library_.draft;
 		onAirStyle_ = library_.selected;
+		onAirPlacement_ = placementFor(library_, library_.selected);
 	}
 	if (!status_.onAir()) {
 		onAirStyle_.clear();
@@ -787,7 +820,8 @@ void TitlesDock::updateButtons()
 {
 	const bool noLayer = sources_.empty();
 	const bool onAir = status_.onAir() && status_.phase != TitleStatus::Phase::Out;
-	const bool changed = onAir && !(onAirContent_ == library_.draft && onAirStyle_ == library_.selected);
+	const bool changed = onAir && !(onAirContent_ == library_.draft && onAirStyle_ == library_.selected &&
+					onAirPlacement_ == placementFor(library_, library_.selected));
 
 	if (noLayer) {
 		primary_->setText(lt("Laycue.Titles.AddLayerToScene"));
@@ -994,6 +1028,31 @@ void TitlesDock::rebuildSetup()
 			makeLabel(v->parentWidget(), lt("Laycue.Titles.SetupKeysBody"), 12, 400, color::textSecondary));
 	}
 	setupLayout_->addStretch(1);
+}
+
+void TitlesDock::refreshPlacement()
+{
+	const TitleTemplate t = resolveStyle(library_, library_.selected);
+	const bool can = supportsPlacement(t);
+	placementBox_->setVisible(can);
+	if (!can)
+		return;
+	const Placement p = placementFor(library_, library_.selected);
+	alignSeg_->setCurrent(p.align);
+	sizeValue_->setText(QStringLiteral("%1%").arg(p.percent));
+}
+
+void TitlesDock::changePlacement(int align, int percentDelta)
+{
+	Placement p = placementFor(library_, library_.selected);
+	if (align >= 0)
+		p.align = align;
+	p.percent += 10 * percentDelta;
+	setPlacement(library_, library_.selected, p);
+	refreshPlacement();
+	updatePreview();
+	updateButtons();
+	scheduleSave();
 }
 
 void TitlesDock::changeHold(int delta)

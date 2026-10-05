@@ -76,6 +76,16 @@ inline bool isContinuous(const TitleTemplate &t)
 {
 	return t.tickerSpeed > 0.0 || t.pulseSeconds > 0.0;
 }
+// Where a title sits across the picture, and how big it is. Only titles that do not span the whole width
+// (not tickers, not the full-screen Thank You) can be placed.
+enum class Align { Left = 0, Center = 1, Right = 2 };
+constexpr int kMinSizePercent = 50;
+constexpr int kMaxSizePercent = 150;
+inline bool supportsPlacement(const TitleTemplate &t)
+{
+	return t.tickerSpeed <= 0.0 && !t.fullHeight && t.id != "thank-you";
+}
+
 inline double continuousSpeed(const TitleTemplate &t)
 {
 	return t.tickerSpeed > 0.0 ? t.tickerSpeed : (t.pulseSeconds > 0.0 ? 100.0 : 0.0);

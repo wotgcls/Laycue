@@ -98,6 +98,36 @@ int main(int argc, char **argv)
 		}
 		return 0;
 	}
+	if (argc > 2 && QString::fromLocal8Bit(argv[1]) == "--placement") {
+		// Each listed template at several positions and sizes: placement-<id>-<align>-<percent>.png
+		const QString dir = QString::fromLocal8Bit(argv[2]);
+		QDir().mkpath(dir);
+		const QString dataDir = QString::fromLocal8Bit(TITLES_DATA_DIR);
+		FontSet fonts(dataDir + "/fonts");
+		const auto loc = loadLocale(dataDir + "/locale/en-US.ini");
+		const int combos[][2] = {{0, 100}, {1, 100}, {2, 100}, {1, 150}, {2, 60}, {0, 130}};
+		for (int a = 3; a < argc; ++a) {
+			const TitleTemplate *tpl = findTemplate(argv[a]);
+			if (!tpl)
+				continue;
+			for (const auto &c : combos) {
+				RenderRequest req;
+				req.tpl = *tpl;
+				const QString nk = QString::fromStdString(nameKey(*tpl));
+				req.text.line1 = text(loc, nk + ".S1");
+				req.text.line2 = text(loc, nk + ".S2");
+				req.text.tag = text(loc, nk + ".S3");
+				req.align = c[0];
+				req.scale = c[1] / 100.0;
+				QImage pic = samplePicture(1920, 1080, 0);
+				const RenderedTitle r = renderTitle(fonts, req);
+				QPainter p(&pic);
+				p.drawImage(r.x, r.y, r.image);
+				pic.save(QString("%1/placement-%2-%3-%4.png").arg(dir, argv[a]).arg(c[0]).arg(c[1]));
+			}
+		}
+		return 0;
+	}
 	if (argc < 2) {
 		std::fprintf(stderr, "usage: titles-preview <out folder> [template id]\n");
 		return 2;

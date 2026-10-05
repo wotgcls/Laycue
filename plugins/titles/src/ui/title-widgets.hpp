@@ -24,6 +24,7 @@ public:
 	explicit TitlePreview(QWidget *parent = nullptr);
 
 	void setTitle(const TitleTemplate &tpl, const TitleText &text, bool useBrand, const Rgba &brand);
+	void setPlacement(int align, int percent); // where it sits and how big (see Placement)
 	void setOnAir(bool onAir);
 	// Starts the arrival (or the exit) so the preview moves like the real title.
 	void play();
@@ -46,6 +47,8 @@ private:
 	TitleText text_;
 	bool useBrand_ = false;
 	Rgba brand_;
+	int align_ = 0;
+	int percent_ = 100;
 	bool onAir_ = false;
 	bool playing_ = false; // the arrival or exit is being drawn
 	TitleClock clock_;

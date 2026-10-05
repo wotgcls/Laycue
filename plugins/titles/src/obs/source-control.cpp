@@ -78,6 +78,9 @@ bool applyToSource(const std::string &sourceName, const Library &lib, const std:
 	obs_data_set_bool(settings, key::accentOn, lib.useBrand);
 	obs_data_set_int(settings, key::accent, toObsColour(lib.brand));
 	obs_data_set_int(settings, key::hold, lib.holdOverride);
+	const Placement placement = placementFor(lib, styleId);
+	obs_data_set_int(settings, key::align, placement.align);
+	obs_data_set_int(settings, key::sizePercent, placement.percent);
 
 	OBSDataAutoRelease custom = obs_data_create();
 	if (isCustomId(styleId)) {

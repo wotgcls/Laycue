@@ -32,6 +32,8 @@ struct TitleSource {
 	TitleText text;
 	bool useAccent = false;
 	Rgba accent;
+	int align = 0;
+	double scale = 1.0;
 
 	// Animation.
 	TitleClock clock;
@@ -116,6 +118,8 @@ void getDefaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, key::accentOn, false);
 	obs_data_set_default_int(settings, key::accent, toObsColour(first.palette.accent));
 	obs_data_set_default_int(settings, key::hold, -1);
+	obs_data_set_default_int(settings, key::align, 0);
+	obs_data_set_default_int(settings, key::sizePercent, 100);
 	obs_data_set_default_bool(settings, key::onAir, false);
 }
 
@@ -138,6 +142,10 @@ void update(void *data, obs_data_t *settings)
 		s->useAccent = obs_data_get_bool(settings, key::accentOn);
 		s->accent = fromObsColour(uint32_t(obs_data_get_int(settings, key::accent)));
 
+		s->align = std::clamp(int(obs_data_get_int(settings, key::align)), 0, 2);
+		s->scale = std::clamp(int(obs_data_get_int(settings, key::sizePercent)), kMinSizePercent,
+				      kMaxSizePercent) /
+			   100.0;
 		const int hold = int(obs_data_get_int(settings, key::hold));
 		if (hold >= 0)
 			s->tpl.holdSeconds = hold;
@@ -234,6 +242,8 @@ void tick(void *data, float seconds)
 		request.canvasHeight = int(s->canvasH);
 		request.useAccentOverride = s->useAccent;
 		request.accentOverride = s->accent;
+		request.align = s->align;
+		request.scale = s->scale;
 		RenderedTitle rendered = renderTitle(*g_fonts, request);
 		if (rendered.image.isNull())
 			return;

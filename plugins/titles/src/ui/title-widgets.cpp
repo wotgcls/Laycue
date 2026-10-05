@@ -104,6 +104,13 @@ void TitlePreview::tick()
 	update();
 }
 
+void TitlePreview::setPlacement(int align, int percent)
+{
+	align_ = align;
+	percent_ = percent;
+	update();
+}
+
 void TitlePreview::paintEvent(QPaintEvent *)
 {
 	QPainter p(this);
@@ -122,6 +129,8 @@ void TitlePreview::paintEvent(QPaintEvent *)
 		req.canvasHeight = std::max(1, int(area.height()));
 		req.useAccentOverride = useBrand_;
 		req.accentOverride = brand_;
+		req.align = align_;
+		req.scale = percent_ / 100.0;
 		if (playing_) {
 			req.frame = {clock_.in(), clock_.out(), ticker_.offset()};
 		} else {

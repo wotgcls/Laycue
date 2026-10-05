@@ -303,3 +303,31 @@ TEST_CASE("titles library: sanitize repairs a damaged file")
 	CHECK(lib.queue[0].content.line1.size() <= 600);
 	CHECK_EQ(lib.holdOverride, -1);
 }
+
+TEST_CASE("titles: placement is remembered per style, kept in range and only for titles that do not span the picture")
+{
+	Library lib;
+	CHECK(placementFor(lib, "clean-bar") == Placement());
+	setPlacement(lib, "clean-bar", {1, 130});
+	CHECK_EQ(placementFor(lib, "clean-bar").align, 1);
+	CHECK_EQ(placementFor(lib, "clean-bar").percent, 130);
+	CHECK(placementFor(lib, "social-youtube") == Placement()); // other styles keep their own
+	setPlacement(lib, "clean-bar", {7, 999});                  // out of range: clamped
+	CHECK_EQ(placementFor(lib, "clean-bar").align, 2);
+	CHECK_EQ(placementFor(lib, "clean-bar").percent, kMaxSizePercent);
+	setPlacement(lib, "clean-bar", {0, 100}); // back to the default: nothing is stored
+	CHECK(lib.placements.empty());
+
+	lib.placements["no-such-style"] = {1, 80};
+	lib.placements["clean-bar"] = {5, 10};
+	sanitize(lib);
+	CHECK(lib.placements.count("no-such-style") == 0);
+	CHECK_EQ(placementFor(lib, "clean-bar").align, 2);
+	CHECK_EQ(placementFor(lib, "clean-bar").percent, kMinSizePercent);
+
+	CHECK(supportsPlacement(*findTemplate("clean-bar")));
+	CHECK(supportsPlacement(*findTemplate("social-tiktok")));
+	CHECK(!supportsPlacement(*findTemplate("crawl-ticker")));
+	CHECK(!supportsPlacement(*findTemplate("headline-ticker")));
+	CHECK(!supportsPlacement(*findTemplate("thank-you")));
+}

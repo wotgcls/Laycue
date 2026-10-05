@@ -63,6 +63,22 @@ TitleTemplate resolveStyle(const Library &lib, const std::string &styleId, std::
 	return first;
 }
 
+Placement placementFor(const Library &lib, const std::string &styleId)
+{
+	const auto found = lib.placements.find(styleId);
+	return found == lib.placements.end() ? Placement() : found->second;
+}
+
+void setPlacement(Library &lib, const std::string &styleId, Placement placement)
+{
+	placement.align = std::clamp(placement.align, 0, 2);
+	placement.percent = std::clamp(placement.percent, kMinSizePercent, kMaxSizePercent);
+	if (placement == Placement())
+		lib.placements.erase(styleId);
+	else
+		lib.placements[styleId] = placement;
+}
+
 std::string uniqueCustomName(const Library &lib, const std::string &wanted)
 {
 	std::string base = wanted.empty() ? "My template" : wanted;
@@ -167,6 +183,14 @@ void sanitize(Library &lib)
 	};
 	if (!valid(lib.selected))
 		lib.selected = builtInTemplates().front().id;
+	for (auto it = lib.placements.begin(); it != lib.placements.end();) {
+		it->second.align = std::clamp(it->second.align, 0, 2);
+		it->second.percent = std::clamp(it->second.percent, kMinSizePercent, kMaxSizePercent);
+		if (!valid(it->first) || it->second == Placement())
+			it = lib.placements.erase(it);
+		else
+			++it;
+	}
 	for (QueueItem &q : lib.queue) {
 		if (!valid(q.styleId))
 			q.styleId = builtInTemplates().front().id;

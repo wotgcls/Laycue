@@ -87,6 +87,8 @@ private:
 	void deleteSelectedCustom();
 	void pickBrandColour();
 	void changeHold(int delta);
+	void changePlacement(int align, int percentDelta); // align -1 keeps it; percentDelta in steps of 10
+	void refreshPlacement();
 
 	void toast(const QString &message);
 	void scheduleSave();
@@ -99,6 +101,7 @@ private:
 	TitleStatus status_;
 	TitleContent onAirContent_;
 	std::string onAirStyle_;
+	laycue::titles::Placement onAirPlacement_; // the position and size of the title on air
 	std::string
 		lastSampleStyle_; // the style whose sample text is in the boxes (to know if the operator typed their own)
 	bool pendingPlay_ = false;
@@ -119,6 +122,9 @@ private:
 	QWidget *openedPage_ = nullptr;
 	laycue::ui::Segmented *tabs_ = nullptr;
 	laycue::ui::Segmented *categories_ = nullptr;
+	QWidget *placementBox_ = nullptr; // Position and Size, for titles that do not span the picture
+	laycue::ui::Segmented *alignSeg_ = nullptr;
+	QLabel *sizeValue_ = nullptr;
 	laycue::ui::Segmented *categories2_ = nullptr; // second row of category choices; only one row has a selection
 	QLabel *statusLabel_ = nullptr;
 	QWidget *statusDot_ = nullptr;

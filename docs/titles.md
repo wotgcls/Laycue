@@ -22,6 +22,12 @@ Mixlr and a generic handle, each with the platform's icon, see `ICONS.md`) and *
 removed: the pack is for names and status, not verses.
 They are data (`TitleTemplate`), not code per template, which keeps custom templates simple.
 
+## Position and size
+Every title that does not span the picture (all but the tickers and Thank You) can sit on the left, in the centre or on
+the right, and be made 50% to 150% of its normal size. The choice is remembered per template, so a social card can sit
+on the right while the name bars stay on the left. The renderer measures the title once (cached) and places it by its real
+edges, so the margin is the same whatever the words are. Changing it while a title is on air shows "Update on air".
+
 ## Custom templates
 A custom template stores only the fields the operator changed (colours, size, position, hold time) over a base
 template. Updating a base template therefore never breaks a custom one.

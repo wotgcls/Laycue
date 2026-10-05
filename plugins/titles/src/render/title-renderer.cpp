@@ -22,9 +22,9 @@ namespace {
 
 constexpr double kPi = 3.14159265358979323846; // M_PI is not defined by default on MSVC
 constexpr double kDesignWidth = 1920.0;
-constexpr double kLeft = 110.0;  // left margin (inside the broadcast title-safe area)
-constexpr double kBottom = 96.0; // distance from the bottom of the picture
-constexpr double kRegionHeight = 360.0;
+constexpr double kLeft = 110.0;         // left margin (inside the broadcast title-safe area)
+constexpr double kBottom = 96.0;        // distance from the bottom of the picture
+constexpr double kRegionHeight = 440.0; // room above the title for it to grow when made bigger
 constexpr double kTallRegionHeight = 560.0;
 
 QColor toQ(const Rgba &c)
@@ -1247,7 +1247,78 @@ double tickerStripWidth(const FontSet &fonts, const TitleTemplate &tpl, const Ti
 	return textWidth(font, text.line1.simplified()) + 180.0;
 }
 
+namespace {
+
+struct Extent {
+	double minX = 0.0;
+	double maxX = 0.0;
+	bool ok = false;
+};
+
+RenderedTitle renderImpl(const FontSet &fonts, const RenderRequest &request, bool place);
+
+// The left and right edges of the title when it is fully on screen, in design pixels. Cached, because it
+// only changes when the words, fonts or picture size do.
+Extent measureExtent(const FontSet &fonts, const RenderRequest &request)
+{
+	const QString key = QStringLiteral("%1|%2|%3|%4|%5|%6|%7|%8|%9")
+				    .arg(QString::fromStdString(request.tpl.id), request.text.line1, request.text.line2,
+					 request.text.tag, QString::number(int(request.tpl.display)),
+					 QString::number(int(request.tpl.body)),
+					 QString::number(request.tpl.cornerRadius),
+					 QString::number(request.canvasWidth), QString::number(request.canvasHeight));
+	thread_local QHash<QString, Extent> cache;
+	const auto found = cache.constFind(key);
+	if (found != cache.constEnd())
+		return found.value();
+	if (cache.size() > 32)
+		cache.clear();
+	RenderRequest probe = request;
+	probe.align = 0;
+	probe.scale = 1.0;
+	probe.frame = {1.0, 0.0, 0.0};
+	const RenderedTitle r = renderImpl(fonts, probe, false);
+	Extent e;
+	if (!r.image.isNull()) {
+		const QImage &img = r.image;
+		int minPx = img.width(), maxPx = -1;
+		for (int y = 0; y < img.height(); ++y) {
+			const QRgb *line = reinterpret_cast<const QRgb *>(img.constScanLine(y));
+			for (int x = 0; x < img.width(); ++x) {
+				if (qAlpha(line[x]) > 100) { // the title itself, not its soft shadow
+					minPx = std::min(minPx, x);
+					maxPx = std::max(maxPx, x);
+					break;
+				}
+			}
+			for (int x = img.width() - 1; x > maxPx && x >= 0; --x) {
+				if (qAlpha(line[x]) > 100) {
+					maxPx = x;
+					break;
+				}
+			}
+		}
+		if (maxPx >= minPx) {
+			const double scale = double(request.canvasWidth) / kDesignWidth;
+			e.minX = minPx / scale;
+			e.maxX = (maxPx + 1) / scale;
+			e.ok = true;
+		}
+	}
+	cache.insert(key, e);
+	return e;
+}
+
+} // namespace
+
 RenderedTitle renderTitle(const FontSet &fonts, const RenderRequest &request)
+{
+	return renderImpl(fonts, request, true);
+}
+
+namespace {
+
+RenderedTitle renderImpl(const FontSet &fonts, const RenderRequest &request, bool place)
 {
 	RenderedTitle result;
 	try {
@@ -1283,11 +1354,30 @@ RenderedTitle renderTitle(const FontSet &fonts, const RenderRequest &request)
 		ctx.text = toQ(request.tpl.palette.text);
 		ctx.sub = toQ(request.tpl.palette.subtext);
 
+		painter.save();
+		const double size = std::clamp(request.scale, 0.5, 1.5);
+		const int align = std::clamp(request.align, 0, 2);
+		if (place && supportsPlacement(request.tpl) && (align != 0 || std::abs(size - 1.0) > 0.001)) {
+			const Extent e = measureExtent(fonts, request);
+			if (e.ok) {
+				// Grow or shrink about the title's own baseline (its top edge for a title at the top), and
+				// put its left edge, middle or right edge where the operator chose.
+				const double width = (e.maxX - e.minX) * size;
+				const double left = align == 1   ? (ctx.W - width) / 2.0
+						    : align == 2 ? ctx.W - kLeft - width
+								 : kLeft;
+				const double pivotY = request.tpl.anchorTop ? 64.0 : ctx.bottom();
+				painter.translate(left, pivotY * (1.0 - size));
+				painter.scale(size, size);
+				painter.translate(-e.minX, 0);
+			}
+		}
 		const Group group = groupFor(ctx);
 		painter.save();
 		applyGroup(ctx, group, style->verticalSlide, QPointF(kLeft, ctx.bottom()));
 		style->draw(ctx);
 		painter.restore();
+		painter.restore(); // the placement transform
 		painter.end();
 
 		result.image = std::move(image);
@@ -1298,5 +1388,7 @@ RenderedTitle renderTitle(const FontSet &fonts, const RenderRequest &request)
 	}
 	return result;
 }
+
+} // namespace
 
 } // namespace laycue::titles

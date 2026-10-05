@@ -34,6 +34,8 @@ struct RenderRequest {
 	int canvasHeight = 1080;
 	bool useAccentOverride = false; // the operator's brand colour replaces the template's accent
 	Rgba accentOverride;
+	int align = 0;      // Align: where the title sits across the picture (titles that do not span it)
+	double scale = 1.0; // size, 0.5 to 1.5
 };
 
 struct RenderedTitle {

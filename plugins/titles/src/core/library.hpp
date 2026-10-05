@@ -6,6 +6,7 @@
 
 #include "core/title-templates.hpp"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,14 @@ struct QueueItem {
 	TitleContent content;
 };
 
+// Where a style sits and how big it is, remembered per style (a social card may sit on the right while the
+// name bars stay on the left).
+struct Placement {
+	int align = 0;     // Align: 0 left, 1 center, 2 right
+	int percent = 100; // size, kMinSizePercent..kMaxSizePercent
+	bool operator==(const Placement &o) const { return align == o.align && percent == o.percent; }
+};
+
 struct Library {
 	std::vector<Overrides> customs;
 	std::vector<QueueItem> queue;
@@ -31,8 +40,9 @@ struct Library {
 	TitleContent draft;                 // what is in the text boxes
 	bool useBrand = false;              // paint every title's accent in the operator's brand colour
 	Rgba brand{0xFF, 0xB3, 0x1A, 255};
-	int holdOverride = -1;    // seconds on air before hiding by itself; -1 = the template's own
-	std::string targetSource; // name of the "Laycue Title" source the panel controls
+	int holdOverride = -1;                       // seconds on air before hiding by itself; -1 = the template's own
+	std::map<std::string, Placement> placements; // by style id; a style not listed uses the default
+	std::string targetSource;                    // name of the "Laycue Title" source the panel controls
 };
 
 constexpr size_t kMaxQueue = 50;
@@ -48,6 +58,10 @@ const Overrides *findCustom(const Library &lib, const std::string &name);
 // first built-in template if the id is unknown (a deleted custom template must never break a title).
 // `baseId` is set to the built-in template the result draws like.
 TitleTemplate resolveStyle(const Library &lib, const std::string &styleId, std::string *baseId = nullptr);
+
+Placement placementFor(const Library &lib, const std::string &styleId);
+// Stores it (and forgets it again when it is the default). Numbers are kept in range.
+void setPlacement(Library &lib, const std::string &styleId, Placement placement);
 
 // A name nobody uses yet, based on `wanted` ("Sunday", "Sunday 2", ...).
 std::string uniqueCustomName(const Library &lib, const std::string &wanted);
