@@ -28,6 +28,8 @@ Nothing appears on air by itself. Show and hide are explicit; "hide by itself" i
 "Add to every scene" asks for confirmation because it touches the operator's scenes.
 
 ## Known limits
-- Tickers redraw each frame on the CPU; fine for one or two, and a pre-rendered strip is the planned
-  optimisation if people stack many.
+- Cost per frame (measured, `titles-preview --bench`): 1 to 4 ms for every template, tickers about 1 ms,
+  so a 30 fps stream has a 33 ms budget with room to spare. A static title is drawn once and costs nothing.
+  Large text with a shadow used to take 73 ms (Sermon Series, Thank You) and would have stalled OBS during
+  the arrival; the text and its shadow are now drawn once and re-used on each frame of the animation.
 - Not yet verified: brand-colour override and hotkeys on real hardware.

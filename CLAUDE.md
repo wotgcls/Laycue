@@ -4,7 +4,9 @@ Read `PRD.md` first. It defines what we're building and why. This file defines h
 
 ## What Laycue is
 
-A layout and layer manager for OBS Studio, built as a **native OBS plugin** (C++17, libobs, OBS frontend API, Qt 6). It adds a **Laycue dock** (panel) to OBS and registers **OBS hotkeys**. It is not a browser dock and does not use obs-websocket. Never propose converting it into one unless explicitly asked.
+Laycue is a **pack of three native OBS plugins** that are installed separately and share a look (`plugins/common`): **Scenes** (layouts and overlay rules; the original product, described by `PRD.md`), **Titles** (native lower-third source, 20 templates, tickers) and **Network** (bitrate recommender, live monitor, opt-in auto-adjust). Read `docs/PACK.md` for the pack, `docs/titles.md` and `docs/network.md` for those two. Paths below that start with `src/` belong to Scenes, i.e. `plugins/scenes/src/`; the other plugins follow the same pattern (`core/` pure and tested, `obs/` talks to libobs, `ui/` Qt). Shared UI (controls, tokens, style, hotkey set) is in `plugins/common/src`. The rest of this file describes Scenes, the first plugin, unless it says otherwise.
+
+Scenes is a layout and layer manager for OBS Studio, built as a **native OBS plugin** (C++17, libobs, OBS frontend API, Qt 6). It adds a **Laycue dock** (panel) to OBS and registers **OBS hotkeys**. It is not a browser dock and does not use obs-websocket. Never propose converting it into one unless explicitly asked.
 
 ## About the owner
 
@@ -31,6 +33,7 @@ The operator is in control. Every automation is opt-in, scoped and pausable. Lay
 
 Local (Linux; this is how Claude checks work in its own environment):
 - `cmake --preset ubuntu-x86_64 && cmake --build --preset ubuntu-x86_64`: build the plugin
+- Build everything and check one plugin in OBS: `cmake --build --preset ubuntu-x86_64`, then copy `build_x86_64/plugins/<name>/laycue-<name>.so` plus `plugins/<name>/data` and `plugins/common/data` into `~/.config/obs-studio/plugins/laycue-<name>/{bin/64bit,data}`.
 - `cmake -S tests -B build_tests && cmake --build build_tests && ctest --test-dir build_tests --output-on-failure`: run unit tests (no OBS needed)
 - `clang-format -i src/**/*.cpp src/**/*.hpp tests/*.cpp tests/*.hpp`: format C++ (CI uses clang-format **19**)
 - `gersemi -i CMakeLists.txt tests/CMakeLists.txt`: format CMake files (CI checks this too)

@@ -15,6 +15,7 @@
 #include <QRadialGradient>
 #include <QTextStream>
 
+#include <QElapsedTimer>
 #include <cstdio>
 #include <map>
 
@@ -78,6 +79,25 @@ QString text(const std::map<QString, QString> &loc, const QString &key)
 int main(int argc, char **argv)
 {
 	QGuiApplication app(argc, argv);
+	if (argc > 1 && QString::fromLocal8Bit(argv[1]) == "--bench") {
+		// How long one frame takes to draw: every template on air, then tickers for 120 scrolling frames.
+		FontSet benchFonts(QString::fromLocal8Bit(TITLES_DATA_DIR) + "/fonts");
+		for (const TitleTemplate &tpl : builtInTemplates()) {
+			RenderRequest req;
+			req.tpl = tpl;
+			req.text.line1 = "Pastor Grace Okafor, welcome to our Sunday celebration of faith and family";
+			req.text.line2 = "Senior Pastor";
+			QElapsedTimer t;
+			t.start();
+			const int frames = 120;
+			for (int i = 0; i < frames; ++i) {
+				req.frame = {1.0, 0.0, double(i * 6)};
+				renderTitle(benchFonts, req);
+			}
+			std::printf("%-16s %.2f ms/frame\n", tpl.id.c_str(), t.nsecsElapsed() / 1e6 / frames);
+		}
+		return 0;
+	}
 	if (argc < 2) {
 		std::fprintf(stderr, "usage: titles-preview <out folder> [template id]\n");
 		return 2;

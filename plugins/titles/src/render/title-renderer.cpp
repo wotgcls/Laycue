@@ -3,6 +3,8 @@
 #include "core/easing.hpp"
 
 #include <QFontMetricsF>
+#include <QHash>
+#include <QImage>
 #include <QLinearGradient>
 #include <QPainter>
 #include <QPainterPath>
@@ -154,14 +156,48 @@ void drawText(QPainter &p, const QRectF &rect, const QString &s, const QFont &fo
 }
 
 // Text on bare video: a soft dark shadow underneath keeps it readable on any picture.
+// Large text with five shadow passes costs tens of milliseconds, and during an animation only its position
+// and opacity change. So the text and its shadow are drawn once into a small picture, kept per thread
+// (the panel preview and OBS's graphics thread both render), and that picture is placed on each frame.
 void drawShadowText(QPainter &p, const QRectF &rect, const QString &s, const QFont &font, const QColor &colour,
 		    Qt::Alignment align = Qt::AlignLeft | Qt::AlignVCenter, double opacity = 1.0, double tracking = 0.0)
 {
+	if (s.isEmpty() || opacity <= 0.0 || rect.width() <= 0.0 || rect.height() <= 0.0)
+		return;
 	static const QPointF offsets[] = {{0, 3}, {0, 6}, {3, 4}, {-3, 4}, {0, 9}};
-	const QColor shadow(0, 0, 0, 70);
-	for (const QPointF &o : offsets)
-		drawText(p, rect.translated(o), s, font, shadow, align, opacity);
-	drawText(p, rect, s, font, colour, align, opacity, tracking);
+	constexpr double pad = 12.0; // room for the shadow around the text box
+	const double scale = p.transform().m11();
+	const QSize size(int(std::ceil((rect.width() + 2 * pad) * scale)),
+			 int(std::ceil((rect.height() + 2 * pad) * scale)));
+	const QString key = QStringLiteral("%1|%2|%3|%4|%5|%6x%7|%8")
+				    .arg(s, font.key(), QString::number(colour.rgba(), 16), QString::number(int(align)),
+					 QString::number(tracking), QString::number(size.width()),
+					 QString::number(size.height()), QString::number(scale));
+	thread_local QHash<QString, QImage> cache;
+	auto it = cache.find(key);
+	if (it == cache.end()) {
+		if (cache.size() > 24)
+			cache.clear();
+		QImage img(size, QImage::Format_ARGB32_Premultiplied);
+		img.fill(Qt::transparent);
+		QPainter q(&img);
+		q.setRenderHints(p.renderHints());
+		q.scale(scale, scale);
+		q.translate(pad, pad);
+		const QRectF box(0, 0, rect.width(), rect.height());
+		const QColor shadow(0, 0, 0, 70);
+		for (const QPointF &o : offsets)
+			drawText(q, box.translated(o), s, font, shadow, align);
+		drawText(q, box, s, font, colour, align, 1.0, tracking);
+		q.end();
+		it = cache.insert(key, img);
+	}
+	const QPointF device = p.transform().map(QPointF(rect.left() - pad, rect.top() - pad));
+	p.save();
+	p.resetTransform();
+	p.setOpacity(p.opacity() * opacity);
+	p.drawImage(QPoint(int(std::lround(device.x())), int(std::lround(device.y()))), it.value());
+	p.restore();
 }
 
 QPainterPath roundedRect(const QRectF &r, double radius)

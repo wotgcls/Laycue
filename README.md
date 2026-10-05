@@ -1,10 +1,18 @@
 # Laycue
 
-A layout and layer manager for OBS Studio: one-button layouts, rules that stop overlays from colliding, and automatic fitting of cameras into frame graphics.
+Three small OBS plugins that share one look. Install any one, or all three.
 
-Laycue is a native OBS plugin. See [`PRD.md`](PRD.md) for what it does and why, and [`CLAUDE.md`](CLAUDE.md) for how it's built.
+| Plugin | What it does for you | Panel in OBS |
+|---|---|---|
+| **Laycue Scenes** | One-button scene switching, layouts, rules that stop overlays colliding, cameras that fit into frame graphics | Docks > Laycue |
+| **Laycue Titles** | 20 broadcast-style lower thirds, scripture bars and scrolling tickers, shown live from OBS; make your own | Docks > Laycue Titles |
+| **Laycue Network** | Tests your upload, recommends a bitrate, watches the stream live, can lower and raise the bitrate for you, reports after each stream | Docks > Laycue Network |
 
-**Status:** working beta. Scene switching with live pictures (Go Live, Cut), Normal or Studio mode, overlay labels and rules, pushbacks with switchable cameras, layouts (split screen, picture in picture), an optional Laycue view that hides OBS's own Preview and Program, Settings, profiles, Lock and hotkeys.
+All three are native OBS plugins: no browser source, no web server, no account. Anything automatic is off until you turn it on. See [`docs/PACK.md`](docs/PACK.md) for what the pack is and why, [`docs/titles.md`](docs/titles.md) and [`docs/network.md`](docs/network.md) for how those two work, [`docs/NAMING.md`](docs/NAMING.md) for the name, and [`CLAUDE.md`](CLAUDE.md) for how it is built. The original Scenes product definition is [`PRD.md`](PRD.md).
+
+![The 20 Laycue Titles templates](docs/img/titles-templates.png)
+
+**Status:** working beta. Scenes and Titles are tested in real OBS. Network is tested in real OBS against a local test server (speed test, live monitor, auto-adjust, report); it has not yet met a real streaming platform.
 
 **Requires:** OBS Studio 31 or newer.
 
@@ -15,7 +23,7 @@ Every push to GitHub builds Laycue for Windows, macOS and Linux automatically.
 1. On GitHub, open the **Actions** tab.
 2. Click the latest **Push** run with a green tick.
 3. Scroll down to **Artifacts** and download the one for your system:
-   - Windows: `laycue-0.1.0-windows-x64-…`
+   - Windows: `laycue-0.1.0-windows-x64-…` (the installer has a tick box for each plugin)
    - macOS: `laycue-0.1.0-macos-universal-…`
    - Linux: `laycue-0.1.0-ubuntu-24.04-x86_64-…` (not the `-dbgsym` or `-sources` ones)
 
@@ -27,9 +35,9 @@ Close OBS first.
 1. Unzip the download and double-click `laycue-…-windows-x64-Installer.exe`.
 2. If Windows shows a blue "Windows protected your PC" box, click **More info**, then **Run anyway**. This appears because the beta isn't code-signed yet.
 3. Click **Yes** when Windows asks for permission, then **Next → Install → Finish**. If OBS is open, the installer offers to close it.
-4. To remove Laycue later: Windows **Settings → Apps → Installed apps → Laycue for OBS Studio → Uninstall**.
+4. To remove Laycue later: Windows **Settings → Apps → Installed apps → Laycue for OBS Studio (Scenes, Titles, Network) → Uninstall**.
 
-The download also contains a plain zip (`laycue-…-windows-x64.zip`) for manual installs: copy its `laycue` folder into `C:\ProgramData\obs-studio\plugins\`.
+The download also contains a plain zip (`laycue-…-windows-x64.zip`) for manual installs: copy the `laycue-scenes`, `laycue-titles` and `laycue-network` folders you want into `C:\ProgramData\obs-studio\plugins\`.
 
 **macOS**
 1. Unzip the download and double-click the `.pkg` installer.
@@ -41,7 +49,7 @@ The download also contains a plain zip (`laycue-…-windows-x64.zip`) for manual
 ## Opening the panel
 
 1. Start OBS.
-2. In the top menu, click **Docks** → **Laycue**.
+2. In the top menu, click **Docks** and pick **Laycue**, **Laycue Titles** or **Laycue Network**.
 3. The Laycue panel appears floating. Drag it by its title bar to wherever you like, for example next to Sources. OBS remembers where you put it.
 
 To check that it loaded: **Help** → **Log Files** → **View Current Log**, and search for `[laycue] plugin loaded successfully`.
