@@ -850,7 +850,7 @@ void fillBrandIcon(QPainter &p, Brand brand, const QRectF &box, const QColor &co
 }
 
 // The platform's tile: its colour (Instagram's gradient) with its icon on top. Mixlr's logo is not in any
-// open icon set, so it gets a neutral tile with a sound-wave mark until the official file is added.
+// open icon set, so its dots are described in brand-icons.cpp from the logo file the operator supplied.
 void drawPlatformTile(Ctx &c, Platform platform, const QRectF &tile)
 {
 	c.p.save();
@@ -889,17 +889,14 @@ void drawPlatformTile(Ctx &c, Platform platform, const QRectF &tile)
 		fillBrandIcon(c.p, Brand::Facebook, tile.adjusted(10, 10, -10, -10), QColor(255, 255, 255));
 		break;
 	case Platform::Mixlr: {
-		c.p.setBrush(QColor(0x2C, 0x2A, 0x27));
+		// Mixlr's own mark: its red with a ring of dots.
+		c.p.setBrush(QColor((kMixlrRed >> 16) & 0xFF, (kMixlrRed >> 8) & 0xFF, kMixlrRed & 0xFF));
 		c.p.drawRoundedRect(tile, r, r);
-		static const double heights[] = {0.30, 0.55, 0.85, 0.55, 0.30};
-		const double bw = tile.width() * 0.085, gap = tile.width() * 0.075;
-		const double total = 5 * bw + 4 * gap;
-		double x = tile.center().x() - total / 2.0;
-		c.p.setBrush(c.accent);
-		for (double hFrac : heights) {
-			const double bh = tile.height() * 0.62 * hFrac + 6;
-			c.p.drawRoundedRect(QRectF(x, tile.center().y() - bh / 2.0, bw, bh), bw / 2, bw / 2);
-			x += bw + gap;
+		for (const LogoDot &d : mixlrDots()) {
+			c.p.setBrush(QColor(255, 255, 255, d.faint ? 128 : 255));
+			const double rad = kMixlrDotRadius * tile.width();
+			c.p.drawEllipse(QPointF(tile.left() + d.x * tile.width(), tile.top() + d.y * tile.height()),
+					rad, rad);
 		}
 		break;
 	}
