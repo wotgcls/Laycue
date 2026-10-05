@@ -32,10 +32,14 @@ enum class FontFace {
 	BebasNeue,
 	Baskerville,
 	BaskervilleItalic,
+	OutfitRegular,
+	OutfitSemiBold,
+	OutfitBold,
+	OutfitExtraBold,
 };
 
 // What a template is for: how the gallery groups them.
-enum class Category { People, Worship, Announce, Ticker, Live, Social, News };
+enum class Category { People, Worship, Announce, Ticker, Live, Social, News, Notes };
 
 // How a title arrives and leaves. Every template also has its own signature choreography inside
 // this (stagger, wipe, accent growing); this is the movement of the whole group.
@@ -73,6 +77,7 @@ struct TitleTemplate {
 	double tickerSpeed = 0.0;  // > 0 for tickers: pixels per second at 1920 wide
 	double pulseSeconds = 0.0; // > 0 for titles with a pulsing light (the LIVE dot): seconds per pulse
 	bool usesNote = false;     // an extra line under the title (a sort code, a web address)
+	bool usesLine1 = true;     // false for titles with no words (a logo animation)
 	bool usesLogo = false;     // the operator can choose a logo picture
 	int maxRows = 0;           // > 0: a list of label and value rows (bank accounts), up to this many
 	bool usesShape2 = false;   // the colour pickers offer the extra colours below

@@ -144,6 +144,180 @@ std::vector<TitleTemplate> buildAll()
 		all.push_back(t);
 	}
 
+	// ---- Modern: rounded, friendly cards ----
+	const Rgba kOrange = rgb(0xF2, 0x65, 0x22), kCream = rgb(0xF8, 0xF1, 0xE4), kBrown = rgb(0x1B, 0x12, 0x0E);
+	const auto modern = [&](const char *id, Palette pal) {
+		auto t = make(id, Category::People, pal, F::OutfitBold, F::OutfitSemiBold, M::Slide, M::Slide);
+		t.usesShape2 = true;
+		t.usesInk = true;
+		return t;
+	};
+	{
+		auto t = modern("modern-pill", {kOrange, rgb(0xE0, 0x4F, 0x12), kCream, kCream});
+		t.palette.shape2 = kCream;
+		t.palette.ink = kBrown;
+		t.motionIn = M::Pop;
+		all.push_back(t);
+	}
+	{
+		auto t = modern("modern-badge", {kOrange, kOrange, kCream, kCream});
+		t.palette.shape2 = kCream;
+		t.usesLogo = true;
+		all.push_back(t);
+	}
+	{
+		auto t = make("modern-card", Category::People, {kCream, kOrange, kOrange, kBrown}, F::OutfitBold,
+			      F::OutfitSemiBold, M::Rise, M::Fade);
+		all.push_back(t);
+	}
+	{
+		auto t = make("modern-stack", Category::People, {withAlpha(kOrange, 0), kOrange, kCream, kCream},
+			      F::OutfitExtraBold, F::OutfitBold, M::Rise, M::Fade);
+		all.push_back(t);
+	}
+	{
+		auto t = modern("modern-logo", {kOrange, kOrange, kCream, kCream});
+		t.palette.shape2 = kCream;
+		t.usesLogo = true;
+		all.push_back(t);
+	}
+
+	// ---- News: glass bar, desk bars, network bars ----
+	{
+		auto t = make("glass-bar", Category::News,
+			      {rgb(0x12, 0x3E, 0x8A), rgb(0xFF, 0xB3, 0x00), kWhite, rgb(0xF3, 0xE6, 0xB5)},
+			      F::BarlowSemiBold, F::BarlowSemiBold, M::Wipe, M::Fade);
+		all.push_back(t);
+	}
+	const auto desk = [&](const char *id) {
+		auto t = make(id, Category::News,
+			      {rgb(0xF3, 0xF3, 0xF5), rgb(0xF5, 0xA6, 0x23), rgb(0x2B, 0x2B, 0x2E), kWhite},
+			      F::BarlowSemiBold, F::BarlowSemiBold, M::Slide, M::Slide);
+		t.palette.shape2 = kWhite;
+		t.palette.shape3 = rgb(0x3B, 0x3B, 0x3E);
+		t.palette.ink = kWhite;
+		t.usesTag = true;
+		t.usesShape2 = t.usesShape3 = t.usesInk = true;
+		return t;
+	};
+	{
+		auto t = desk("desk-two");
+		all.push_back(t);
+	}
+	{
+		auto t = desk("desk-one");
+		t.usesLine2 = false;
+		all.push_back(t);
+	}
+	{
+		auto t = desk("desk-clock");
+		t.pulseSeconds = 60.0; // redrawn every frame so the clock stays right
+		all.push_back(t);
+	}
+	{
+		auto t = desk("desk-crawl");
+		t.usesNote = true;
+		t.tickerSpeed = 120.0;
+		t.category = Category::Ticker;
+		all.push_back(t);
+	}
+	{
+		auto t = make("network-name", Category::News,
+			      {rgb(0x0B, 0x1F, 0x4B), rgb(0xC8, 0x10, 0x2E), kWhite, kWhite}, F::BarlowSemiBold,
+			      F::BarlowSemiBold, M::Wipe, M::Fade);
+		t.palette.shape2 = kWhite;
+		t.palette.ink = rgb(0x0B, 0x1F, 0x4B);
+		t.usesLogo = true;
+		t.usesShape2 = t.usesInk = true;
+		all.push_back(t);
+	}
+	{
+		auto t = make("network-breaking", Category::News,
+			      {rgb(0x0B, 0x2A, 0x66), rgb(0xC8, 0x10, 0x2E), kWhite, rgb(0xD8, 0xE0, 0xF0)},
+			      F::BarlowSemiBold, F::BarlowSemiBold, M::Wipe, M::Fade);
+		t.palette.shape2 = kWhite;
+		t.palette.ink = kWhite;
+		t.usesTag = true;
+		t.usesNote = true;
+		t.usesLogo = true;
+		t.usesShape2 = t.usesInk = true;
+		all.push_back(t);
+	}
+	{
+		auto t = make("angular-logo", Category::People,
+			      {rgb(0x14, 0x14, 0x14), rgb(0xF2, 0xF2, 0xF2), kWhite, kWhite}, F::OutfitSemiBold,
+			      F::OutfitBold, M::Slide, M::Slide);
+		t.palette.shape2 = rgb(0xF2, 0xF2, 0xF2);
+		t.palette.ink = rgb(0x22, 0x22, 0x22);
+		t.usesLogo = true;
+		t.usesShape2 = t.usesInk = true;
+		all.push_back(t);
+	}
+
+	// ---- Live: logo animations (a picture of the operator's logo, animated) ----
+	{
+		auto t = make("logo-sweep", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
+			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 4.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("logo-spin", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite}, F::OutfitBold,
+			      F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 5.0;
+		all.push_back(t);
+	}
+
+	// ---- Notes: sermon notes and key points ----
+	const Rgba kNavyCard = rgb(0x14, 0x21, 0x3D), kGoldNote = rgb(0xFC, 0xA3, 0x11);
+	{
+		auto t = make("notes-card", Category::Notes,
+			      {withAlpha(kNavyCard, 245), kGoldNote, rgb(0xF6, 0xF1, 0xE7), rgb(0xC9, 0xD3, 0xE8)},
+			      F::OutfitBold, F::OutfitRegular, M::Rise, M::Fade);
+		t.palette.ink = kNavyCard;
+		t.usesTag = true;
+		t.maxRows = 6;
+		t.usesInk = true;
+		all.push_back(t);
+	}
+	{
+		auto t = make("notes-points", Category::Notes, {rgb(0xF6, 0xF1, 0xE7), kOrange, kBrown, kBrown},
+			      F::OutfitBold, F::OutfitSemiBold, M::Slide, M::Slide);
+		t.palette.ink = kWhite;
+		t.maxRows = 6;
+		t.usesInk = true;
+		all.push_back(t);
+	}
+	{
+		auto t = make("notes-key", Category::Notes, {withAlpha(kInk, 242), kGoldNote, kWhite, kWhite},
+			      F::OutfitBold, F::OutfitSemiBold, M::Rise, M::Fade);
+		t.palette.ink = kInk;
+		t.usesLine2 = false;
+		t.usesTag = true;
+		t.longText = true;
+		t.usesInk = true;
+		all.push_back(t);
+	}
+	{
+		auto t = make("notes-columns", Category::Notes, {withAlpha(kNavyCard, 245), kGoldNote, kWhite, kWhite},
+			      F::OutfitExtraBold, F::OutfitRegular, M::Rise, M::Fade);
+		t.palette.ink = kNavyCard;
+		t.maxRows = 4;
+		t.usesLine2 = false;
+		t.usesInk = true;
+		all.push_back(t);
+	}
+
 	// ---- Worship: series titles, songs, quotes ----
 	{
 		auto t = make("series-title", Category::Worship,
@@ -354,15 +528,25 @@ const char *faceName(FontFace f)
 		return "baskerville";
 	case FontFace::BaskervilleItalic:
 		return "baskerville-italic";
+	case FontFace::OutfitRegular:
+		return "outfit";
+	case FontFace::OutfitSemiBold:
+		return "outfit-semibold";
+	case FontFace::OutfitBold:
+		return "outfit-bold";
+	case FontFace::OutfitExtraBold:
+		return "outfit-extrabold";
 	}
 	return "barlow";
 }
 
 bool faceFromName(const std::string &name, FontFace &out)
 {
-	for (FontFace f : {FontFace::BarlowCondensedMedium, FontFace::BarlowCondensedSemiBold,
-			   FontFace::BarlowCondensedBold, FontFace::BarlowRegular, FontFace::BarlowSemiBold,
-			   FontFace::BebasNeue, FontFace::Baskerville, FontFace::BaskervilleItalic}) {
+	for (FontFace f :
+	     {FontFace::BarlowCondensedMedium, FontFace::BarlowCondensedSemiBold, FontFace::BarlowCondensedBold,
+	      FontFace::BarlowRegular, FontFace::BarlowSemiBold, FontFace::BebasNeue, FontFace::Baskerville,
+	      FontFace::BaskervilleItalic, FontFace::OutfitRegular, FontFace::OutfitSemiBold, FontFace::OutfitBold,
+	      FontFace::OutfitExtraBold}) {
 		if (name == faceName(f)) {
 			out = f;
 			return true;
@@ -434,6 +618,8 @@ const char *categoryKey(Category category)
 		return "Laycue.Titles.Cat.Social";
 	case Category::News:
 		return "Laycue.Titles.Cat.News";
+	case Category::Notes:
+		return "Laycue.Titles.Cat.Notes";
 	}
 	return "Laycue.Titles.Cat.People";
 }

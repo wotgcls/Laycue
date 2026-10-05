@@ -181,6 +181,19 @@ void update(void *data, obs_data_t *settings)
 						     QString::fromUtf8(obs_data_get_string(item, "value"))});
 			}
 		}
+		if (s->text.rows.isEmpty()) {
+			// Rows typed in the Properties window, one "label | value" per line.
+			OBSDataArrayAutoRelease list = obs_data_get_array(settings, "rows_list");
+			const size_t n = list ? std::min<size_t>(obs_data_array_count(list), 8) : 0;
+			for (size_t i = 0; i < n; ++i) {
+				OBSDataAutoRelease item = obs_data_array_item(list, i);
+				const QString line = QString::fromUtf8(obs_data_get_string(item, "value"));
+				const int bar = line.indexOf(QLatin1Char('|'));
+				s->text.rows.append(
+					bar < 0 ? qMakePair(QString(), line.trimmed())
+						: qMakePair(line.left(bar).trimmed(), line.mid(bar + 1).trimmed()));
+			}
+		}
 		s->useAccent = obs_data_get_bool(settings, key::accentOn);
 		s->accent = fromObsColour(uint32_t(obs_data_get_int(settings, key::accent)));
 
@@ -443,8 +456,14 @@ bool templateChanged(obs_properties_t *props, obs_property_t *, obs_data_t *sett
 	const TitleTemplate *t = findTemplate(str(obs_data_get_string(settings, key::templateId)));
 	if (!t)
 		return false;
+	obs_property_set_visible(obs_properties_get(props, key::line1), t->usesLine1);
 	obs_property_set_visible(obs_properties_get(props, key::line2), t->usesLine2);
 	obs_property_set_visible(obs_properties_get(props, key::tag), t->usesTag);
+	obs_property_set_visible(obs_properties_get(props, key::note), t->usesNote);
+	obs_property_set_visible(obs_properties_get(props, key::logo), t->usesLogo);
+	obs_property_set_visible(obs_properties_get(props, "rows_list"), t->maxRows > 0);
+	obs_property_set_visible(obs_properties_get(props, key::align), supportsPlacement(*t));
+	obs_property_set_visible(obs_properties_get(props, key::sizePercent), supportsPlacement(*t));
 	// Say what the fields mean for this template: "Verse" and "Reference", "Name" and "Role"...
 	const auto label = [&](const char *name, int field) {
 		const std::string k = fieldKey(*t, field);
@@ -455,6 +474,7 @@ bool templateChanged(obs_properties_t *props, obs_property_t *, obs_data_t *sett
 	label(key::line1, 1);
 	label(key::line2, 2);
 	label(key::tag, 3);
+	label(key::note, 4);
 	return true;
 }
 
@@ -478,13 +498,41 @@ obs_properties_t *getProperties(void *data)
 	obs_property_t *list = obs_properties_add_list(props, key::templateId,
 						       obs_module_text("Laycue.Titles.Template"), OBS_COMBO_TYPE_LIST,
 						       OBS_COMBO_FORMAT_STRING);
-	for (const TitleTemplate &t : builtInTemplates())
-		obs_property_list_add_string(list, obs_module_text(nameKey(t).c_str()), t.id.c_str());
+	// Grouped by category: a greyed heading, then that category's templates.
+	for (Category cat : {Category::People, Category::Worship, Category::Announce, Category::Notes, Category::News,
+			     Category::Live, Category::Social, Category::Ticker}) {
+		bool first = true;
+		for (const TitleTemplate &t : builtInTemplates()) {
+			if (t.category != cat)
+				continue;
+			if (first) {
+				const std::string heading =
+					std::string("\u2014 ") + obs_module_text(categoryKey(cat)) + " \u2014";
+				const size_t at = obs_property_list_add_string(list, heading.c_str(), "");
+				obs_property_list_item_disable(list, at, true);
+				first = false;
+			}
+			obs_property_list_add_string(list, obs_module_text(nameKey(t).c_str()), t.id.c_str());
+		}
+	}
 	obs_property_set_modified_callback(list, templateChanged);
 
 	obs_properties_add_text(props, key::line1, obs_module_text("Laycue.Titles.Line1"), OBS_TEXT_MULTILINE);
 	obs_properties_add_text(props, key::line2, obs_module_text("Laycue.Titles.Line2"), OBS_TEXT_DEFAULT);
 	obs_properties_add_text(props, key::tag, obs_module_text("Laycue.Titles.Tag"), OBS_TEXT_DEFAULT);
+	obs_properties_add_text(props, key::note, obs_module_text("Laycue.Titles.Note"), OBS_TEXT_DEFAULT);
+	obs_properties_add_path(props, key::logo, obs_module_text("Laycue.Titles.Logo"), OBS_PATH_FILE,
+				"Pictures (*.png *.jpg *.jpeg *.webp *.bmp)", nullptr);
+	obs_properties_add_editable_list(props, "rows_list", obs_module_text("Laycue.Titles.RowsList"),
+					 OBS_EDITABLE_LIST_TYPE_STRINGS, nullptr, nullptr);
+	obs_property_t *alignList = obs_properties_add_list(props, key::align,
+							    obs_module_text("Laycue.Titles.Position"),
+							    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(alignList, obs_module_text("Laycue.Titles.AlignLeft"), 0);
+	obs_property_list_add_int(alignList, obs_module_text("Laycue.Titles.AlignCenter"), 1);
+	obs_property_list_add_int(alignList, obs_module_text("Laycue.Titles.AlignRight"), 2);
+	obs_properties_add_int_slider(props, key::sizePercent, obs_module_text("Laycue.Titles.SizePercent"),
+				      kMinSizePercent, kMaxSizePercent, 5);
 
 	obs_property_t *accentOn =
 		obs_properties_add_bool(props, key::accentOn, obs_module_text("Laycue.Titles.UseBrandColour"));

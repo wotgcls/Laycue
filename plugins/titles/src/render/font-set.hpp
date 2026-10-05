@@ -25,7 +25,7 @@ private:
 		QString family;
 		QString style;
 	};
-	std::array<Entry, 8> entries_;
+	std::array<Entry, 12> entries_;
 	int loaded_ = 0;
 };
 

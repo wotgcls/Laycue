@@ -12,6 +12,7 @@
 #include <QPainterPath>
 #include <QPolygonF>
 #include <QStringList>
+#include <QTime>
 
 #include <algorithm>
 #include <cmath>
@@ -1324,11 +1325,11 @@ void giving(Ctx &c)
 }
 
 // The scrolling strip shared by both tickers.
-void drawTickerText(Ctx &c, const QRectF &area, const QFont &font, const QColor &colour)
+void drawTickerTextOf(Ctx &c, const QString &raw, const QRectF &area, const QFont &font, const QColor &colour)
 {
-	if (!c.has(c.x.line1))
+	if (!c.has(raw))
 		return;
-	const QString text = c.x.line1.simplified();
+	const QString text = raw.simplified();
 	const double tw = textWidth(font, text);
 	const double gap = 180.0;
 	const double strip = tw + gap;
@@ -1339,6 +1340,11 @@ void drawTickerText(Ctx &c, const QRectF &area, const QFont &font, const QColor 
 		drawText(c.p, QRectF(xPos, area.top(), tw + 4, area.height()), text, font, colour,
 			 Qt::AlignLeft | Qt::AlignVCenter);
 	c.p.restore();
+}
+
+void drawTickerText(Ctx &c, const QRectF &area, const QFont &font, const QColor &colour)
+{
+	drawTickerTextOf(c, c.x.line1, area, font, colour);
 }
 
 // 18. Crawl Ticker: a full-width bar with a label block and scrolling text.
@@ -1394,6 +1400,794 @@ void bigQuote(Ctx &c)
 	}
 }
 
+// ======================================================================================================
+// More lower thirds: modern rounded cards, a glass bar, "desk" news bars, network bars, an angular bar,
+// logo animations and sermon notes.
+// ======================================================================================================
+
+// A soft shadow under a shape, without filling it.
+void shadowUnder(Ctx &c, const QRectF &r, double radius)
+{
+	for (int i = 4; i >= 1; --i)
+		fillRect(c.p, r.adjusted(-i * 2.0, -i * 1.0 + 6.0, i * 2.0, i * 2.0 + 6.0),
+			 QColor(0, 0, 0, 10 + (5 - i) * 2), radius + i * 2.0);
+}
+
+// A shape with a soft shadow and a fill.
+void solidShape(Ctx &c, const QRectF &r, const QColor &fill, double radius)
+{
+	if (r.width() <= 0.0 || r.height() <= 0.0)
+		return;
+	shadowUnder(c, r, radius);
+	fillRect(c.p, r, fill, radius);
+}
+
+// The words of `s` on two lines at most ("LIVE NEWS" -> "LIVE", "NEWS").
+QStringList twoLines(const QString &s)
+{
+	const QStringList words = s.simplified().split(' ', Qt::SkipEmptyParts);
+	if (words.size() <= 1)
+		return words;
+	const int half = (words.size() + 1) / 2;
+	return {words.mid(0, half).join(' '), words.mid(half).join(' ')};
+}
+
+// The logo, or a stand-in so a template looks finished before a picture is chosen. Draws on `p`.
+void drawLogoOrMarkOn(QPainter &p, const Ctx &c, const QImage &logo, const QRectF &box, const QColor &markFill,
+		      const QColor &markInk, double opacity)
+{
+	if (!logo.isNull()) {
+		drawLogo(p, logo, box, opacity);
+		return;
+	}
+	p.save();
+	p.setOpacity(p.opacity() * opacity);
+	p.setPen(Qt::NoPen);
+	p.setBrush(markFill);
+	const double d = std::min(box.width(), box.height());
+	const QRectF circle(box.center().x() - d / 2, box.center().y() - d / 2, d, d);
+	p.drawEllipse(circle);
+	drawText(p, circle, QStringLiteral("LOGO"), c.font(FontFace::OutfitExtraBold, d * 0.26), markInk,
+		 Qt::AlignCenter);
+	p.restore();
+}
+
+void drawLogoOrMark(Ctx &c, const QImage &logo, const QRectF &box, const QColor &markFill, const QColor &markInk,
+		    double opacity)
+{
+	drawLogoOrMarkOn(c.p, c, logo, box, markFill, markInk, opacity);
+}
+
+QString clockText()
+{
+	return QTime::currentTime().toString(QStringLiteral("hh:mm AP"));
+}
+
+// ---- Modern: rounded, friendly cards (orange and cream) ---------------------------------------------
+
+// Modern Pill: an orange name pill with a cream role tab tucked under it.
+void modernPill(Ctx &c)
+{
+	const QFont f1 = fitFont(c, c.t.display, 58, 34, c.x.line1, 1100);
+	const QFont f2 = c.font(c.t.body, 30);
+	const double h = 88, tabH = 50;
+	const double w = textWidth(f1, c.x.line1) + 2 * 40;
+	const bool two = c.has(c.x.line2);
+	const double y = c.bottom() - h - (two ? tabH + 6 : 0.0);
+	const double e = c.part(0.0, 0.55);
+	c.p.save();
+	c.p.translate(kLeft + w * 0.5, 0);
+	c.p.scale(std::max(e, 0.001), 1.0);
+	c.p.translate(-(kLeft + w * 0.5), 0);
+	solidShape(c, QRectF(kLeft, y, w, h), c.panel, 24);
+	c.p.restore();
+	drawText(c.p, QRectF(kLeft + 40, y, w, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
+		 c.part(0.2, 0.5));
+	if (two) {
+		const double tw = textWidth(f2, c.x.line2) + 2 * 28;
+		const double a = c.partBack(0.3, 0.45);
+		const QRectF tab(kLeft + 56, y + h + 6, tw, tabH);
+		c.p.save();
+		c.p.translate(tab.center());
+		c.p.scale(std::max(a, 0.001), std::max(a, 0.001));
+		c.p.translate(-tab.center());
+		fillRect(c.p, tab.translated(3, 4), c.panel, 14); // the offset edge behind the tab
+		fillRect(c.p, tab, c.shape2, 14);
+		drawText(c.p, tab, c.x.line2, f2, c.ink, Qt::AlignCenter);
+		c.p.restore();
+	}
+}
+
+// Modern Badge: a round logo, the name in big type, and the role inside an orange pill under it.
+void modernBadge(Ctx &c)
+{
+	const QImage logo = logoImage(c.x.logoPath);
+	const double d = 104, pillH = 56;
+	const QFont f1 = fitFont(c, c.t.display, 56, 34, c.x.line1, 900);
+	const QFont f2 = c.font(c.t.body, 28);
+	const double nameW = textWidth(f1, c.x.line1);
+	const double pillW = std::max({340.0, nameW + d * 0.5, textWidth(f2, c.x.line2) + d + 70});
+	const double pillY = c.bottom() - pillH;
+	const double e = c.part(0.0, 0.55);
+	c.p.save();
+	c.p.setClipRect(QRectF(0, 0, kLeft + (pillW + d) * e, c.H));
+	solidShape(c, QRectF(kLeft + d * 0.35, pillY, pillW, pillH), c.panel, pillH / 2);
+	drawText(c.p, QRectF(kLeft + d + 14, pillY, pillW, pillH), c.x.line2, f2, c.sub,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.3, 0.5));
+	c.p.restore();
+	const QRectF badge(kLeft, pillY - d * 0.62, d, d);
+	const double pop = c.partBack(0.1, 0.45);
+	c.p.save();
+	c.p.translate(badge.center());
+	c.p.scale(std::max(pop, 0.001), std::max(pop, 0.001));
+	c.p.translate(-badge.center());
+	shadowUnder(c, badge, d / 2);
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(c.shape2);
+	c.p.drawEllipse(badge);
+	drawLogoOrMark(c, logo, badge.adjusted(14, 14, -14, -14), c.panel, c.shape2, 1.0);
+	c.p.restore();
+	drawText(c.p, QRectF(kLeft + d + 14, pillY - 68, nameW + 40, 60), c.x.line1, f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.25, 0.5));
+}
+
+// Modern Card: a big cream card with an orange block offset behind it.
+void modernCard(Ctx &c)
+{
+	const double pad = 56, h = c.has(c.x.line2) ? 200 : 150;
+	const QFont f1 = fitFont(c, c.t.display, 68, 38, c.x.line1, 1000);
+	const QFont f2 = fitFont(c, c.t.body, 38, 24, c.x.line2, 1000);
+	const double w = std::max(620.0, 2 * pad + std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
+	const double y = c.bottom() - h - 24;
+	const double e = c.part(0.0, 0.6);
+	const QRectF card(kLeft, y, w, h);
+	c.p.save();
+	c.p.setClipRect(QRectF(0, 0, kLeft + (w + 30) * e, c.H));
+	fillRect(c.p, card.translated(24, 24), c.accent, 38);
+	solidShape(c, card, c.panel, 38);
+	c.p.restore();
+	if (c.has(c.x.line2)) {
+		drawText(c.p, QRectF(kLeft + pad, y + 30, w, 84), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.25, 0.5));
+		drawText(c.p, QRectF(kLeft + pad, y + 112, w, 60), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.35, 0.5));
+	} else {
+		drawText(c.p, QRectF(kLeft + pad, y, w, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
+			 c.part(0.25, 0.5));
+	}
+}
+
+// Modern Stack: the name in huge stacked type with the role on a tag across the join.
+void modernStack(Ctx &c)
+{
+	const QStringList lines = twoLines(c.x.line1);
+	QString longest;
+	for (const QString &l : lines)
+		if (l.size() > longest.size())
+			longest = l;
+	const QFont f1 = fitFont(c, c.t.display, 104, 48, longest, 760);
+	const double lh = QFontMetricsF(f1).height() * 0.86;
+	const QFont f2 = c.font(c.t.body, 28);
+	const double blockH = lh * std::max<int>(1, lines.size());
+	const double tagH = 44, tagRoom = c.has(c.x.line2) ? tagH + 10 : 0.0;
+	const double top = c.bottom() - blockH - tagRoom;
+	for (int i = 0; i < lines.size(); ++i) {
+		const double a = c.part(0.1 + 0.15 * i, 0.5);
+		drawShadowText(c.p, QRectF(kLeft + (i ? 56 : 0) + 30 * (1 - a), top + i * lh, 900, lh), lines[i], f1,
+			       c.text, Qt::AlignLeft | Qt::AlignVCenter, a);
+	}
+	if (c.has(c.x.line2)) {
+		const double tw = textWidth(f2, c.x.line2) + 2 * 22;
+		const double a = c.partBack(0.4, 0.4);
+		const QRectF tag(kLeft + 4, top + blockH + 6, tw, tagH);
+		c.p.save();
+		c.p.translate(tag.center());
+		c.p.scale(std::max(a, 0.001), std::max(a, 0.001));
+		c.p.translate(-tag.center());
+		fillRect(c.p, tag, c.accent, 12);
+		drawText(c.p, tag, c.x.line2, f2, c.sub, Qt::AlignCenter);
+		c.p.restore();
+	}
+}
+
+// Modern Logo: a round logo above an orange name pill, the role under it.
+void modernLogo(Ctx &c)
+{
+	const QImage logo = logoImage(c.x.logoPath);
+	const double d = 120, pillH = 74;
+	const QFont f1 = fitFont(c, c.t.display, 46, 30, c.x.line1, 900);
+	const QFont f2 = c.font(c.t.body, 28);
+	const double w = std::max(380.0, textWidth(f1, c.x.line1) + 2 * 50);
+	const bool two = c.has(c.x.line2);
+	const double pillY = c.bottom() - pillH - (two ? 50 : 0.0);
+	const double cx = kLeft + w / 2;
+	const double e = c.part(0.0, 0.55);
+	c.p.save();
+	c.p.translate(cx, 0);
+	c.p.scale(std::max(e, 0.001), 1.0);
+	c.p.translate(-cx, 0);
+	solidShape(c, QRectF(kLeft, pillY, w, pillH), c.panel, pillH / 2);
+	c.p.restore();
+	drawText(c.p, QRectF(kLeft, pillY, w, pillH), c.x.line1, f1, c.text, Qt::AlignCenter, c.part(0.25, 0.5));
+	if (two)
+		drawText(c.p, QRectF(kLeft, pillY + pillH + 4, w, 44), c.x.line2, f2, c.sub, Qt::AlignCenter,
+			 c.part(0.35, 0.5));
+	const QRectF badge(cx - d / 2, pillY - d + 8, d, d);
+	const double pop = c.partBack(0.1, 0.45);
+	c.p.save();
+	c.p.translate(badge.center());
+	c.p.scale(std::max(pop, 0.001), std::max(pop, 0.001));
+	c.p.translate(-badge.center());
+	shadowUnder(c, badge, d / 2);
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(c.shape2);
+	c.p.drawEllipse(badge);
+	drawLogoOrMark(c, logo, badge.adjusted(16, 16, -16, -16), c.panel, c.shape2, 1.0);
+	c.p.restore();
+}
+
+// ---- Glass bar -----------------------------------------------------------------------------------------
+
+// A long glossy blue bar with a gold tab, in the style of broadcast graphics packages.
+void glassBar(Ctx &c)
+{
+	const double w = kDesignWidth - 2 * kLeft, h = 86;
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.65);
+	const QRectF bar(kLeft, y, w * e, h);
+	QLinearGradient g(0, y, 0, y + h);
+	g.setColorAt(0.0, c.panel.lighter(135));
+	g.setColorAt(0.5, c.panel);
+	g.setColorAt(1.0, c.panel.darker(160));
+	c.p.save();
+	c.p.setClipRect(bar);
+	shadowUnder(c, QRectF(kLeft, y, w, h), 0);
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(g);
+	c.p.drawRect(QRectF(kLeft, y, w, h));
+	// The sheen: a bright band across the upper half, and light edges.
+	QLinearGradient sheen(0, y, 0, y + h * 0.5);
+	sheen.setColorAt(0.0, QColor(255, 255, 255, 60));
+	sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
+	c.p.setBrush(sheen);
+	c.p.drawRect(QRectF(kLeft, y, w, h * 0.5));
+	fillRect(c.p, QRectF(kLeft, y, w, 2), QColor(255, 255, 255, 90));
+	fillRect(c.p, QRectF(kLeft, y + h - 3, w, 3), c.accent);
+	// The gold tab, then the words.
+	fillRect(c.p, QRectF(kLeft + 62, y + 12, 12, h - 26), c.accent);
+	const QFont f1 = fitFont(c, c.t.body, 42, 26, c.x.line1.toUpper(), w - 220);
+	drawText(c.p, QRectF(kLeft + 100 + 40 * (1 - c.part(0.2, 0.5)), y, w, h), c.x.line1.toUpper(), f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.2, 0.5), 2.0);
+	// A soft flare at each end.
+	for (double fx : {kLeft + 8.0, kLeft + w - 8.0}) {
+		QRadialGradient glow(fx, y + h, 120);
+		glow.setColorAt(0.0, QColor(255, 255, 255, 120));
+		glow.setColorAt(1.0, QColor(255, 255, 255, 0));
+		c.p.setBrush(glow);
+		c.p.drawEllipse(QPointF(fx, y + h), 120, 26);
+	}
+	c.p.restore();
+	if (c.has(c.x.line2)) {
+		const QFont f2 = c.font(c.t.body, 26);
+		drawText(c.p, QRectF(kLeft + 100, y + h + 8, w - 120, 36), c.x.line2.toUpper(), f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.4, 0.5), 1.5);
+	}
+}
+
+// ---- Desk news bars (a dark LIVE block, a white bar, optional strips) -----------------------------------
+
+enum class DeskKind { Two, One, Clock, Crawl };
+
+void deskBar(Ctx &c, DeskKind kind)
+{
+	const double blockW = 150, padX = 32, barH = 84, stripH = 38;
+	const QFont f1 = fitFont(c, c.t.display, 54, 32, c.x.line1.toUpper(), 1200);
+	const QFont fs = c.font(c.t.body, 22);
+	const QFont fb = c.font(c.t.display, 34);
+	const bool strip = kind != DeskKind::One;
+	const bool crawl = kind == DeskKind::Crawl;
+	const double totalH = barH + (strip ? stripH : 0.0) + (crawl ? stripH : 0.0);
+	const double w = std::max(900.0, std::min(kDesignWidth - 2 * kLeft,
+						  blockW + 2 * padX + textWidth(f1, c.x.line1.toUpper()) + 140));
+	const double y = c.bottom() - totalH;
+	const double e = c.part(0.0, 0.6);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y - 4, w * e, totalH + 8));
+	shadowUnder(c, QRectF(kLeft, y, w, totalH), 0);
+	fillRect(c.p, QRectF(kLeft + blockW, y, w - blockW, barH), c.panel);
+	fillRect(c.p, QRectF(kLeft, y, blockW, totalH), c.shape3);
+	// The label, on up to two lines.
+	const QStringList label = twoLines(c.x.tag.toUpper());
+	const double lh = 36;
+	for (int i = 0; i < label.size(); ++i)
+		drawText(c.p, QRectF(kLeft, y + (barH - lh * label.size()) / 2 + i * lh, blockW, lh), label[i], fb,
+			 c.ink, Qt::AlignCenter, c.part(0.15, 0.4), 1.0);
+	drawText(c.p, QRectF(kLeft + blockW + padX + 30 * (1 - c.part(0.25, 0.5)), y, w, barH), c.x.line1.toUpper(), f1,
+		 c.text, Qt::AlignLeft | Qt::AlignVCenter, c.part(0.25, 0.5));
+	if (strip) {
+		const QRectF s(kLeft + blockW, y + barH, w - blockW, stripH);
+		const QColor stripFill = crawl ? c.shape3.darker(115) : c.accent;
+		fillRect(c.p, s, stripFill);
+		const double timeW = kind == DeskKind::Two ? 0.0 : 150.0;
+		drawText(c.p, QRectF(s.left() + padX, s.top(), s.width() - timeW - padX, stripH), c.x.line2.toUpper(),
+			 fs, c.sub, Qt::AlignLeft | Qt::AlignVCenter, c.part(0.4, 0.5), 1.0);
+		if (kind == DeskKind::Clock) {
+			fillRect(c.p, QRectF(s.right() - timeW, s.top(), timeW, stripH), c.shape2);
+			drawText(c.p, QRectF(s.right() - timeW, s.top(), timeW, stripH), clockText(), fs, c.text,
+				 Qt::AlignCenter);
+		}
+	}
+	if (crawl) {
+		const QRectF s(kLeft + blockW, y + barH + stripH, w - blockW, stripH);
+		fillRect(c.p, s, c.accent);
+		const double timeW = 150.0;
+		drawTickerTextOf(c, c.x.note, QRectF(s.left() + 10, s.top(), s.width() - timeW - 10, stripH), fs,
+				 c.sub);
+		fillRect(c.p, QRectF(s.right() - timeW, s.top(), timeW, stripH), c.shape2);
+		drawText(c.p, QRectF(s.right() - timeW, s.top(), timeW, stripH), clockText(), fs, c.text,
+			 Qt::AlignCenter);
+	}
+	c.p.restore();
+}
+
+// ---- Network bars -----------------------------------------------------------------------------------
+
+// Network Name: a wide bar that fades from red to navy, the name in capitals, the role on a white label.
+void networkName(Ctx &c)
+{
+	const QImage logo = logoImage(c.x.logoPath);
+	const double w = kDesignWidth - 2 * kLeft, h = 96;
+	const QFont f1 = fitFont(c, c.t.display, 58, 34, c.x.line1.toUpper(), w - 520);
+	const QFont f2 = c.font(c.t.body, 26);
+	const bool two = c.has(c.x.line2);
+	const double y = c.bottom() - h - (two ? 52.0 : 0.0);
+	const double e = c.part(0.0, 0.65);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y - 4, w * e, h + 70));
+	QLinearGradient g(kLeft, 0, kLeft + w, 0);
+	g.setColorAt(0.0, c.accent);
+	g.setColorAt(0.45, c.panel.lighter(115));
+	g.setColorAt(1.0, c.panel.darker(130));
+	shadowUnder(c, QRectF(kLeft, y, w, h), 0);
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(g);
+	c.p.drawRect(QRectF(kLeft, y, w, h));
+	fillRect(c.p, QRectF(kLeft, y, w, 2), QColor(255, 255, 255, 80));
+	drawText(c.p, QRectF(kLeft + 230 + 40 * (1 - c.part(0.2, 0.5)), y, w, h), c.x.line1.toUpper(), f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.2, 0.5), 2.0);
+	if (two) {
+		const double tw = textWidth(f2, c.x.line2.toUpper()) + 2 * 34;
+		const QRectF tab(kLeft + 214, y + h - 2, tw, 52);
+		fillRect(c.p, tab, c.shape2);
+		drawText(c.p, tab, c.x.line2.toUpper(), f2, c.ink, Qt::AlignCenter, c.part(0.4, 0.4), 1.5);
+	}
+	if (!logo.isNull()) {
+		const QRectF box(kLeft + w - 300, y + 10, 270, h - 20);
+		fillRect(c.p, box, c.shape2, 4);
+		drawLogo(c.p, logo, box.adjusted(14, 8, -14, -8), c.part(0.5, 0.4));
+	}
+	c.p.restore();
+}
+
+// Network Breaking: a red tab, a navy bar with a big headline and two small lines, a white logo tab.
+void networkBreaking(Ctx &c)
+{
+	const QImage logo = logoImage(c.x.logoPath);
+	const double w = kDesignWidth - 2 * kLeft, h = 128, tabH = 40;
+	const QFont f1 = fitFont(c, c.t.display, 58, 34, c.x.line1.toUpper(), w - 420);
+	const QFont fs = c.font(c.t.body, 22);
+	const QFont ft = c.font(c.t.display, 28);
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.65);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y - tabH - 4, w * e, h + tabH + 8));
+	QLinearGradient g(0, y, 0, y + h);
+	g.setColorAt(0.0, c.panel.lighter(120));
+	g.setColorAt(1.0, c.panel.darker(150));
+	shadowUnder(c, QRectF(kLeft, y, w, h), 0);
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(g);
+	c.p.drawRect(QRectF(kLeft, y, w, h));
+	fillRect(c.p, QRectF(kLeft + 90, y - tabH, w * 0.62, tabH), c.accent);
+	drawText(c.p, QRectF(kLeft + 120, y - tabH, w * 0.6, tabH), c.x.tag.toUpper(), ft, c.ink,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.2, 0.4), 2.0);
+	drawText(c.p, QRectF(kLeft + 40 + 40 * (1 - c.part(0.2, 0.5)), y + 6, w, 70), c.x.line1.toUpper(), f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.2, 0.5));
+	drawText(c.p, QRectF(kLeft + 40, y + 74, w - 400, 28), c.x.line2.toUpper(), fs, c.sub,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.35, 0.5), 1.0);
+	drawText(c.p, QRectF(kLeft + 40, y + 98, w - 400, 28), c.x.note.toUpper(), fs, c.sub,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.4, 0.5), 1.0);
+	if (!logo.isNull()) {
+		const QRectF box(kLeft + w - 330, y + h - 70, 300, 70);
+		fillRect(c.p, box, c.shape2);
+		drawLogo(c.p, logo, box.adjusted(16, 8, -16, -8), c.part(0.5, 0.4));
+	}
+	c.p.restore();
+}
+
+// ---- Angular bar ------------------------------------------------------------------------------------
+
+// Angular Logo: a white faceted logo block over a black angular bar, the second line on a white facet.
+void angularLogo(Ctx &c)
+{
+	const QImage logo = logoImage(c.x.logoPath);
+	const double h = 150;
+	const QFont f1 = fitFont(c, c.t.display, 50, 30, c.x.line1.toUpper(), 900);
+	const QFont f2 = c.font(c.t.body, 30);
+	const double textW = std::max(textWidth(f1, c.x.line1.toUpper()), textWidth(f2, c.x.line2) + 120);
+	const double w = 330 + textW + 90;
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.6);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y - 20, w * e, h + 40));
+	shadowUnder(c, QRectF(kLeft + 130, y + 20, w - 130, 70), 0);
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(c.panel);
+	QPolygonF bar;
+	bar << QPointF(kLeft + 120, y + 24) << QPointF(kLeft + w, y + 12) << QPointF(kLeft + w - 56, y + 64)
+	    << QPointF(kLeft + w - 20, y + 96) << QPointF(kLeft + 150, y + 92);
+	c.p.drawPolygon(bar);
+	c.p.setBrush(c.shape2);
+	QPolygonF tail;
+	tail << QPointF(kLeft + 300, y + 92) << QPointF(kLeft + w - 100, y + 96) << QPointF(kLeft + w - 150, y + h - 8)
+	     << QPointF(kLeft + 262, y + h - 14);
+	c.p.drawPolygon(tail);
+	QPolygonF box;
+	box << QPointF(kLeft, y + 10) << QPointF(kLeft + 200, y) << QPointF(kLeft + 236, y + 104)
+	    << QPointF(kLeft + 24, y + 126);
+	c.p.drawPolygon(box);
+	drawLogoOrMark(c, logo, QRectF(kLeft + 40, y + 16, 150, 96), c.panel, c.shape2, c.part(0.2, 0.4));
+	drawText(c.p, QRectF(kLeft + 290, y + 16, textW + 40, 70), c.x.line1.toUpper(), f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.3, 0.5), 1.0);
+	drawText(c.p, QRectF(kLeft + 330, y + 94, textW, 44), c.x.line2, f2, c.ink, Qt::AlignLeft | Qt::AlignVCenter,
+		 c.part(0.4, 0.5));
+	c.p.restore();
+}
+
+// ---- Logo animations ---------------------------------------------------------------------------------
+
+// Where in its repeat the animation is, 0..1 (a pulse of `pulseSeconds`, 100 px per second of position).
+double logoPhase(const Ctx &c)
+{
+	return pulsePhase(c);
+}
+
+double easeInOut(double t)
+{
+	t = std::clamp(t, 0.0, 1.0);
+	return t * t * (3.0 - 2.0 * t);
+}
+
+QRectF logoBox(const Ctx &)
+{
+	const double s = 150;
+	return QRectF(kLeft, 64, s, s);
+}
+
+// Logo Light Sweep: the logo with a band of light that crosses it every few seconds, only over the logo itself.
+void logoSweep(Ctx &c)
+{
+	const QImage logo = logoImage(c.x.logoPath);
+	const QRectF box = logoBox(c);
+	const double a = c.part(0.0, 0.6);
+	const int size = int(std::ceil(box.width() * c.p.transform().m11()));
+	QImage layer(std::max(size, 1), std::max(size, 1), QImage::Format_ARGB32_Premultiplied);
+	layer.fill(Qt::transparent);
+	{
+		QPainter q(&layer);
+		q.setRenderHint(QPainter::Antialiasing, true);
+		q.setRenderHint(QPainter::SmoothPixmapTransform, true);
+		q.scale(layer.width() / box.width(), layer.height() / box.height());
+		drawLogoOrMarkOn(q, c, logo, QRectF(0, 0, box.width(), box.height()), c.accent, c.ink, 1.0);
+		const double t = easeInOut(logoPhase(c) / 0.4); // the sweep takes the first 40% of each repeat
+		if (logoPhase(c) < 0.4) {
+			q.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+			const double bw = box.width() * 0.55;
+			const double x = -bw + (box.width() + 2 * bw) * t;
+			QLinearGradient g(x, 0, x + bw, 0);
+			g.setColorAt(0.0, QColor(255, 255, 255, 0));
+			g.setColorAt(0.5, QColor(255, 255, 255, 230));
+			g.setColorAt(1.0, QColor(255, 255, 255, 0));
+			q.setPen(Qt::NoPen);
+			q.setBrush(g);
+			QPolygonF band;
+			band << QPointF(x + bw * 0.25, 0) << QPointF(x + bw * 1.25, 0)
+			     << QPointF(x + bw * 0.75, box.height()) << QPointF(x - bw * 0.25, box.height());
+			q.drawPolygon(band);
+		}
+	}
+	// Draw the layer with the painter's current transform.
+	c.p.save();
+	c.p.setOpacity(c.p.opacity() * a);
+	c.p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+	c.p.drawImage(box, layer);
+	c.p.restore();
+}
+
+// Logo Spin: the logo turns on its vertical axis once every few seconds, shading as it turns edge-on.
+void logoSpin(Ctx &c)
+{
+	const QImage logo = logoImage(c.x.logoPath);
+	const QRectF box = logoBox(c);
+	const double a = c.part(0.0, 0.6);
+	const double turn = easeInOut(logoPhase(c) / 0.5); // one full turn in the first half of each repeat
+	const double angle = logoPhase(c) < 0.5 ? turn * 2.0 * kPi : 0.0;
+	const double sx = std::max(0.02, std::abs(std::cos(angle)));
+	const int size = int(std::ceil(box.width() * c.p.transform().m11()));
+	QImage layer(std::max(size, 1), std::max(size, 1), QImage::Format_ARGB32_Premultiplied);
+	layer.fill(Qt::transparent);
+	{
+		QPainter q(&layer);
+		q.setRenderHint(QPainter::Antialiasing, true);
+		q.setRenderHint(QPainter::SmoothPixmapTransform, true);
+		q.scale(layer.width() / box.width(), layer.height() / box.height());
+		drawLogoOrMarkOn(q, c, logo, QRectF(0, 0, box.width(), box.height()), c.accent, c.ink, 1.0);
+		q.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+		q.fillRect(QRectF(0, 0, box.width(), box.height()), QColor(0, 0, 0, int(150 * (1.0 - sx))));
+	}
+	c.p.save();
+	c.p.setOpacity(c.p.opacity() * a);
+	c.p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+	c.p.translate(box.center());
+	c.p.scale(sx, 1.0 - 0.05 * (1.0 - sx));
+	c.p.translate(-box.center());
+	c.p.drawImage(box, layer);
+	c.p.restore();
+}
+
+// ---- Sermon notes -------------------------------------------------------------------------------------
+
+// Words between asterisks are drawn in the accent colour: "God is *faithful*".
+struct Piece {
+	QString text;
+	bool marked = false;
+};
+
+QList<Piece> markedPieces(const QString &s)
+{
+	QList<Piece> out;
+	bool marked = false;
+	QString cur;
+	for (const QChar ch : s) {
+		if (ch == QLatin1Char('*')) {
+			if (!cur.isEmpty())
+				out.append({cur, marked});
+			cur.clear();
+			marked = !marked;
+		} else {
+			cur += ch;
+		}
+	}
+	if (!cur.isEmpty())
+		out.append({cur, marked});
+	return out;
+}
+
+QString stripMarks(QString s)
+{
+	return s.remove(QLatin1Char('*'));
+}
+
+// The points a notes card shows: rows that have text.
+QList<QPair<QString, QString>> notePoints(const Ctx &c)
+{
+	QList<QPair<QString, QString>> out;
+	for (const auto &r : c.x.rows)
+		if (c.has(r.second))
+			out.append(r);
+	return out;
+}
+
+// Sermon Notes: a card with the sermon's title and its points, each with a marker.
+void notesCard(Ctx &c)
+{
+	const auto points = notePoints(c);
+	const double pad = 40, w = 820, markerW = 44;
+	const QFont ft = c.font(c.t.body, 22);
+	const QFont fTitle = fitFont(c, c.t.display, 54, 32, c.x.line1, w - 2 * pad);
+	const double textW = w - 2 * pad - markerW - 16;
+	std::vector<Wrapped> wrapped;
+	double pointsH = 0.0;
+	for (const auto &pt : points) {
+		wrapped.push_back(fitWrapped(c, c.t.body, 32, 24, stripMarks(pt.second), textW, 3, 1.25));
+		pointsH += std::max(markerW, wrapped.back().lineHeight * wrapped.back().lines.size()) + 16;
+	}
+	const double headH = (c.has(c.x.tag) ? 36 : 0.0) + 70;
+	const double h = pad + headH + (points.isEmpty() ? 0.0 : 16 + pointsH) + pad - 16;
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.55);
+	const QRectF card(kLeft, y, w, h);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y - 20 + h * (1 - e), w + 20, h + 40));
+	solidShape(c, card, c.panel, 26);
+	fillRect(c.p, QRectF(kLeft, y + 26, 8, h - 52), c.accent);
+	double cy = y + pad;
+	if (c.has(c.x.tag)) {
+		drawText(c.p, QRectF(kLeft + pad, cy - 8, w, 30), c.x.tag.toUpper(), ft, c.accent,
+			 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.2, 0.4), 3.0);
+		cy += 36;
+	}
+	drawText(c.p, QRectF(kLeft + pad, cy - 6, w - 2 * pad, 70), c.x.line1, fTitle, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.25, 0.4));
+	cy += 70 + 16;
+	for (int i = 0; i < points.size(); ++i) {
+		const double a = c.part(0.35 + 0.08 * i, 0.4);
+		const Wrapped &wp = wrapped[size_t(i)];
+		const double rowH = std::max(markerW, wp.lineHeight * wp.lines.size());
+		c.p.save();
+		c.p.translate(14 * (1 - a), 0);
+		c.p.setOpacity(c.p.opacity() * a);
+		const QString marker = c.has(points[i].first) ? points[i].first : QString();
+		c.p.setPen(Qt::NoPen);
+		c.p.setBrush(c.accent);
+		c.p.drawEllipse(QRectF(kLeft + pad, cy + (rowH - markerW) / 2, markerW, markerW));
+		if (!marker.isEmpty())
+			drawText(c.p, QRectF(kLeft + pad, cy + (rowH - markerW) / 2, markerW, markerW), marker,
+				 c.font(c.t.display, 26), c.ink, Qt::AlignCenter);
+		for (int l = 0; l < wp.lines.size(); ++l)
+			drawText(c.p,
+				 QRectF(kLeft + pad + markerW + 16,
+					cy + (rowH - wp.lineHeight * wp.lines.size()) / 2 + l * wp.lineHeight, textW,
+					wp.lineHeight),
+				 wp.lines[l], wp.font, c.sub, Qt::AlignLeft | Qt::AlignVCenter);
+		c.p.restore();
+		cy += rowH + 16;
+	}
+	c.p.restore();
+}
+
+// Numbered Points: a stack of numbered lines, each on its own rounded bar.
+void notesPoints(Ctx &c)
+{
+	const auto points = notePoints(c);
+	const double circle = 64, gap = 12, maxW = 880;
+	const QFont fhead = fitFont(c, c.t.display, 40, 26, c.x.line1, maxW);
+	std::vector<Wrapped> wrapped;
+	double h = 0.0;
+	for (const auto &pt : points) {
+		wrapped.push_back(fitWrapped(c, c.t.body, 34, 24, stripMarks(pt.second), maxW - circle - 60, 2, 1.2));
+		h += std::max(circle, wrapped.back().lineHeight * wrapped.back().lines.size() + 20) + gap;
+	}
+	const double headH = c.has(c.x.line1) ? 64 : 0.0;
+	const double y = c.bottom() - h - headH;
+	if (c.has(c.x.line1)) {
+		const double a = c.part(0.0, 0.45);
+		const double tw = textWidth(fhead, c.x.line1) + 2 * 30;
+		solidShape(c, QRectF(kLeft, y, tw * a, 56), c.accent, 28);
+		drawText(c.p, QRectF(kLeft + 30, y, tw, 56), c.x.line1, fhead, c.ink, Qt::AlignLeft | Qt::AlignVCenter,
+			 a);
+	}
+	double cy = y + headH;
+	for (int i = 0; i < points.size(); ++i) {
+		const double a = c.part(0.15 + 0.1 * i, 0.4);
+		const Wrapped &wp = wrapped[size_t(i)];
+		const double rowH = std::max(circle, wp.lineHeight * wp.lines.size() + 20);
+		double barW = circle;
+		for (const QString &l : wp.lines)
+			barW = std::max(barW, textWidth(wp.font, l));
+		barW += circle + 50;
+		c.p.save();
+		c.p.translate(-60 * (1 - a), 0);
+		c.p.setOpacity(c.p.opacity() * a);
+		solidShape(c, QRectF(kLeft + circle / 2, cy, barW - circle / 2, rowH), c.panel, 16);
+		c.p.setPen(Qt::NoPen);
+		c.p.setBrush(c.accent);
+		const QRectF dot(kLeft, cy + (rowH - circle) / 2, circle, circle);
+		c.p.drawEllipse(dot);
+		drawText(c.p, dot, c.has(points[i].first) ? points[i].first : QString::number(i + 1),
+			 c.font(c.t.display, 34), c.ink, Qt::AlignCenter);
+		for (int l = 0; l < wp.lines.size(); ++l)
+			drawText(c.p,
+				 QRectF(kLeft + circle + 24,
+					cy + (rowH - wp.lineHeight * wp.lines.size()) / 2 + l * wp.lineHeight, barW,
+					wp.lineHeight),
+				 wp.lines[l], wp.font, c.text, Qt::AlignLeft | Qt::AlignVCenter);
+		c.p.restore();
+		cy += rowH + gap;
+	}
+}
+
+// Key Point: one big statement; words between asterisks stand out (a fill-in-the-blank or a key word).
+void notesKey(Ctx &c)
+{
+	const double pad = 48, w = 1000;
+	const QString plain = stripMarks(c.x.line1);
+	const Wrapped wp = fitWrapped(c, c.t.display, 64, 36, plain, w - 2 * pad, 4, 1.22);
+	const double headH = c.has(c.x.tag) ? 56 : 0.0;
+	const double h = 2 * pad + headH + wp.lineHeight * wp.lines.size();
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.55);
+	const QRectF card(kLeft, y, w, h);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y - 20, (w + 20) * e, h + 40));
+	solidShape(c, card, c.panel, 28);
+	fillRect(c.p, QRectF(kLeft + pad - 20, y + pad + headH, 8, wp.lineHeight * wp.lines.size()), c.accent);
+	if (c.has(c.x.tag)) {
+		const QFont ft = c.font(c.t.body, 22);
+		const double tw = textWidth(ft, c.x.tag.toUpper()) + 2 * 22 + c.x.tag.size() * 3;
+		fillRect(c.p, QRectF(kLeft + pad, y + pad - 8, tw, 38), c.accent, 10);
+		drawText(c.p, QRectF(kLeft + pad, y + pad - 8, tw, 38), c.x.tag.toUpper(), ft, c.ink, Qt::AlignCenter,
+			 c.part(0.2, 0.4), 3.0);
+	}
+	// Draw the statement line by line, colouring the marked words (in runs, so kerning is kept).
+	const QList<Piece> pieces = markedPieces(c.x.line1);
+	QList<bool> markedChar;
+	for (const Piece &pc : pieces)
+		for (int i = 0; i < pc.text.size(); ++i)
+			markedChar.append(pc.marked);
+	int consumed = 0;
+	const QFontMetricsF fm(wp.font);
+	const double a = c.part(0.25, 0.5);
+	for (int l = 0; l < wp.lines.size(); ++l) {
+		const QString &line = wp.lines[l];
+		while (consumed < plain.size() && plain[consumed].isSpace())
+			++consumed;
+		double x = kLeft + pad + 24;
+		const double ly = y + pad + headH + l * wp.lineHeight;
+		int start = 0;
+		while (start < line.size()) {
+			const bool marked = consumed + start < markedChar.size() && markedChar[consumed + start];
+			int end = start;
+			while (end < line.size() &&
+			       (consumed + end < markedChar.size() && markedChar[consumed + end]) == marked)
+				++end;
+			const QString run = line.mid(start, end - start);
+			drawText(c.p, QRectF(x, ly, textWidth(wp.font, run) + 8, wp.lineHeight), run, wp.font,
+				 marked ? c.accent : c.text, Qt::AlignLeft | Qt::AlignVCenter, a);
+			x += fm.horizontalAdvance(run);
+			start = end;
+		}
+		consumed += line.size();
+	}
+	c.p.restore();
+}
+
+// Columns: up to four columns, each with a big number or short heading and a line or two of text.
+void notesColumns(Ctx &c)
+{
+	const auto points = notePoints(c);
+	const int n = std::max<int>(1, points.size());
+	const double gap = 0, pad = 36, colW = n <= 2 ? 460 : n == 3 ? 400 : 340;
+	const double w = 2 * pad + n * colW;
+	const QFont fnum = c.font(c.t.display, 64);
+	double maxLines = 1;
+	std::vector<Wrapped> wrapped;
+	for (const auto &pt : points) {
+		wrapped.push_back(fitWrapped(c, c.t.body, 32, 22, stripMarks(pt.second), colW - 2 * 24, 4, 1.22));
+		maxLines = std::max<double>(maxLines, wrapped.back().lines.size());
+	}
+	const double lh = QFontMetricsF(c.font(c.t.body, 32)).height() * 1.22;
+	const double headH = c.has(c.x.line1) ? 70 : 0.0;
+	const double h = headH + 84 + maxLines * lh + pad;
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.55);
+	const QRectF card(kLeft, y, w, h);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y - 20, (w + 20) * e, h + 40));
+	solidShape(c, card, c.panel, 24);
+	if (c.has(c.x.line1)) {
+		fillRect(c.p, QRectF(kLeft, y, w, headH), c.accent.darker(110), 24);
+		fillRect(c.p, QRectF(kLeft, y + headH - 24, w, 24), c.accent.darker(110));
+		drawText(c.p, QRectF(kLeft + pad, y, w - 2 * pad, headH), c.x.line1,
+			 fitFont(c, c.t.display, 40, 26, c.x.line1, w - 2 * pad), c.ink,
+			 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.2, 0.4));
+	}
+	for (int i = 0; i < points.size(); ++i) {
+		const double a = c.part(0.3 + 0.1 * i, 0.4);
+		const double x = kLeft + pad + i * colW + gap;
+		if (i > 0)
+			fillRect(c.p, QRectF(x - 12, y + headH + 20, 2, h - headH - 40), QColor(255, 255, 255, 40));
+		drawText(c.p, QRectF(x + 12, y + headH + 8 + 16 * (1 - a), colW - 24, 80),
+			 c.has(points[i].first) ? points[i].first : QString::number(i + 1), fnum, c.accent,
+			 Qt::AlignLeft | Qt::AlignVCenter, a);
+		const Wrapped &wp = wrapped[size_t(i)];
+		for (int l = 0; l < wp.lines.size(); ++l)
+			drawText(c.p, QRectF(x + 12, y + headH + 88 + l * wp.lineHeight, colW - 24, wp.lineHeight),
+				 wp.lines[l], wp.font, c.text, Qt::AlignLeft | Qt::AlignVCenter, a);
+	}
+	c.p.restore();
+}
+
 struct StyleInfo {
 	const char *id;
 	Style draw;
@@ -1420,6 +2214,34 @@ const std::vector<StyleInfo> &styles()
 		{"news-bar", newsBar},
 		{"handle-pill", handlePill},
 		{"thank-you", thankYou},
+		{"modern-pill", modernPill},
+		{"modern-badge", modernBadge},
+		{"modern-card", modernCard},
+		{"modern-stack", modernStack},
+		{"modern-logo", modernLogo},
+		{"glass-bar", glassBar},
+		{"desk-two",
+		 [](Ctx &c) {
+			 deskBar(c, DeskKind::Two);
+		 }},
+		{"desk-one",
+		 [](Ctx &c) {
+			 deskBar(c, DeskKind::One);
+		 }},
+		{"desk-clock",
+		 [](Ctx &c) {
+			 deskBar(c, DeskKind::Clock);
+		 }},
+		{"desk-crawl", [](Ctx &c) { deskBar(c, DeskKind::Crawl); }, true},
+		{"network-name", networkName},
+		{"network-breaking", networkBreaking},
+		{"angular-logo", angularLogo},
+		{"logo-sweep", logoSweep},
+		{"logo-spin", logoSpin},
+		{"notes-card", notesCard},
+		{"notes-points", notesPoints},
+		{"notes-key", notesKey},
+		{"notes-columns", notesColumns},
 		{"guest-minister", guestMinister},
 		{"giving", giving},
 		{"news-flash", newsFlash},
@@ -1470,6 +2292,10 @@ double regionDesignHeight(const TitleTemplate &tpl, int canvasWidth, int canvasH
 		return kDesignWidth * double(canvasHeight) / double(std::max(canvasWidth, 1));
 	if (tpl.id == "live-badge")
 		return 200.0;
+	if (tpl.id == "logo-sweep" || tpl.id == "logo-spin")
+		return 300.0;
+	if (tpl.id.rfind("notes-", 0) == 0)
+		return 760.0;
 	if (tpl.id == "big-quote" || tpl.id == "series-title")
 		return kTallRegionHeight;
 	return kRegionHeight;

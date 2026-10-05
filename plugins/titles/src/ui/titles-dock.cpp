@@ -385,21 +385,27 @@ QWidget *TitlesDock::buildTabs()
 	// control: picking one on a row clears the other.
 	categories_ = new Segmented(templatesTab_);
 	categories_->setItems({lt("Laycue.Titles.CatAll"), lt(categoryKey(Category::People)),
-			       lt(categoryKey(Category::Worship)), lt(categoryKey(Category::Announce))});
+			       lt(categoryKey(Category::Worship)), lt(categoryKey(Category::Announce)),
+			       lt(categoryKey(Category::Notes))});
 	categories_->setAccessibleName(lt("Laycue.Titles.CategoriesAccessible"));
 	categories2_ = new Segmented(templatesTab_);
 	categories2_->setItems({lt(categoryKey(Category::Ticker)), lt(categoryKey(Category::Live)),
 				lt(categoryKey(Category::Social)), lt(categoryKey(Category::News))});
 	categories2_->setAccessibleName(lt("Laycue.Titles.CategoriesAccessible"));
 	categories2_->setCurrent(-1);
+	// The filter is 0 for all, otherwise the category's number plus one.
 	connect(categories_, &Segmented::changed, this, [this](int i) {
+		static const int filters[] = {0, int(Category::People) + 1, int(Category::Worship) + 1,
+					      int(Category::Announce) + 1, int(Category::Notes) + 1};
 		categories2_->setCurrent(-1);
-		categoryFilter_ = i;
+		categoryFilter_ = filters[std::clamp(i, 0, 4)];
 		layoutTemplates();
 	});
 	connect(categories2_, &Segmented::changed, this, [this](int i) {
+		static const int filters[] = {int(Category::Ticker) + 1, int(Category::Live) + 1,
+					      int(Category::Social) + 1, int(Category::News) + 1};
 		categories_->setCurrent(-1);
-		categoryFilter_ = 4 + i; // after All, People, Worship, Announce
+		categoryFilter_ = filters[std::clamp(i, 0, 3)];
 		layoutTemplates();
 	});
 	t->addWidget(categories_);
@@ -508,8 +514,9 @@ void TitlesDock::refreshFields()
 	label(label2_, 2, "Laycue.Titles.Line2");
 	label(label3_, 3, "Laycue.Titles.Tag");
 
-	edit1_->setVisible(!t.longText);
-	long1_->setVisible(t.longText);
+	label1_->setVisible(t.usesLine1);
+	edit1_->setVisible(!t.longText && t.usesLine1);
+	long1_->setVisible(t.longText && t.usesLine1);
 	label2_->setVisible(t.usesLine2);
 	edit2_->setVisible(t.usesLine2);
 	label3_->setVisible(t.usesTag);
@@ -570,7 +577,9 @@ void TitlesDock::selectStyle(const std::string &styleId)
 			       (library_.draft.line1.empty() && library_.draft.line2.empty());
 	library_.selected = styleId;
 	if (untouched) {
+		const std::string keepLogo = library_.draft.logo; // the operator's logo carries over between templates
 		library_.draft = sampleFor(styleId);
+		library_.draft.logo = keepLogo;
 		lastSampleStyle_ = styleId;
 	}
 	refreshFields();
@@ -1183,7 +1192,15 @@ void TitlesDock::rebuildRows()
 {
 	page::clear(rowsLayout_);
 	const TitleTemplate t = resolveStyle(library_, library_.selected);
-	rowsLayout_->addWidget(makeLabel(rowsBox_, lt("Laycue.Titles.Accounts"), 11, 600, color::textTertiary));
+	// A template can word the rows itself ("POINTS", "Marker", "The point"); otherwise they are accounts.
+	const auto own = [&](const char *suffix, const char *fallback) {
+		const std::string key = nameKey(t) + "." + suffix;
+		const std::string text = localised(key);
+		return text.empty() || text == key ? lt(fallback) : fromStd(text);
+	};
+	rowsLayout_->addWidget(makeLabel(rowsBox_, own("RT", "Laycue.Titles.Accounts"), 11, 600, color::textTertiary));
+	const QString labelHint = own("RL", "Laycue.Titles.AccountLabel");
+	const QString valueHint = own("RV", "Laycue.Titles.AccountNumber");
 	auto &rows = library_.draft.rows;
 	for (size_t i = 0; i < rows.size(); ++i) {
 		auto *line = new QWidget(rowsBox_);
@@ -1192,8 +1209,8 @@ void TitlesDock::rebuildRows()
 		h->setSpacing(size::gapSmall);
 		auto *label = new QLineEdit(line);
 		label->setText(fromStd(rows[i].label));
-		label->setPlaceholderText(lt("Laycue.Titles.AccountLabel"));
-		label->setAccessibleName(lt("Laycue.Titles.AccountLabel"));
+		label->setPlaceholderText(labelHint);
+		label->setAccessibleName(labelHint);
 		connect(label, &QLineEdit::textEdited, this, [this, i](const QString &text) {
 			if (i < library_.draft.rows.size()) {
 				library_.draft.rows[i].label = toStd(text);
@@ -1203,8 +1220,8 @@ void TitlesDock::rebuildRows()
 		h->addWidget(label, 2);
 		auto *value = new QLineEdit(line);
 		value->setText(fromStd(rows[i].value));
-		value->setPlaceholderText(lt("Laycue.Titles.AccountNumber"));
-		value->setAccessibleName(lt("Laycue.Titles.AccountNumber"));
+		value->setPlaceholderText(valueHint);
+		value->setAccessibleName(valueHint);
 		connect(value, &QLineEdit::textEdited, this, [this, i](const QString &text) {
 			if (i < library_.draft.rows.size()) {
 				library_.draft.rows[i].value = toStd(text);
@@ -1225,7 +1242,7 @@ void TitlesDock::rebuildRows()
 		rowsLayout_->addWidget(line);
 	}
 	if (rows.size() < size_t(t.maxRows)) {
-		auto *add = button(rowsBox_, lt("Laycue.Titles.AddAccount"), "laycueSecondary");
+		auto *add = button(rowsBox_, own("RA", "Laycue.Titles.AddAccount"), "laycueSecondary");
 		connect(add, &QAbstractButton::clicked, this, [this]() {
 			library_.draft.rows.push_back({});
 			rebuildRows();

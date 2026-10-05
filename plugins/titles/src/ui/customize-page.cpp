@@ -41,6 +41,10 @@ const FaceName kFaces[] = {
 	{FontFace::BebasNeue, "Bebas Neue"},
 	{FontFace::Baskerville, "Libre Baskerville"},
 	{FontFace::BaskervilleItalic, "Libre Baskerville Italic"},
+	{FontFace::OutfitRegular, "Outfit"},
+	{FontFace::OutfitSemiBold, "Outfit SemiBold"},
+	{FontFace::OutfitBold, "Outfit Bold"},
+	{FontFace::OutfitExtraBold, "Outfit ExtraBold"},
 };
 
 const char *faceName(FontFace f)

@@ -23,6 +23,10 @@ const FileSpec kFiles[] = {
 	{FontFace::BebasNeue, "BebasNeue-Regular.ttf", "Regular"},
 	{FontFace::Baskerville, "LibreBaskerville.ttf", "Regular"},
 	{FontFace::BaskervilleItalic, "LibreBaskerville-Italic.ttf", "Italic"},
+	{FontFace::OutfitRegular, "Outfit-Regular.ttf", "Regular"},
+	{FontFace::OutfitSemiBold, "Outfit-SemiBold.ttf", "SemiBold"},
+	{FontFace::OutfitBold, "Outfit-Bold.ttf", "Bold"},
+	{FontFace::OutfitExtraBold, "Outfit-ExtraBold.ttf", "ExtraBold"},
 };
 
 } // namespace
