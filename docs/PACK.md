@@ -102,3 +102,7 @@ Not in v1 (said honestly): multistreaming, chat/alerts, vertical canvas, audio t
 - Each plugin works installed alone.
 
 Updates (a "Check for updates" button in each plugin, published through a small public releases repo): see `UPDATES.md`.
+
+## The Laycue menu
+
+Every plugin adds its own entry to a **Laycue** menu in OBS's menu bar (between Tools and Help): Clock, Network, Scenes, Titles. Click an entry to show or hide that panel; a tick means it is open. Whichever plugin loads first makes the menu, so with only some installed the menu shows only those. The code is `plugins/common/src/ui/laycue-menu.*`.

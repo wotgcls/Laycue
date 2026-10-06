@@ -12,6 +12,8 @@ target_sources(
     src/hotkey-set.hpp
     src/ui/controls.cpp
     src/ui/controls.hpp
+    src/ui/laycue-menu.cpp
+    src/ui/laycue-menu.hpp
     src/ui/pages/helpers.hpp
     src/ui/pages/page-frame.cpp
     src/ui/pages/page-frame.hpp

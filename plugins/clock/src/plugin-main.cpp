@@ -21,6 +21,8 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include "render/clock-renderer.hpp"
 #include "ui/clock-dock.hpp"
 
+#include "ui/laycue-menu.hpp"
+
 #include <obs-frontend-api.h>
 #include <obs-module.h>
 #include <plugin-support.h>
@@ -62,6 +64,8 @@ bool obs_module_load(void)
 		auto *dock = new laycue::clock::ui::ClockDock(mainWindow);
 		if (obs_frontend_add_dock_by_id(kDockId, obs_module_text("Laycue.Clock.DockTitle"), dock)) {
 			g_dock = dock;
+			laycue::ui::addToLaycueMenu(dock, QString::fromUtf8(obs_module_text("Laycue.MenuTitle")),
+						    QString::fromUtf8(obs_module_text("Laycue.Clock.MenuItem")));
 			g_hotkeys = std::make_unique<laycue::HotkeySet>(
 				dock, "laycue_clock_hotkeys",
 				std::vector<laycue::HotkeySet::Definition>{

@@ -19,6 +19,8 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include "hotkey-set.hpp"
 #include "ui/network-dock.hpp"
 
+#include "ui/laycue-menu.hpp"
+
 #include <obs-frontend-api.h>
 #include <obs-module.h>
 #include <plugin-support.h>
@@ -57,6 +59,8 @@ bool obs_module_load(void)
 		auto *dock = new laycue::network::ui::NetworkDock(mainWindow);
 		if (obs_frontend_add_dock_by_id(kDockId, obs_module_text("Laycue.Network.DockTitle"), dock)) {
 			g_dock = dock;
+			laycue::ui::addToLaycueMenu(dock, QString::fromUtf8(obs_module_text("Laycue.MenuTitle")),
+						    QString::fromUtf8(obs_module_text("Laycue.Network.MenuItem")));
 			g_hotkeys = std::make_unique<laycue::HotkeySet>(
 				dock, "laycue_network_hotkeys",
 				std::vector<laycue::HotkeySet::Definition>{

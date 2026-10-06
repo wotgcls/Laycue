@@ -20,6 +20,8 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include "features/hotkeys.hpp"
 #include "ui/laycue-dock.hpp"
 
+#include "ui/laycue-menu.hpp"
+
 #include <obs-frontend-api.h>
 #include <obs-module.h>
 #include <plugin-support.h>
@@ -73,6 +75,8 @@ bool obs_module_load(void)
 			return true; // stay loaded; OBS keeps working without the dock
 		}
 		g_dock = dock;
+		laycue::ui::addToLaycueMenu(dock, QString::fromUtf8(obs_module_text("Laycue.MenuTitle")),
+					    QString::fromUtf8(obs_module_text("Laycue.MenuItem")));
 		g_hotkeys = std::make_unique<laycue::Hotkeys>(dock, [](laycue::HotkeyAction action) {
 			if (g_dock)
 				g_dock->runHotkey(action);
