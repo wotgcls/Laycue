@@ -11,7 +11,9 @@
 
 #include "update/updater.hpp"
 
-#include <plugin-support.h>
+// The plugin version string (defined in plugin-support.c). Declared here rather than including plugin-support.h,
+// which clashes with OBS's own logging declarations when included before them.
+extern "C" const char *PLUGIN_VERSION;
 #include <QTimer>
 #include <QWidget>
 
