@@ -9,6 +9,9 @@
 
 #include <obs-frontend-api.h>
 
+#include "update/updater.hpp"
+
+#include <plugin-support.h>
 #include <QTimer>
 #include <QWidget>
 
@@ -85,6 +88,7 @@ private:
 	bool shuttingDown_ = false;
 	Tab tab_ = Tab::Test;
 
+	laycue::update::Updater updater_{QString::fromUtf8(PLUGIN_VERSION)}; // "Check for updates" in the Test tab
 	QWidget *content_ = nullptr;
 	QStackedWidget *pages_ = nullptr;
 	QWidget *home_ = nullptr;

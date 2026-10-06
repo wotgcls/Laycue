@@ -10,6 +10,10 @@ namespace laycue {
 class App;
 }
 
+#include "update/updater.hpp"
+
+#include <plugin-support.h>
+
 namespace laycue::ui {
 
 class SettingsPage : public PageFrame {
@@ -28,6 +32,7 @@ private:
 	void rebuildProfiles();
 	void say(const QString &message);
 
+	laycue::update::Updater updater_{QString::fromUtf8(PLUGIN_VERSION)}; // "Check for updates"
 	App &app_;
 	QWidget *editHost_ = nullptr; // everything that changes setup: hidden while locked
 	QWidget *profilesHost_ = nullptr;

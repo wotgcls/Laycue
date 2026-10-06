@@ -115,3 +115,36 @@ jobs:
             ${{ github.workspace }}/*.deb
             ${{ github.workspace }}/*.ddeb
             ${{ github.workspace }}/*.tar.xz
+
+      - name: Publish Update For "Check For Updates" 📣
+        # Copies the installers to the public releases repository that the plugins check, so an installed Laycue
+        # can find and download them. Needs the secret RELEASES_TOKEN (see docs/UPDATES.md); skipped without it.
+        if: fromJSON(steps.check.outputs.validTag) && env.RELEASES_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          RELEASES_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          RELEASES_REPO: wotgcls/laycue-releases
+          VERSION: ${{ steps.check.outputs.version }}
+          PRERELEASE: ${{ steps.check.outputs.prerelease }}
+        run: |
+          : Publish Update For "Check For Updates" 📣
+          shopt -s nullglob
+          files=()
+          for installer in *-windows-x64-Installer.exe *.pkg *.deb; do
+            echo "$(sha256sum "${installer}" | cut -d ' ' -f 1)  ${installer}" > "${installer}.sha256"
+            files+=("${installer}" "${installer}.sha256")
+          done
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "No installers found to publish"
+            exit 1
+          fi
+          notes="Laycue ${VERSION}"
+          if [[ -f RELEASE_NOTES.md ]]; then
+            notes="$(cat RELEASE_NOTES.md)"
+          fi
+          flags=()
+          if [[ "${PRERELEASE}" == 'true' ]]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "${VERSION}" "${files[@]}" --repo "${RELEASES_REPO}" \
+            --title "Laycue ${VERSION}" --notes "${notes}" "${flags[@]}"

@@ -8,6 +8,7 @@
 #include "ui/labels.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/tokens.hpp"
+#include "ui/update-card.hpp"
 
 #include <plugin-support.h>
 
@@ -278,6 +279,10 @@ void SettingsPage::build()
 	}
 	editHost_->setVisible(!config.settings.locked);
 	profilesOuter->setVisible(!config.settings.locked);
+
+	// --- Updates ---
+	page->addWidget(label(this, lt("Laycue.Update.Heading").toUpper(), 11, 700, color::textTertiary));
+	page->addWidget(new UpdateCard(updater_, this));
 
 	page->addWidget(label(this, lt("Laycue.Settings.About").arg(QString::fromUtf8(PLUGIN_VERSION)), 11, 400,
 			      color::textTertiary));

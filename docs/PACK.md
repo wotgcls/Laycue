@@ -99,3 +99,5 @@ Not in v1 (said honestly): multistreaming, chat/alerts, vertical canvas, audio t
 - A streamer on a bad connection ends a one-hour stream with fewer dropped frames than with OBS dynamic bitrate alone,
   and can see why bitrate changed.
 - Each plugin works installed alone.
+
+Updates (a "Check for updates" button in each plugin, published through a small public releases repo): see `UPDATES.md`.

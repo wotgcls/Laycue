@@ -10,6 +10,7 @@
 #include "ui/style.hpp"
 #include "ui/text.hpp"
 #include "ui/title-widgets.hpp"
+#include "ui/update-card.hpp"
 #include "ui/tokens.hpp"
 
 #include <obs-module.h>
@@ -284,6 +285,8 @@ QWidget *TitlesDock::buildStage()
 	lv->addWidget(makeLabel(logoBox_, lt("Laycue.Titles.Logo"), 13, 600, color::cream));
 	logoName_ = makeLabel(logoBox_, QString(), 12, 400, color::textTertiary);
 	logoName_->setWordWrap(false);
+	logoName_->setSizePolicy(QSizePolicy::Ignored,
+				 QSizePolicy::Preferred); // a long file name is cut, not a wide panel
 	lv->addWidget(logoName_, 1);
 	auto *pickLogo = button(logoBox_, lt("Laycue.Titles.ChooseLogo"), "laycueSecondary");
 	connect(pickLogo, &QAbstractButton::clicked, this, &TitlesDock::chooseLogo);
@@ -299,7 +302,8 @@ QWidget *TitlesDock::buildStage()
 	pb->setContentsMargins(0, 0, 0, 0);
 	pb->setSpacing(size::gapSmall);
 	partsLabel_ = makeLabel(partsBox_, QString(), 12, 400, color::textTertiary);
-	partsLabel_->setWordWrap(false);
+	partsLabel_->setWordWrap(true); // the sentence wraps instead of widening the panel
+	partsLabel_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 	pb->addWidget(partsLabel_, 1);
 	auto *setParts = button(partsBox_, lt("Laycue.Titles.SetLogoParts"), "laycueSecondary");
 	connect(setParts, &QAbstractButton::clicked, this, &TitlesDock::chooseLogoParts);
@@ -1219,6 +1223,11 @@ void TitlesDock::rebuildSetup()
 		speedRow->addWidget(faster);
 		v->addLayout(speedRow);
 	}
+
+	// Updates.
+	setupLayout_->addWidget(
+		makeLabel(setupTab_, lt("Laycue.Update.Heading").toUpper(), 11, 700, color::textTertiary));
+	setupLayout_->addWidget(new laycue::ui::UpdateCard(updater_, setupTab_));
 
 	// Hotkeys.
 	{

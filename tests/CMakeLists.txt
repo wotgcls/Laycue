@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(LAYCUE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/scenes/src")
 set(TITLES_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/titles/src")
 set(NETWORK_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/network/src")
+set(COMMON_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/common/src")
 
 add_executable(
   laycue-tests
@@ -23,6 +24,7 @@ add_executable(
   test-layouts.cpp
   test-titles.cpp
   test-network.cpp
+  test-update.cpp
   "${LAYCUE_SRC}/core/cue-state.cpp"
   "${LAYCUE_SRC}/core/detect.cpp"
   "${LAYCUE_SRC}/core/geometry.cpp"
@@ -30,6 +32,7 @@ add_executable(
   "${LAYCUE_SRC}/core/exclusivity.cpp"
   "${LAYCUE_SRC}/core/config.cpp"
   "${LAYCUE_SRC}/core/layouts.cpp"
+  "${COMMON_SRC}/core/update-info.cpp"
   "${NETWORK_SRC}/core/stats.cpp"
   "${NETWORK_SRC}/core/speed-analysis.cpp"
   "${NETWORK_SRC}/core/recommend.cpp"
@@ -48,7 +51,7 @@ add_executable(
 
 target_include_directories(
   laycue-tests
-  PRIVATE "${LAYCUE_SRC}" "${TITLES_SRC}" "${NETWORK_SRC}" "${CMAKE_CURRENT_SOURCE_DIR}"
+  PRIVATE "${LAYCUE_SRC}" "${TITLES_SRC}" "${NETWORK_SRC}" "${COMMON_SRC}" "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
 add_executable(laycue-fixture-tests test-fixtures.cpp "${LAYCUE_SRC}/core/detect.cpp")

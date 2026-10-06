@@ -8,6 +8,7 @@
 #include "ui/style.hpp"
 #include "ui/text.hpp"
 #include "ui/tokens.hpp"
+#include "ui/update-card.hpp"
 
 #include <obs-module.h>
 #include <plugin-support.h>
@@ -641,6 +642,9 @@ void NetworkDock::rebuildTest()
 			v->addWidget(
 				makeLabel(testTab_, lt("Laycue.Network.TestNotWhileLive"), 11, 500, color::overlay));
 	}
+	testLayout_->addWidget(
+		makeLabel(testTab_, lt("Laycue.Update.Heading").toUpper(), 11, 700, color::textTertiary));
+	testLayout_->addWidget(new UpdateCard(updater_, testTab_));
 	testLayout_->addStretch(1);
 }
 

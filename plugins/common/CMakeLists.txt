@@ -6,6 +6,8 @@ add_library(laycue-common STATIC)
 target_sources(
   laycue-common
   PRIVATE
+    src/core/update-info.cpp
+    src/core/update-info.hpp
     src/hotkey-set.cpp
     src/hotkey-set.hpp
     src/ui/controls.cpp
@@ -19,12 +21,16 @@ target_sources(
     src/ui/text.hpp
     src/ui/tokens.cpp
     src/ui/tokens.hpp
+    src/ui/update-card.cpp
+    src/ui/update-card.hpp
+    src/update/updater.cpp
+    src/update/updater.hpp
 )
 
 target_include_directories(laycue-common PUBLIC src include)
 target_link_libraries(
   laycue-common
-  PUBLIC OBS::libobs OBS::obs-frontend-api Qt6::Core Qt6::Gui Qt6::Widgets
+  PUBLIC OBS::libobs OBS::obs-frontend-api Qt6::Core Qt6::Gui Qt6::Network Qt6::Widgets
 )
 set_target_properties(laycue-common PROPERTIES POSITION_INDEPENDENT_CODE ON AUTOMOC ON)
 target_compile_options(

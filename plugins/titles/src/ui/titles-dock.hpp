@@ -7,6 +7,9 @@
 
 #include <obs-frontend-api.h>
 
+#include "update/updater.hpp"
+
+#include <plugin-support.h>
 #include <QTimer>
 #include <QWidget>
 
@@ -187,6 +190,7 @@ private:
 	QWidget *toast_ = nullptr;
 	QLabel *toastText_ = nullptr;
 
+	laycue::update::Updater updater_{QString::fromUtf8(PLUGIN_VERSION)}; // "Check for updates" in Setup
 	bool optionsOpen_ = false; // position, size and time on screen are unfolded
 	int categoryFilter_ = 0;   // 0 = all, then the categories in order (People = 1 ...)
 	Tab tab_ = Tab::Templates;

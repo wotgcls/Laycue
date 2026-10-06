@@ -84,6 +84,11 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Stamp Version From Tag 🏷️
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: .github/scripts/stamp-version.sh "${GITHUB_REF_NAME}"
+
       - name: Set Up Environment 🔧
         id: setup
         run: |
@@ -191,6 +196,11 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Stamp Version From Tag 🏷️
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: .github/scripts/stamp-version.sh "${GITHUB_REF_NAME}"
+
       - name: Set Up Environment 🔧
         id: setup
         run: |
@@ -261,6 +271,11 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Stamp Version From Tag 🏷️
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: .github/scripts/stamp-version.sh "${GITHUB_REF_NAME}"
 
       - name: Set Up Environment 🔧
         id: setup
