@@ -89,6 +89,8 @@ private:
 	void pickBrandColour();
 	void changeHold(int delta);
 	void changeSpeed(int delta);
+	void chooseLogoParts();
+	void refreshParts();
 	void changeShape(int fit, int widthDelta);
 	void refreshShape();
 	void pickCategory();
@@ -158,7 +160,9 @@ private:
 	QLabel *label3_ = nullptr;
 	QLabel *label4_ = nullptr; // the note under the title (sort code)
 	QLineEdit *edit4_ = nullptr;
-	QWidget *logoBox_ = nullptr; // choose a logo picture
+	QWidget *logoBox_ = nullptr;  // choose a logo picture
+	QWidget *partsBox_ = nullptr; // set which part of the logo is the mark and which the wordmark
+	QLabel *partsLabel_ = nullptr;
 	QLabel *logoName_ = nullptr;
 	QWidget *rowsBox_ = nullptr; // the accounts: label and number pairs, as many as the operator adds
 	QVBoxLayout *rowsLayout_ = nullptr;

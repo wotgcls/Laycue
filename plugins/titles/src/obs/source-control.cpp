@@ -77,6 +77,9 @@ bool applyToSource(const std::string &sourceName, const Library &lib, const std:
 	obs_data_set_string(settings, key::tag, content.tag.c_str());
 	obs_data_set_string(settings, key::note, content.note.c_str());
 	obs_data_set_string(settings, key::logo, content.logo.c_str());
+	obs_data_set_int(settings, key::logoCut, content.logoCut);
+	obs_data_set_bool(settings, key::logoStacked, content.logoStacked);
+	obs_data_set_bool(settings, key::logoMarkSecond, content.logoMarkSecond);
 	{
 		OBSDataArrayAutoRelease rows = obs_data_array_create();
 		for (const Row &r : content.rows) {

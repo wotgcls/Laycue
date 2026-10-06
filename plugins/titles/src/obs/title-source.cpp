@@ -156,6 +156,7 @@ void getDefaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, key::hold, -1);
 	obs_data_set_default_int(settings, key::speed, kDefaultSpeed);
 	obs_data_set_default_int(settings, key::fit, 0);
+	obs_data_set_default_int(settings, key::logoCut, 0);
 	obs_data_set_default_int(settings, key::fitWidth, kDefaultFitWidth);
 	obs_data_set_default_int(settings, key::align, 0);
 	obs_data_set_default_int(settings, key::sizePercent, 100);
@@ -180,6 +181,12 @@ void update(void *data, obs_data_t *settings)
 		s->text.tag = QString::fromUtf8(obs_data_get_string(settings, key::tag));
 		s->text.note = QString::fromUtf8(obs_data_get_string(settings, key::note));
 		s->text.logoPath = QString::fromUtf8(obs_data_get_string(settings, key::logo));
+		{
+			const int cut = int(obs_data_get_int(settings, key::logoCut));
+			s->text.logoCut = cut == 0 ? 0 : std::clamp(cut, kMinLogoCut, kMaxLogoCut);
+			s->text.logoStacked = obs_data_get_bool(settings, key::logoStacked);
+			s->text.logoMarkSecond = obs_data_get_bool(settings, key::logoMarkSecond);
+		}
 		s->text.rows.clear();
 		{
 			OBSDataArrayAutoRelease rows = obs_data_get_array(settings, key::rows);
@@ -475,6 +482,9 @@ bool templateChanged(obs_properties_t *props, obs_property_t *, obs_data_t *sett
 	obs_property_set_visible(obs_properties_get(props, key::tag), t->usesTag);
 	obs_property_set_visible(obs_properties_get(props, key::note), t->usesNote);
 	obs_property_set_visible(obs_properties_get(props, key::logo), t->usesLogo);
+	obs_property_set_visible(obs_properties_get(props, key::logoCut), t->usesLogoParts);
+	obs_property_set_visible(obs_properties_get(props, key::logoStacked), t->usesLogoParts);
+	obs_property_set_visible(obs_properties_get(props, key::logoMarkSecond), t->usesLogoParts);
 	obs_property_set_visible(obs_properties_get(props, "rows_list"), t->maxRows > 0);
 	obs_property_set_visible(obs_properties_get(props, key::align), supportsPlacement(*t));
 	obs_property_set_visible(obs_properties_get(props, key::sizePercent), supportsPlacement(*t));
@@ -540,6 +550,9 @@ obs_properties_t *getProperties(void *data)
 	obs_properties_add_text(props, key::note, obs_module_text("Laycue.Titles.Note"), OBS_TEXT_DEFAULT);
 	obs_properties_add_path(props, key::logo, obs_module_text("Laycue.Titles.Logo"), OBS_PATH_FILE,
 				"Pictures (*.png *.jpg *.jpeg *.webp *.bmp)", nullptr);
+	obs_properties_add_int_slider(props, key::logoCut, obs_module_text("Laycue.Titles.LogoCut"), 0, kMaxLogoCut, 1);
+	obs_properties_add_bool(props, key::logoStacked, obs_module_text("Laycue.Titles.LogoStacked"));
+	obs_properties_add_bool(props, key::logoMarkSecond, obs_module_text("Laycue.Titles.LogoMarkSecond"));
 	obs_properties_add_editable_list(props, "rows_list", obs_module_text("Laycue.Titles.RowsList"),
 					 OBS_EDITABLE_LIST_TYPE_STRINGS, nullptr, nullptr);
 	obs_property_t *alignList = obs_properties_add_list(props, key::align,

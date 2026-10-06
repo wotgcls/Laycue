@@ -1136,8 +1136,8 @@ QImage logoImage(const QString &path)
 	if (cache.size() > 8)
 		cache.clear();
 	QImage img(path);
-	if (!img.isNull() && (img.width() > 600 || img.height() > 600))
-		img = img.scaled(600, 600, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+	if (!img.isNull() && (img.width() > 900 || img.height() > 900))
+		img = img.scaled(900, 900, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 	if (!img.isNull())
 		img = img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
 	cache.insert(key, img);
@@ -2194,6 +2194,102 @@ void logoWater(Ctx &c)
 	logoFx(c, LogoFx::Water);
 }
 
+// ---- Logo + wordmark ------------------------------------------------------------------------------------
+
+// A stand-in lockup (a round mark and a word) for when no logo picture has been chosen yet.
+QImage lockupPlaceholder(const Ctx &c)
+{
+	QImage im(520, 150, QImage::Format_ARGB32_Premultiplied);
+	im.fill(Qt::transparent);
+	QPainter q(&im);
+	q.setRenderHint(QPainter::Antialiasing, true);
+	q.setRenderHint(QPainter::TextAntialiasing, true);
+	q.setPen(Qt::NoPen);
+	q.setBrush(c.accent);
+	q.drawEllipse(QRectF(8, 8, 134, 134));
+	q.setBrush(QColor(255, 255, 255));
+	q.drawEllipse(QRectF(52, 52, 46, 46));
+	q.setFont(c.font(c.t.display, 62));
+	q.setPen(c.text);
+	q.drawText(QRectF(170, 0, 350, 150), Qt::AlignVCenter | Qt::AlignLeft, QStringLiteral("YOUR BRAND"));
+	return im;
+}
+
+// Logo mark + wordmark: the wordmark slides away behind the mark, leaving only the mark, then slides back out.
+void logoLockup(Ctx &c)
+{
+	QImage img = logoImage(c.x.logoPath);
+	int cut = c.x.logoCut;
+	if (img.isNull()) {
+		img = lockupPlaceholder(c);
+		cut = 30;
+	}
+	const double iw = img.width(), ih = img.height();
+	const double sc = std::min(620.0 / iw, 190.0 / ih);
+	const QRectF whole(kLeft, 64 + (190.0 - ih * sc) / 2.0, iw * sc, ih * sc);
+	const double a = c.part(0.0, 0.6);
+	c.p.save();
+	c.p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+	c.p.setOpacity(c.p.opacity() * a);
+	if (cut <= 0) { // no parts chosen yet: the logo as one still piece
+		c.p.drawImage(whole, img);
+		c.p.restore();
+		return;
+	}
+	const double f = std::clamp(cut / 100.0, 0.1, 0.9);
+	const bool stacked = c.x.logoStacked;
+	QRectF srcA, srcB, dstA, dstB;
+	if (!stacked) {
+		const double cx = iw * f;
+		srcA = QRectF(0, 0, cx, ih);
+		srcB = QRectF(cx, 0, iw - cx, ih);
+		dstA = QRectF(whole.left(), whole.top(), cx * sc, whole.height());
+		dstB = QRectF(whole.left() + cx * sc, whole.top(), (iw - cx) * sc, whole.height());
+	} else {
+		const double cy = ih * f;
+		srcA = QRectF(0, 0, iw, cy);
+		srcB = QRectF(0, cy, iw, ih - cy);
+		dstA = QRectF(whole.left(), whole.top(), whole.width(), cy * sc);
+		dstB = QRectF(whole.left(), whole.top() + cy * sc, whole.width(), (ih - cy) * sc);
+	}
+	const bool markFirst = !c.x.logoMarkSecond;
+	const QRectF srcM = markFirst ? srcA : srcB, srcW = markFirst ? srcB : srcA;
+	const QRectF dstM = markFirst ? dstA : dstB, dstW = markFirst ? dstB : dstA;
+
+	// How far the wordmark has tucked away: 0 out, 1 hidden. Hold, slide away, hold, slide back, hold.
+	const double ph = logoPhase(c);
+	double s = 0.0, bump = 0.0;
+	if (ph >= 0.35 && ph < 0.5) {
+		s = easeInOut((ph - 0.35) / 0.15);
+		bump = std::sin((ph - 0.35) / 0.15 * kPi);
+	} else if (ph >= 0.5 && ph < 0.75) {
+		s = 1.0;
+	} else if (ph >= 0.75 && ph < 0.9) {
+		s = 1.0 - easeInOut((ph - 0.75) / 0.15);
+		bump = std::sin((ph - 0.75) / 0.15 * kPi);
+	}
+
+	// The wordmark moves toward the mark and is hidden by it, so it seems to slide in behind.
+	const QPointF dir = stacked ? QPointF(0, markFirst ? -1 : 1) : QPointF(markFirst ? -1 : 1, 0);
+	const double travel = stacked ? dstW.height() : dstW.width();
+	QPainterPath clip;
+	clip.addRect(whole.adjusted(-2, -2, 2, 2));
+	QPainterPath markArea;
+	markArea.addRect(dstM);
+	c.p.save();
+	c.p.setClipPath(clip.subtracted(markArea), Qt::IntersectClip);
+	c.p.setOpacity(c.p.opacity() * (1.0 - s * s));
+	c.p.drawImage(dstW.translated(dir * travel * s), img, srcW);
+	c.p.restore();
+
+	// The mark stays, with a very small swell as the wordmark tucks in or comes out.
+	c.p.translate(dstM.center());
+	c.p.scale(1.0 + 0.05 * bump, 1.0 + 0.05 * bump);
+	c.p.translate(-dstM.center());
+	c.p.drawImage(dstM, img, srcM);
+	c.p.restore();
+}
+
 // ---- Sermon notes -------------------------------------------------------------------------------------
 
 // Words between asterisks are drawn in the accent colour: "God is *faithful*".
@@ -2505,6 +2601,7 @@ const std::vector<StyleInfo> &styles()
 		{"logo-reveal", logoReveal},
 		{"logo-orbit", logoOrbit},
 		{"logo-water", logoWater},
+		{"logo-lockup", logoLockup},
 		{"notes-card", notesCard},
 		{"notes-points", notesPoints},
 		{"notes-key", notesKey},
@@ -2597,7 +2694,9 @@ Extent measureExtent(const FontSet &fonts, const RenderRequest &request)
 	const QString key =
 		QStringLiteral("%1|%2|%3|%4|%5|%6|%7|%8|%9|%10|%11")
 			.arg(QString::fromStdString(request.tpl.id),
-			     request.text.line1 + request.text.note + request.text.logoPath + rowsKey,
+			     request.text.line1 + request.text.note + request.text.logoPath + rowsKey +
+				     QString::number(request.text.logoCut) + QString::number(request.text.logoStacked) +
+				     QString::number(request.text.logoMarkSecond),
 			     request.text.line2, request.text.tag, QString::number(int(request.tpl.display)),
 			     QString::number(int(request.tpl.body)), QString::number(request.tpl.cornerRadius),
 			     QString::number(request.canvasWidth), QString::number(request.canvasHeight),

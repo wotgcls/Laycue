@@ -22,6 +22,8 @@ void clipContent(TitleContent &c)
 	clip(c.note);
 	if (c.logo.size() > 1024)
 		c.logo.clear();
+	if (c.logoCut != 0)
+		c.logoCut = std::clamp(c.logoCut, kMinLogoCut, kMaxLogoCut);
 	if (c.rows.size() > kMaxRows)
 		c.rows.resize(kMaxRows);
 	for (Row &r : c.rows) {

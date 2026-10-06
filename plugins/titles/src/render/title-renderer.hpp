@@ -19,8 +19,11 @@ struct TitleText {
 	QString line1;
 	QString line2;
 	QString tag;
-	QString note;                        // an extra line under the title (sort code...)
-	QString logoPath;                    // a logo picture, or empty
+	QString note;     // an extra line under the title (sort code...)
+	QString logoPath; // a logo picture, or empty
+	int logoCut = 0;  // mark/wordmark cut (see TitleContent); 0 = one piece
+	bool logoStacked = false;
+	bool logoMarkSecond = false;
 	QList<QPair<QString, QString>> rows; // label and value pairs (bank accounts)
 };
 

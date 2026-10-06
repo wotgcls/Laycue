@@ -34,6 +34,9 @@ OBSData contentToData(const TitleContent &c)
 	obs_data_set_string(d, "tag", c.tag.c_str());
 	obs_data_set_string(d, "note", c.note.c_str());
 	obs_data_set_string(d, "logo", c.logo.c_str());
+	obs_data_set_int(d, "logo_cut", c.logoCut);
+	obs_data_set_bool(d, "logo_stacked", c.logoStacked);
+	obs_data_set_bool(d, "logo_mark_second", c.logoMarkSecond);
 	OBSDataArrayAutoRelease rows = obs_data_array_create();
 	for (const Row &r : c.rows) {
 		OBSDataAutoRelease item = obs_data_create();
@@ -55,6 +58,9 @@ TitleContent contentFromData(obs_data_t *d)
 	c.tag = str(obs_data_get_string(d, "tag"));
 	c.note = str(obs_data_get_string(d, "note"));
 	c.logo = str(obs_data_get_string(d, "logo"));
+	c.logoCut = int(obs_data_get_int(d, "logo_cut"));
+	c.logoStacked = obs_data_get_bool(d, "logo_stacked");
+	c.logoMarkSecond = obs_data_get_bool(d, "logo_mark_second");
 	OBSDataArrayAutoRelease rows = obs_data_get_array(d, "rows");
 	const size_t n = rows ? std::min(obs_data_array_count(rows), kMaxRows) : 0;
 	for (size_t i = 0; i < n; ++i) {

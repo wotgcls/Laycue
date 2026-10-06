@@ -367,6 +367,18 @@ std::vector<TitleTemplate> buildAll()
 		t.pulseSeconds = 5.0;
 		all.push_back(t);
 	}
+	{
+		auto t = make("logo-lockup", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
+			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.usesLogoParts = true;
+		t.pulseSeconds = 6.0;
+		all.push_back(t);
+	}
 
 	// ---- Notes: sermon notes and key points ----
 	const Rgba kNavyCard = rgb(0x14, 0x21, 0x3D), kGoldNote = rgb(0xFC, 0xA3, 0x11);

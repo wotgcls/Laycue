@@ -20,6 +20,8 @@ struct Row {
 };
 
 constexpr size_t kMaxRows = 6;
+constexpr int kMinLogoCut = 10;
+constexpr int kMaxLogoCut = 90;
 
 struct TitleContent {
 	std::string line1;
@@ -27,10 +29,16 @@ struct TitleContent {
 	std::string tag;
 	std::string note; // an extra line (sort code...)
 	std::string logo; // path of a logo picture, or empty
+	// For a logo made of a mark and a wordmark: where the picture is cut (percent of its width, or of its
+	// height when stacked) and which side is the mark. 0 = not cut: the logo is one piece.
+	int logoCut = 0;
+	bool logoStacked = false;
+	bool logoMarkSecond = false;
 	std::vector<Row> rows;
 	bool operator==(const TitleContent &o) const
 	{
 		return line1 == o.line1 && line2 == o.line2 && tag == o.tag && note == o.note && logo == o.logo &&
+		       logoCut == o.logoCut && logoStacked == o.logoStacked && logoMarkSecond == o.logoMarkSecond &&
 		       rows == o.rows;
 	}
 };

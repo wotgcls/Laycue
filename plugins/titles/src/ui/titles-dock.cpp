@@ -5,6 +5,7 @@
 #include "store/library-io.hpp"
 #include "ui/controls.hpp"
 #include "ui/customize-page.hpp"
+#include "ui/logo-parts-dialog.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/style.hpp"
 #include "ui/text.hpp"
@@ -51,6 +52,9 @@ TitleText toText(const TitleContent &c)
 	t.tag = QString::fromStdString(c.tag);
 	t.note = QString::fromStdString(c.note);
 	t.logoPath = QString::fromStdString(c.logo);
+	t.logoCut = c.logoCut;
+	t.logoStacked = c.logoStacked;
+	t.logoMarkSecond = c.logoMarkSecond;
 	for (const Row &r : c.rows)
 		t.rows.append({QString::fromStdString(r.label), QString::fromStdString(r.value)});
 	return t;
@@ -288,6 +292,19 @@ QWidget *TitlesDock::buildStage()
 	connect(clearLogoButton, &QAbstractButton::clicked, this, &TitlesDock::clearLogo);
 	lv->addWidget(clearLogoButton);
 	v->addWidget(logoBox_);
+
+	// Logo mark and wordmark: only for the template that animates them apart.
+	partsBox_ = new QWidget(stage);
+	auto *pb = new QHBoxLayout(partsBox_);
+	pb->setContentsMargins(0, 0, 0, 0);
+	pb->setSpacing(size::gapSmall);
+	partsLabel_ = makeLabel(partsBox_, QString(), 12, 400, color::textTertiary);
+	partsLabel_->setWordWrap(false);
+	pb->addWidget(partsLabel_, 1);
+	auto *setParts = button(partsBox_, lt("Laycue.Titles.SetLogoParts"), "laycueSecondary");
+	connect(setParts, &QAbstractButton::clicked, this, &TitlesDock::chooseLogoParts);
+	pb->addWidget(setParts);
+	v->addWidget(partsBox_);
 
 	// The accounts.
 	rowsBox_ = new QWidget(stage);
@@ -568,6 +585,8 @@ void TitlesDock::refreshFields()
 	edit4_->setText(fromStd(library_.draft.note));
 	edit4_->setPlaceholderText(fromStd(localised(sampleKey(t, 4))));
 	logoBox_->setVisible(t.usesLogo);
+	partsBox_->setVisible(t.usesLogoParts);
+	refreshParts();
 	logoName_->setText(library_.draft.logo.empty() ? lt("Laycue.Titles.NoLogo")
 						       : QFileInfo(fromStd(library_.draft.logo)).fileName());
 	rowsBox_->setVisible(t.maxRows > 0);
@@ -1357,6 +1376,28 @@ void TitlesDock::chooseLogo()
 		return;
 	library_.draft.logo = toStd(file);
 	logoName_->setText(QFileInfo(file).fileName());
+	draftChanged();
+}
+
+void TitlesDock::refreshParts()
+{
+	if (!partsLabel_)
+		return;
+	const TitleContent &d = library_.draft;
+	partsLabel_->setText(d.logoCut <= 0 ? lt("Laycue.Titles.LogoPartsNotSet")
+					    : lt("Laycue.Titles.LogoPartsSet").arg(d.logoCut));
+}
+
+void TitlesDock::chooseLogoParts()
+{
+	LogoPartsDialog dialog(fromStd(library_.draft.logo), library_.draft.logoCut, library_.draft.logoStacked,
+			       library_.draft.logoMarkSecond, this);
+	if (dialog.exec() != QDialog::Accepted)
+		return;
+	library_.draft.logoCut = dialog.cut();
+	library_.draft.logoStacked = dialog.stacked();
+	library_.draft.logoMarkSecond = dialog.markSecond();
+	refreshParts();
 	draftChanged();
 }
 

@@ -70,17 +70,18 @@ struct TitleTemplate {
 	double holdSeconds = 0.0; // 0 = stays until hidden
 	bool usesLine2 = true;
 	bool usesTag = false;
-	bool longText = false;     // line 1 is a sentence or more (a verse, a quote, a ticker): edited in a taller box
-	bool anchorTop = false;    // drawn in the top of the picture instead of the bottom
-	bool fullHeight = false;   // uses the whole picture, not just the lower part
-	double cornerRadius = 0.0; // in 1920-wide design pixels
-	double tickerSpeed = 0.0;  // > 0 for tickers: pixels per second at 1920 wide
-	double pulseSeconds = 0.0; // > 0 for titles with a pulsing light (the LIVE dot): seconds per pulse
-	bool usesNote = false;     // an extra line under the title (a sort code, a web address)
-	bool usesLine1 = true;     // false for titles with no words (a logo animation)
-	bool usesLogo = false;     // the operator can choose a logo picture
-	int maxRows = 0;           // > 0: a list of label and value rows (bank accounts), up to this many
-	bool usesShape2 = false;   // the colour pickers offer the extra colours below
+	bool longText = false;      // line 1 is a sentence or more (a verse, a quote, a ticker): edited in a taller box
+	bool anchorTop = false;     // drawn in the top of the picture instead of the bottom
+	bool fullHeight = false;    // uses the whole picture, not just the lower part
+	double cornerRadius = 0.0;  // in 1920-wide design pixels
+	double tickerSpeed = 0.0;   // > 0 for tickers: pixels per second at 1920 wide
+	double pulseSeconds = 0.0;  // > 0 for titles with a pulsing light (the LIVE dot): seconds per pulse
+	bool usesNote = false;      // an extra line under the title (a sort code, a web address)
+	bool usesLine1 = true;      // false for titles with no words (a logo animation)
+	bool usesLogo = false;      // the operator can choose a logo picture
+	bool usesLogoParts = false; // ...and mark which part is the mark and which the wordmark
+	int maxRows = 0;            // > 0: a list of label and value rows (bank accounts), up to this many
+	bool usesShape2 = false;    // the colour pickers offer the extra colours below
 	bool usesShape3 = false;
 	bool usesInk = false;
 };

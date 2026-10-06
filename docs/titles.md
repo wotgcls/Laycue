@@ -15,7 +15,7 @@ a plugin rather than an HTML pack.
   so the title never feels slow to clear.
 - Fonts are bundled (OFL licensed) so a title looks the same on every machine.
 
-## The 28 templates
+## The 58 templates
 Seven categories: **People** (name bars), **Worship** (series titles, song lyrics, quotes), **Announce**, **News** (tabbed
 headline bars), **Live** (an on-air badge and bar with a pulsing light), **Social** (YouTube, Instagram, TikTok, Facebook,
 Mixlr and a generic handle, each with the platform's icon, see `ICONS.md`) and **Tickers**. Scripture templates were
@@ -52,6 +52,22 @@ Every title that does not span the picture (all but the tickers and Thank You) c
 the right, and be made 50% to 150% of its normal size. The choice is remembered per template, so a social card can sit
 on the right while the name bars stay on the left. The renderer measures the title once (cached) and places it by its real
 edges, so the margin is the same whatever the words are. Changing it while a title is on air shows "Update on air".
+
+## Transition speed and shape width
+
+- **Transition speed** (Setup tab, or in the source's Properties): five steps from Slower to Faster that scale every
+  template's arrival and exit times (about 1.6x slower to 0.55x faster). It is a small range on purpose.
+- **Shape width** (Options row, name templates only: Clean Bar, Accent Edge, Split Name, Box Pop, Corner Tag, Stacked,
+  Guest Minister, Modern Pill, Modern Card): *Template* keeps the design's own width, *Fit to text* makes the shape hug the
+  name with a little extra padding, *Set width* fixes the width and the text shrinks to fit inside it. Saved per template.
+
+## Logo animations
+
+Nine templates in the Live category animate a logo picture on a repeat: Silver Sweep (silver edges and a bright core, so it
+shows on white logos too), Spin, Glow Pulse, Float, Flip, Ripple, Hop, Wipe Reveal, Orbit and Water Shimmer (the logo
+ripples slightly like water). **Logo + Wordmark Slide** works with a logo that has two parts: choose the picture, press
+*Set logo parts...*, drag the line to where the mark ends and the wordmark begins (side by side or stacked, mark first or
+second). The wordmark then slides away behind the mark and slides back out. Until the parts are set, the logo stays still.
 
 ## Custom templates
 A custom template stores only the fields the operator changed (colours, size, position, hold time) over a base

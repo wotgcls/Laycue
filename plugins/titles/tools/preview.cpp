@@ -112,12 +112,15 @@ int main(int argc, char **argv)
 				RenderRequest req;
 				req.tpl = *tpl;
 				req.text.logoPath = qEnvironmentVariable("LAYCUE_PREVIEW_LOGO");
+				req.text.logoCut = qEnvironmentVariable("LAYCUE_PREVIEW_CUT").toInt();
+				req.text.logoStacked = qEnvironmentVariable("LAYCUE_PREVIEW_STACKED") == "1";
+				req.text.logoMarkSecond = qEnvironmentVariable("LAYCUE_PREVIEW_MARK2") == "1";
 				req.frame = {1.0, 0.0, tpl->pulseSeconds * 100.0 * (n + 0.5) / 8.0};
 				QImage pic = samplePicture(1920, 1080, 0);
 				const RenderedTitle r = renderTitle(fonts, req);
 				QPainter p(&pic);
 				p.drawImage(r.x, r.y, r.image);
-				pic.copy(40, 0, 400, 300).save(QString("%1/phase-%2-%3.png").arg(dir, argv[a]).arg(n));
+				pic.copy(40, 0, 760, 300).save(QString("%1/phase-%2-%3.png").arg(dir, argv[a]).arg(n));
 			}
 		}
 		return 0;

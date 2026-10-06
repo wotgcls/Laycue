@@ -26,6 +26,8 @@ laycue_add_plugin(
     src/store/library-io.hpp
     src/ui/customize-page.cpp
     src/ui/customize-page.hpp
+    src/ui/logo-parts-dialog.cpp
+    src/ui/logo-parts-dialog.hpp
     src/ui/title-widgets.cpp
     src/ui/title-widgets.hpp
     src/ui/titles-dock.cpp
