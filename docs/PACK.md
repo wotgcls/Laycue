@@ -8,6 +8,7 @@ nothing else at run time, so any one of them can be used alone.
 | **Laycue Scenes** | Run scenes and layers without mistakes: Go Live, overlay rules, layouts, pushbacks | `plugins/scenes` |
 | **Laycue Titles** | Broadcast-quality lower thirds, live badges, social cards and tickers, made inside OBS | `plugins/titles` |
 | **Laycue Network** | Choose the right bitrate, watch the connection live, protect the stream | `plugins/network` |
+| **Laycue Clock** | Countdowns and timers on screen, over video or on a background | `plugins/clock` (see `clock.md`) |
 
 ## What problem each one solves (and what OBS and others already do)
 

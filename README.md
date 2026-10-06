@@ -6,6 +6,7 @@ Three small OBS plugins that share one look. Install any one, or all three.
 |---|---|---|
 | **Laycue Scenes** | One-button scene switching, layouts, rules that stop overlays colliding, cameras that fit into frame graphics | Docks > Laycue |
 | **Laycue Titles** | 28 broadcast-style lower thirds, live badges, social cards and scrolling tickers, shown live from OBS; make your own | Docks > Laycue Titles |
+| **Laycue Clock** | Countdowns, count-ups and counting to a time of day, in 8 designs, over video or on a background | Docks > Laycue Clock |
 | **Laycue Network** | Tests your upload, recommends a bitrate, watches the stream live, can lower and raise the bitrate for you, reports after each stream | Docks > Laycue Network |
 
 All three are native OBS plugins: no browser source, no web server, no account. Anything automatic is off until you turn it on. See [`docs/PACK.md`](docs/PACK.md) for what the pack is and why, [`docs/titles.md`](docs/titles.md) and [`docs/network.md`](docs/network.md) for how those two work, [`docs/NAMING.md`](docs/NAMING.md) for the name, and [`CLAUDE.md`](CLAUDE.md) for how it is built. The original Scenes product definition is [`PRD.md`](PRD.md).
@@ -35,7 +36,7 @@ Close OBS first.
 1. Unzip the download and double-click `laycue-…-windows-x64-Installer.exe`.
 2. If Windows shows a blue "Windows protected your PC" box, click **More info**, then **Run anyway**. This appears because the beta isn't code-signed yet.
 3. Click **Yes** when Windows asks for permission, then **Next → Install → Finish**. If OBS is open, the installer offers to close it.
-4. To remove Laycue later: Windows **Settings → Apps → Installed apps → Laycue for OBS Studio (Scenes, Titles, Network) → Uninstall**.
+4. To remove Laycue later: Windows **Settings → Apps → Installed apps → Laycue for OBS Studio (Scenes, Titles, Network, Clock) → Uninstall**.
 
 The download also contains a plain zip (`laycue-…-windows-x64.zip`) for manual installs: copy the `laycue-scenes`, `laycue-titles` and `laycue-network` folders you want into `C:\ProgramData\obs-studio\plugins\`.
 
@@ -49,7 +50,7 @@ The download also contains a plain zip (`laycue-…-windows-x64.zip`) for manual
 ## Opening the panel
 
 1. Start OBS.
-2. In the top menu, click **Docks** and pick **Laycue**, **Laycue Titles** or **Laycue Network**.
+2. In the top menu, click **Docks** and pick **Laycue**, **Laycue Titles**, **Laycue Network** or **Laycue Clock**.
 3. The Laycue panel appears floating. Drag it by its title bar to wherever you like, for example next to Sources. OBS remembers where you put it.
 
 To check that it loaded: **Help** → **Log Files** → **View Current Log**, and search for `[laycue] plugin loaded successfully`.

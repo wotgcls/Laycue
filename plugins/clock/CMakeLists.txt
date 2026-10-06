@@ -1,0 +1,19 @@
+laycue_add_plugin(
+  laycue-clock
+  SOURCES
+    src/plugin-main.cpp
+    src/core/clock-core.cpp
+    src/core/clock-core.hpp
+    src/core/clock-settings.cpp
+    src/core/clock-settings.hpp
+    src/obs/clock-control.cpp
+    src/obs/clock-control.hpp
+    src/obs/clock-source.cpp
+    src/obs/clock-source.hpp
+    src/render/clock-renderer.cpp
+    src/render/clock-renderer.hpp
+    src/store/clock-io.cpp
+    src/store/clock-io.hpp
+    src/ui/clock-dock.cpp
+    src/ui/clock-dock.hpp
+)
