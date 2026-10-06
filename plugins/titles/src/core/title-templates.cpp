@@ -92,6 +92,7 @@ std::vector<TitleTemplate> buildAll()
 			      F::BarlowCondensedSemiBold, F::BarlowRegular, M::Pop, M::Fade);
 		t.usesTag = true;
 		t.cornerRadius = 14;
+		t.usesInk = true;
 		all.push_back(t);
 	}
 	{
@@ -99,6 +100,7 @@ std::vector<TitleTemplate> buildAll()
 			      {withAlpha(kNavy, 245), kGold, kWhite, withAlpha(kWhite, 205)}, F::BarlowCondensedBold,
 			      F::BarlowRegular, M::Slide, M::Slide);
 		t.usesTag = true;
+		t.usesInk = true;
 		all.push_back(t);
 	}
 	{
@@ -277,6 +279,94 @@ std::vector<TitleTemplate> buildAll()
 		t.pulseSeconds = 5.0;
 		all.push_back(t);
 	}
+	{
+		auto t = make("logo-pulse", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
+			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 3.5;
+		all.push_back(t);
+	}
+	{
+		auto t = make("logo-float", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
+			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 5.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("logo-flip", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite}, F::OutfitBold,
+			      F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 5.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("logo-ripple", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
+			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 3.5;
+		all.push_back(t);
+	}
+	{
+		auto t = make("logo-hop", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite}, F::OutfitBold,
+			      F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 4.5;
+		all.push_back(t);
+	}
+	{
+		auto t = make("logo-reveal", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
+			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 5.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("logo-orbit", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
+			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 3.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("logo-water", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
+			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 5.0;
+		all.push_back(t);
+	}
 
 	// ---- Notes: sermon notes and key points ----
 	const Rgba kNavyCard = rgb(0x14, 0x21, 0x3D), kGoldNote = rgb(0xFC, 0xA3, 0x11);
@@ -348,12 +438,15 @@ std::vector<TitleTemplate> buildAll()
 			      {withAlpha(kTeal, 245), kAmber, kWhite, withAlpha(kWhite, 220)}, F::BarlowCondensedBold,
 			      F::BarlowRegular, M::Slide, M::Slide);
 		t.usesTag = true;
+		t.usesInk = true;
 		all.push_back(t);
 	}
 	{
 		auto t = make("breaking", Category::News, {withAlpha(kWhite, 248), kRed, kInk, withAlpha(kInk, 180)},
 			      F::BarlowCondensedBold, F::BarlowSemiBold, M::Slide, M::Slide);
 		t.usesTag = true;
+		t.usesInk = true;
+		t.palette.ink = kWhite;
 		all.push_back(t);
 	}
 	{
@@ -361,6 +454,8 @@ std::vector<TitleTemplate> buildAll()
 			      {withAlpha(kSlate, 245), kBlue, kWhite, withAlpha(kWhite, 195)},
 			      F::BarlowCondensedSemiBold, F::BarlowRegular, M::Slide, M::Slide);
 		t.usesTag = true;
+		t.usesInk = true;
+		t.palette.ink = kWhite;
 		all.push_back(t);
 	}
 	{
@@ -417,6 +512,8 @@ std::vector<TitleTemplate> buildAll()
 			      F::BarlowCondensedBold, F::BarlowSemiBold, M::Slide, M::Slide);
 		t.usesTag = true;
 		t.pulseSeconds = 1.4;
+		t.usesInk = true;
+		t.palette.ink = kWhite;
 		all.push_back(t);
 	}
 	{
@@ -426,6 +523,8 @@ std::vector<TitleTemplate> buildAll()
 			      F::BarlowSemiBold, M::Slide, M::Slide);
 		t.usesTag = true;
 		t.pulseSeconds = 1.4;
+		t.usesInk = true;
+		t.palette.ink = kWhite;
 		all.push_back(t);
 	}
 
@@ -440,6 +539,8 @@ std::vector<TitleTemplate> buildAll()
 		t.anchorTop = true;
 		t.cornerRadius = 12;
 		t.pulseSeconds = 1.4;
+		t.usesInk = true;
+		t.palette.ink = kWhite;
 		all.push_back(t);
 	}
 	{
@@ -448,6 +549,8 @@ std::vector<TitleTemplate> buildAll()
 			      F::BarlowCondensedSemiBold, F::BarlowRegular, M::Slide, M::Slide);
 		t.usesTag = true;
 		t.pulseSeconds = 1.4;
+		t.usesInk = true;
+		t.palette.ink = kWhite;
 		all.push_back(t);
 	}
 

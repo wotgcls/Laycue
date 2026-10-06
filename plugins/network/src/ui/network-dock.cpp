@@ -292,14 +292,14 @@ void NetworkDock::buildUi()
 
 	hero_ = new Surface(2, home_);
 	heroLayout_ = new QVBoxLayout(hero_);
-	heroLayout_->setSpacing(size::gapSmall);
-	hero_->setPadding(14, 12, 14, 14);
+	heroLayout_->setSpacing(4);
+	hero_->setPadding(12, 8, 12, 10);
 	root->addWidget(hero_);
 
 	auto *tabSurface = new Surface(1, home_);
 	auto *tv = new QVBoxLayout(tabSurface);
 	tv->setSpacing(size::gapSmall);
-	tabSurface->setPadding(12, 10, 8, 8);
+	tabSurface->setPadding(10, 8, 6, 6);
 	tabs_ = new Segmented(tabSurface);
 	tabs_->setItems({lt("Laycue.Network.TabTest"), lt("Laycue.Network.TabAuto"), lt("Laycue.Network.TabReport")});
 	tabs_->setAccessibleName(lt("Laycue.Network.TabsAccessible"));
@@ -312,6 +312,7 @@ void NetworkDock::buildUi()
 	scroll_->setWidgetResizable(true);
 	scroll_->setFrameShape(QFrame::NoFrame);
 	scroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	scroll_->setMinimumHeight(150); // the tabs always keep some room
 	auto *host = new QWidget(scroll_);
 	auto *hl = new QVBoxLayout(host);
 	hl->setContentsMargins(0, 0, 4, 0);
@@ -332,7 +333,13 @@ void NetworkDock::buildUi()
 	scroll_->setWidget(host);
 	tv->addWidget(scroll_, 1);
 	root->addWidget(tabSurface, 1);
-	pages_->addWidget(home_);
+	// If the panel is shorter than everything needs, the page scrolls instead of squeezing the tabs away.
+	auto *homeScroll = new QScrollArea(pages_);
+	homeScroll->setWidgetResizable(true);
+	homeScroll->setFrameShape(QFrame::NoFrame);
+	homeScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	homeScroll->setWidget(home_);
+	pages_->addWidget(homeScroll);
 
 	toast_ = new QWidget(content_);
 	toast_->setObjectName("laycueToast");
@@ -433,19 +440,6 @@ void NetworkDock::rebuildHero()
 	// 3. Not streaming, with a test result: the recommendation.
 	const Recommendation r = recommendation();
 	if (r.valid) {
-		heroLayout_->addWidget(
-			makeLabel(hero_, lt("Laycue.Network.Recommended").toUpper(), 11, 700, color::textTertiary));
-		auto *valueRow = new QHBoxLayout();
-		valueRow->setSpacing(size::gapSmall);
-		valueRow->addWidget(monoLabel(hero_, number(r.videoKbps), 34, color::cream), 0, Qt::AlignBottom);
-		valueRow->addWidget(makeLabel(hero_, lt("Laycue.Network.Kbps"), 14, 600, color::textSecondary), 0,
-				    Qt::AlignBottom);
-		valueRow->addStretch(1);
-		heroLayout_->addLayout(valueRow);
-		heroLayout_->addWidget(makeLabel(hero_,
-						 lt("Laycue.Network.SizeFps").arg(r.height).arg(r.fps).arg(r.audioKbps),
-						 13, 500, color::cream));
-
 		QString ratingText;
 		QColor ratingColour = color::textSecondary;
 		QString glyph;
@@ -471,8 +465,24 @@ void NetworkDock::rebuildHero()
 			glyph = QStringLiteral("✕");
 			break;
 		}
-		heroLayout_->addWidget(
-			makeLabel(hero_, glyph + QStringLiteral("  ") + ratingText, 13, 700, ratingColour));
+		auto *topRow = new QHBoxLayout();
+		topRow->setSpacing(size::gapSmall);
+		topRow->addWidget(
+			makeLabel(hero_, lt("Laycue.Network.Recommended").toUpper(), 11, 700, color::textTertiary));
+		topRow->addStretch(1);
+		topRow->addWidget(makeLabel(hero_, glyph + QStringLiteral(" ") + ratingText, 12, 700, ratingColour));
+		heroLayout_->addLayout(topRow);
+		auto *valueRow = new QHBoxLayout();
+		valueRow->setSpacing(size::gapSmall);
+		valueRow->addWidget(monoLabel(hero_, number(r.videoKbps), 26, color::cream), 0, Qt::AlignBottom);
+		valueRow->addWidget(makeLabel(hero_, lt("Laycue.Network.Kbps"), 14, 600, color::textSecondary), 0,
+				    Qt::AlignBottom);
+		valueRow->addStretch(1);
+		heroLayout_->addLayout(valueRow);
+		heroLayout_->addWidget(makeLabel(hero_,
+						 lt("Laycue.Network.SizeFps").arg(r.height).arg(r.fps).arg(r.audioKbps),
+						 13, 500, color::cream));
+
 		const auto when = QDateTime::fromSecsSinceEpoch(settings_.last.when).toString(QStringLiteral("h:mm"));
 		heroLayout_->addWidget(makeLabel(
 			hero_,
@@ -492,11 +502,11 @@ void NetworkDock::rebuildHero()
 		auto *row = new QHBoxLayout();
 		row->setSpacing(size::gapSmall);
 		auto *apply = button(hero_, lt("Laycue.Network.ApplyToObs"), "laycuePrimary");
-		apply->setMinimumHeight(size::touch);
+		apply->setMinimumHeight(size::controlHeight + 4);
 		connect(apply, &QAbstractButton::clicked, this, &NetworkDock::applyRecommendation);
 		row->addWidget(apply, 2);
 		auto *again = button(hero_, lt("Laycue.Network.TestAgain"), "laycueSecondary");
-		again->setMinimumHeight(size::touch);
+		again->setMinimumHeight(size::controlHeight + 4);
 		connect(again, &QAbstractButton::clicked, this, &NetworkDock::runTest);
 		row->addWidget(again, 1);
 		heroLayout_->addLayout(row);
@@ -506,10 +516,10 @@ void NetworkDock::rebuildHero()
 	}
 
 	// 4. Nothing measured yet.
-	heroLayout_->addWidget(makeLabel(hero_, lt("Laycue.Network.FirstTitle"), 16, 700, color::cream));
-	heroLayout_->addWidget(makeLabel(hero_, lt("Laycue.Network.FirstBody"), 12, 400, color::textSecondary));
+	heroLayout_->addWidget(makeLabel(hero_, lt("Laycue.Network.FirstTitle"), 14, 700, color::cream));
+	heroLayout_->addWidget(makeLabel(hero_, lt("Laycue.Network.FirstBody"), 11, 400, color::textSecondary));
 	auto *start = button(hero_, lt("Laycue.Network.TestMyConnection"), "laycuePrimary");
-	start->setMinimumHeight(size::touch);
+	start->setMinimumHeight(size::controlHeight + 4);
 	connect(start, &QAbstractButton::clicked, this, &NetworkDock::runTest);
 	heroLayout_->addWidget(start);
 	if (!testError_.isEmpty())
@@ -691,6 +701,11 @@ void NetworkDock::testFailed(SpeedTest::Failure reason)
 		break;
 	case SpeedTest::Failure::Unreachable:
 		testError_ = lt("Laycue.Network.ErrUnreachable");
+		if (!test_.detail().isEmpty()) // the real reason, so a screenshot says what is wrong
+			testError_ += QStringLiteral(" (") + test_.detail() + QStringLiteral(")");
+		break;
+	case SpeedTest::Failure::NoSecure:
+		testError_ = lt("Laycue.Network.ErrNoSecure");
 		break;
 	case SpeedTest::Failure::NotEnoughData:
 		testError_ = lt("Laycue.Network.ErrNotEnough");

@@ -79,6 +79,8 @@ Library loadLibrary()
 
 		lib.selected = str(obs_data_get_string(root, "selected"));
 		lib.useBrand = obs_data_get_bool(root, "useBrand");
+		lib.speed = obs_data_has_user_value(root, "speed") ? int(obs_data_get_int(root, "speed"))
+								   : kDefaultSpeed;
 		lib.holdOverride = obs_data_has_user_value(root, "hold") ? int(obs_data_get_int(root, "hold")) : -1;
 		lib.targetSource = str(obs_data_get_string(root, "target"));
 		parseColour(str(obs_data_get_string(root, "brand")), lib.brand);
@@ -126,6 +128,10 @@ Library loadLibrary()
 					p.percent = obs_data_has_user_value(item, "percent")
 							    ? int(obs_data_get_int(item, "percent"))
 							    : 100;
+					p.fit = int(obs_data_get_int(item, "fit"));
+					p.width = obs_data_has_user_value(item, "width")
+							  ? int(obs_data_get_int(item, "width"))
+							  : kDefaultFitWidth;
 					lib.placements[name] = p;
 				}
 			}
@@ -149,6 +155,7 @@ bool saveLibrary(const Library &lib)
 		obs_data_set_string(root, "selected", lib.selected.c_str());
 		obs_data_set_bool(root, "useBrand", lib.useBrand);
 		obs_data_set_int(root, "hold", lib.holdOverride);
+		obs_data_set_int(root, "speed", lib.speed);
 		obs_data_set_string(root, "target", lib.targetSource.c_str());
 		obs_data_set_string(root, "brand", colourToString(lib.brand).c_str());
 		{
@@ -157,6 +164,8 @@ bool saveLibrary(const Library &lib)
 				OBSDataAutoRelease item = obs_data_create();
 				obs_data_set_int(item, "align", kv.second.align);
 				obs_data_set_int(item, "percent", kv.second.percent);
+				obs_data_set_int(item, "fit", kv.second.fit);
+				obs_data_set_int(item, "width", kv.second.width);
 				obs_data_set_obj(placements, kv.first.c_str(), item);
 			}
 			obs_data_set_obj(root, "placements", placements);

@@ -89,6 +89,8 @@ void setPlacement(Library &lib, const std::string &styleId, Placement placement)
 {
 	placement.align = std::clamp(placement.align, 0, 2);
 	placement.percent = std::clamp(placement.percent, kMinSizePercent, kMaxSizePercent);
+	placement.fit = std::clamp(placement.fit, 0, 2);
+	placement.width = std::clamp(placement.width, kMinFitWidth, kMaxFitWidth);
 	if (placement == Placement())
 		lib.placements.erase(styleId);
 	else
@@ -202,6 +204,8 @@ void sanitize(Library &lib)
 	for (auto it = lib.placements.begin(); it != lib.placements.end();) {
 		it->second.align = std::clamp(it->second.align, 0, 2);
 		it->second.percent = std::clamp(it->second.percent, kMinSizePercent, kMaxSizePercent);
+		it->second.fit = std::clamp(it->second.fit, 0, 2);
+		it->second.width = std::clamp(it->second.width, kMinFitWidth, kMaxFitWidth);
 		if (!valid(it->first) || it->second == Placement())
 			it = lib.placements.erase(it);
 		else
@@ -217,6 +221,13 @@ void sanitize(Library &lib)
 	clipContent(lib.draft);
 	if (lib.holdOverride < -1 || lib.holdOverride > 600)
 		lib.holdOverride = -1;
+	lib.speed = std::clamp(lib.speed, 0, kSpeedSteps - 1);
+}
+
+double transitionScale(int step)
+{
+	static const double scale[kSpeedSteps] = {1.6, 1.25, 1.0, 0.75, 0.55};
+	return scale[std::clamp(step, 0, kSpeedSteps - 1)];
 }
 
 } // namespace laycue::titles

@@ -98,6 +98,62 @@ int main(int argc, char **argv)
 		}
 		return 0;
 	}
+	if (argc > 2 && QString::fromLocal8Bit(argv[1]) == "--phases") {
+		// Each listed repeating template at eight points of its repeat: phase-<id>-<n>.png (cropped top-left)
+		const QString dir = QString::fromLocal8Bit(argv[2]);
+		QDir().mkpath(dir);
+		const QString dataDir = QString::fromLocal8Bit(TITLES_DATA_DIR);
+		FontSet fonts(dataDir + "/fonts");
+		for (int a = 3; a < argc; ++a) {
+			const TitleTemplate *tpl = findTemplate(argv[a]);
+			if (!tpl || tpl->pulseSeconds <= 0.0)
+				continue;
+			for (int n = 0; n < 8; ++n) {
+				RenderRequest req;
+				req.tpl = *tpl;
+				req.text.logoPath = qEnvironmentVariable("LAYCUE_PREVIEW_LOGO");
+				req.frame = {1.0, 0.0, tpl->pulseSeconds * 100.0 * (n + 0.5) / 8.0};
+				QImage pic = samplePicture(1920, 1080, 0);
+				const RenderedTitle r = renderTitle(fonts, req);
+				QPainter p(&pic);
+				p.drawImage(r.x, r.y, r.image);
+				pic.copy(40, 0, 400, 300).save(QString("%1/phase-%2-%3.png").arg(dir, argv[a]).arg(n));
+			}
+		}
+		return 0;
+	}
+	if (argc > 2 && QString::fromLocal8Bit(argv[1]) == "--fit") {
+		// Each listed template with a short and a long name in each shape-width mode: fit-<id>-<name>-<mode>.png
+		const QString dir = QString::fromLocal8Bit(argv[2]);
+		QDir().mkpath(dir);
+		const QString dataDir = QString::fromLocal8Bit(TITLES_DATA_DIR);
+		FontSet fonts(dataDir + "/fonts");
+		const auto loc = loadLocale(dataDir + "/locale/en-US.ini");
+		const QString names[] = {"Jo Li", "Reverend Doctor Bartholomew Oluwaseun Adeyemi-Thompson"};
+		for (int a = 3; a < argc; ++a) {
+			const TitleTemplate *tpl = findTemplate(argv[a]);
+			if (!tpl)
+				continue;
+			for (int n = 0; n < 2; ++n) {
+				for (int mode = 0; mode < 3; ++mode) {
+					RenderRequest req;
+					req.tpl = *tpl;
+					const QString nk = QString::fromStdString(nameKey(*tpl));
+					req.text.line1 = names[n];
+					req.text.line2 = text(loc, nk + ".S2");
+					req.text.tag = text(loc, nk + ".S3");
+					req.fit = mode;
+					req.fitWidth = 640;
+					QImage pic = samplePicture(1920, 1080, 0);
+					const RenderedTitle r = renderTitle(fonts, req);
+					QPainter p(&pic);
+					p.drawImage(r.x, r.y, r.image);
+					pic.save(QString("%1/fit-%2-%3-%4.png").arg(dir, argv[a]).arg(n).arg(mode));
+				}
+			}
+		}
+		return 0;
+	}
 	if (argc > 2 && QString::fromLocal8Bit(argv[1]) == "--placement") {
 		// Each listed template at several positions and sizes: placement-<id>-<align>-<percent>.png
 		const QString dir = QString::fromLocal8Bit(argv[2]);

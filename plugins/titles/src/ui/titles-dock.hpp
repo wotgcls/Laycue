@@ -25,6 +25,7 @@ class QVBoxLayout;
 namespace laycue::ui {
 class ActionButton;
 class Segmented;
+class RowButton;
 class Surface;
 } // namespace laycue::ui
 
@@ -87,6 +88,12 @@ private:
 	void deleteSelectedCustom();
 	void pickBrandColour();
 	void changeHold(int delta);
+	void changeSpeed(int delta);
+	void changeShape(int fit, int widthDelta);
+	void refreshShape();
+	void pickCategory();
+	void refreshCategory();
+	void refreshOptions();
 	void rebuildRows();
 	void chooseLogo();
 	void clearLogo();
@@ -126,14 +133,23 @@ private:
 	QWidget *home_ = nullptr;
 	QWidget *openedPage_ = nullptr;
 	laycue::ui::Segmented *tabs_ = nullptr;
-	laycue::ui::Segmented *categories_ = nullptr;
+	laycue::ui::RowButton *categoryRow_ = nullptr; // the category menu
+	laycue::ui::RowButton *optionsRow_ = nullptr;  // folds out position, size and time on screen
+	QWidget *optionsBox_ = nullptr;
+	QWidget *shapeBox_ = nullptr; // name shape width: own / fit to text / manual
+	laycue::ui::Segmented *fitSeg_ = nullptr;
+	QWidget *widthRow_ = nullptr;
+	QLabel *widthValue_ = nullptr;
+	QWidget *fieldRow1_ = nullptr;
+	QWidget *fieldRow2_ = nullptr;
+	QWidget *fieldRow3_ = nullptr;
+	QWidget *fieldRow4_ = nullptr;
 	QWidget *holdBox_ = nullptr; // how long it stays on screen
 	QLabel *holdValue_ = nullptr;
 	bool prevLive_ = false;
 	QWidget *placementBox_ = nullptr; // Position and Size, for titles that do not span the picture
 	laycue::ui::Segmented *alignSeg_ = nullptr;
 	QLabel *sizeValue_ = nullptr;
-	laycue::ui::Segmented *categories2_ = nullptr; // second row of category choices; only one row has a selection
 	QLabel *statusLabel_ = nullptr;
 	QWidget *statusDot_ = nullptr;
 	TitlePreview *preview_ = nullptr;
@@ -167,7 +183,8 @@ private:
 	QWidget *toast_ = nullptr;
 	QLabel *toastText_ = nullptr;
 
-	int categoryFilter_ = 0; // 0 = all, then the categories in order (People = 1 ...)
+	bool optionsOpen_ = false; // position, size and time on screen are unfolded
+	int categoryFilter_ = 0;   // 0 = all, then the categories in order (People = 1 ...)
 	Tab tab_ = Tab::Templates;
 	bool shuttingDown_ = false;
 };

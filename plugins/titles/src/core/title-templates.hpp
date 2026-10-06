@@ -101,6 +101,22 @@ inline bool supportsPlacement(const TitleTemplate &t)
 	return t.tickerSpeed <= 0.0 && !t.fullHeight && t.id != "thank-you";
 }
 
+// Shape width choices for the name lower thirds: the template's own width, a shape that hugs the text, or a
+// width the operator sets (the text then shrinks to fit). Only templates whose shape is sized by the name.
+constexpr int kMinFitWidth = 300;
+constexpr int kMaxFitWidth = 1500;
+constexpr int kDefaultFitWidth = 700;
+inline bool supportsFit(const TitleTemplate &t)
+{
+	static const char *const ids[] = {"clean-bar",      "accent-edge", "split-blocks",
+					  "pop-card",       "corner-tag",  "stacked-panels",
+					  "guest-minister", "modern-pill", "modern-card"};
+	for (const char *id : ids)
+		if (t.id == id)
+			return true;
+	return false;
+}
+
 inline double continuousSpeed(const TitleTemplate &t)
 {
 	return t.tickerSpeed > 0.0 ? t.tickerSpeed : (t.pulseSeconds > 0.0 ? 100.0 : 0.0);

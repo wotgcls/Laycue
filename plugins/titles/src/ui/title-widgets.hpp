@@ -24,17 +24,18 @@ public:
 	explicit TitlePreview(QWidget *parent = nullptr);
 
 	void setTitle(const TitleTemplate &tpl, const TitleText &text, bool useBrand, const Rgba &brand);
+	void setShape(int fit, int width);         // shape width mode and manual width (see Placement)
 	void setPlacement(int align, int percent); // where it sits and how big (see Placement)
+	void setSpeed(int step);                   // transition speed step (see transitionScale)
 	void setOnAir(bool onAir);
 	// Starts the arrival (or the exit) so the preview moves like the real title.
 	void play();
 	void stop();
 	bool onAir() const { return onAir_; }
 
-	bool hasHeightForWidth() const override { return true; }
-	int heightForWidth(int width) const override { return width * 9 / 16; }
-	QSize sizeHint() const override { return {440, 248}; }
-	QSize minimumSizeHint() const override { return {240, 135}; }
+	static constexpr int kPreviewHeight = 108; // a thumbnail strip: the templates below matter more
+	QSize sizeHint() const override { return {440, kPreviewHeight}; }
+	QSize minimumSizeHint() const override { return {160, kPreviewHeight}; }
 
 protected:
 	void paintEvent(QPaintEvent *event) override;
@@ -47,6 +48,9 @@ private:
 	TitleText text_;
 	bool useBrand_ = false;
 	Rgba brand_;
+	int speed_ = 2;
+	int fit_ = 0;
+	int fitWidth_ = 700;
 	int align_ = 0;
 	int percent_ = 100;
 	bool onAir_ = false;
@@ -73,6 +77,7 @@ public:
 	bool hasHeightForWidth() const override { return true; }
 	int heightForWidth(int width) const override;
 	QSize sizeHint() const override { return {150, heightForWidth(150)}; }
+	QSize minimumSizeHint() const override { return {80, heightForWidth(80)}; } // cards shrink with the panel
 
 protected:
 	void paintEvent(QPaintEvent *event) override;

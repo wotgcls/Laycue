@@ -21,8 +21,11 @@ class SpeedTest : public QObject {
 
 public:
 	// Why a test did not finish (the panel turns these into plain-language text).
-	enum class Failure { BadAddress, Unreachable, NotEnoughData, Cancelled };
+	enum class Failure { BadAddress, Unreachable, NotEnoughData, Cancelled, NoSecure };
 	Q_ENUM(Failure)
+
+	// What the network layer said about the last failed request ("Connection refused", "TLS initialization failed"), for the log and the panel.
+	QString detail() const { return detail_; }
 
 	explicit SpeedTest(QObject *parent = nullptr);
 	~SpeedTest() override;
@@ -44,6 +47,7 @@ private:
 	void sample();
 	void finish();
 	void fail(Failure reason);
+	QString detail_;
 	void teardown();
 
 	QNetworkAccessManager manager_;

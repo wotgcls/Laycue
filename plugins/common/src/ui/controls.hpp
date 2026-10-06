@@ -3,6 +3,7 @@
 #pragma once
 
 #include <QAbstractButton>
+#include <QEnterEvent>
 #include <QFrame>
 #include <QStringList>
 #include <QVariantAnimation>
@@ -68,6 +69,42 @@ private:
 	int current_ = 0;
 	int pressed_ = -1;
 	int hovered_ = -1;
+};
+
+// A slim clickable row: a title on the left, the current value and a chevron on the right. It opens a
+// menu or a fold-out ("Category   All templates ⌄", "Options   Left · 100% ›"). One row high, so a
+// small panel can offer many choices without a stack of controls.
+class RowButton : public QWidget {
+	Q_OBJECT
+
+public:
+	explicit RowButton(QWidget *parent = nullptr);
+
+	void setTitle(const QString &title);
+	void setValue(const QString &value);
+	void setOpen(bool open); // chevron points down when open, right when closed
+	bool isOpen() const { return open_; }
+
+	QSize sizeHint() const override;
+	QSize minimumSizeHint() const override;
+
+signals:
+	void clicked();
+
+protected:
+	void paintEvent(QPaintEvent *event) override;
+	void mousePressEvent(QMouseEvent *event) override;
+	void mouseReleaseEvent(QMouseEvent *event) override;
+	void keyPressEvent(QKeyEvent *event) override;
+	void enterEvent(QEnterEvent *event) override;
+	void leaveEvent(QEvent *event) override;
+
+private:
+	QString title_;
+	QString value_;
+	bool open_ = false;
+	bool hovered_ = false;
+	bool pressed_ = false;
 };
 
 // An on/off switch.

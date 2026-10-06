@@ -1,5 +1,7 @@
 #include "obs/title-source.hpp"
 
+#include "core/library.hpp"
+
 #include "core/ticker.hpp"
 #include "core/title-clock.hpp"
 #include "core/title-templates.hpp"
@@ -34,6 +36,9 @@ struct TitleSource {
 	Rgba accent;
 	int align = 0;
 	double scale = 1.0;
+	int speed = kDefaultSpeed;
+	int fit = 0;
+	int fitWidth = kDefaultFitWidth;
 
 	// Animation.
 	TitleClock clock;
@@ -124,7 +129,8 @@ bool isCued(const TitleSource &s)
 
 void applyClockConfig(TitleSource &s)
 {
-	s.clock.configure(s.tpl.inSeconds, s.tpl.outSeconds, s.tpl.holdSeconds);
+	const double k = transitionScale(s.speed);
+	s.clock.configure(s.tpl.inSeconds * k, s.tpl.outSeconds * k, s.tpl.holdSeconds);
 	s.ticker.configure(g_fonts ? tickerStripWidth(*g_fonts, s.tpl, s.text) : 1.0, continuousSpeed(s.tpl));
 }
 
@@ -148,6 +154,9 @@ void getDefaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, key::accentOn, false);
 	obs_data_set_default_int(settings, key::accent, toObsColour(first.palette.accent));
 	obs_data_set_default_int(settings, key::hold, -1);
+	obs_data_set_default_int(settings, key::speed, kDefaultSpeed);
+	obs_data_set_default_int(settings, key::fit, 0);
+	obs_data_set_default_int(settings, key::fitWidth, kDefaultFitWidth);
 	obs_data_set_default_int(settings, key::align, 0);
 	obs_data_set_default_int(settings, key::sizePercent, 100);
 	obs_data_set_default_bool(settings, key::onAir, false);
@@ -188,7 +197,7 @@ void update(void *data, obs_data_t *settings)
 			for (size_t i = 0; i < n; ++i) {
 				OBSDataAutoRelease item = obs_data_array_item(list, i);
 				const QString line = QString::fromUtf8(obs_data_get_string(item, "value"));
-				const int bar = line.indexOf(QLatin1Char('|'));
+				const int bar = int(line.indexOf(QLatin1Char('|')));
 				s->text.rows.append(
 					bar < 0 ? qMakePair(QString(), line.trimmed())
 						: qMakePair(line.left(bar).trimmed(), line.mid(bar + 1).trimmed()));
@@ -201,6 +210,9 @@ void update(void *data, obs_data_t *settings)
 		s->scale = std::clamp(int(obs_data_get_int(settings, key::sizePercent)), kMinSizePercent,
 				      kMaxSizePercent) /
 			   100.0;
+		s->fit = std::clamp(int(obs_data_get_int(settings, key::fit)), 0, 2);
+		s->fitWidth = std::clamp(int(obs_data_get_int(settings, key::fitWidth)), kMinFitWidth, kMaxFitWidth);
+		s->speed = std::clamp(int(obs_data_get_int(settings, key::speed)), 0, kSpeedSteps - 1);
 		const int hold = int(obs_data_get_int(settings, key::hold));
 		if (hold >= 0)
 			s->tpl.holdSeconds = hold;
@@ -316,6 +328,8 @@ void tick(void *data, float seconds)
 		request.accentOverride = s->accent;
 		request.align = s->align;
 		request.scale = s->scale;
+		request.fit = s->fit;
+		request.fitWidth = s->fitWidth;
 		RenderedTitle rendered = renderTitle(*g_fonts, request);
 		if (rendered.image.isNull())
 			return;
@@ -464,6 +478,9 @@ bool templateChanged(obs_properties_t *props, obs_property_t *, obs_data_t *sett
 	obs_property_set_visible(obs_properties_get(props, "rows_list"), t->maxRows > 0);
 	obs_property_set_visible(obs_properties_get(props, key::align), supportsPlacement(*t));
 	obs_property_set_visible(obs_properties_get(props, key::sizePercent), supportsPlacement(*t));
+	const int fitMode = int(obs_data_get_int(settings, key::fit));
+	obs_property_set_visible(obs_properties_get(props, key::fit), supportsFit(*t));
+	obs_property_set_visible(obs_properties_get(props, key::fitWidth), supportsFit(*t) && fitMode == 2);
 	// Say what the fields mean for this template: "Verse" and "Reference", "Name" and "Role"...
 	const auto label = [&](const char *name, int field) {
 		const std::string k = fieldKey(*t, field);
@@ -531,6 +548,14 @@ obs_properties_t *getProperties(void *data)
 	obs_property_list_add_int(alignList, obs_module_text("Laycue.Titles.AlignLeft"), 0);
 	obs_property_list_add_int(alignList, obs_module_text("Laycue.Titles.AlignCenter"), 1);
 	obs_property_list_add_int(alignList, obs_module_text("Laycue.Titles.AlignRight"), 2);
+	obs_property_t *fitList = obs_properties_add_list(props, key::fit, obs_module_text("Laycue.Titles.ShapeWidth"),
+							  OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(fitList, obs_module_text("Laycue.Titles.FitDefault"), 0);
+	obs_property_list_add_int(fitList, obs_module_text("Laycue.Titles.FitText"), 1);
+	obs_property_list_add_int(fitList, obs_module_text("Laycue.Titles.FitManual"), 2);
+	obs_property_set_modified_callback(fitList, templateChanged); // shows the width slider only for Manual
+	obs_properties_add_int_slider(props, key::fitWidth, obs_module_text("Laycue.Titles.ShapeWidthManual"),
+				      kMinFitWidth, kMaxFitWidth, 50);
 	obs_properties_add_int_slider(props, key::sizePercent, obs_module_text("Laycue.Titles.SizePercent"),
 				      kMinSizePercent, kMaxSizePercent, 5);
 
@@ -538,6 +563,12 @@ obs_properties_t *getProperties(void *data)
 		obs_properties_add_bool(props, key::accentOn, obs_module_text("Laycue.Titles.UseBrandColour"));
 	(void)accentOn;
 	obs_properties_add_color(props, key::accent, obs_module_text("Laycue.Titles.BrandColour"));
+	obs_property_t *speedList = obs_properties_add_list(props, key::speed, obs_module_text("Laycue.Titles.Speed"),
+							    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	for (int i = 0; i < kSpeedSteps; ++i) {
+		const std::string k = "Laycue.Titles.Speed" + std::to_string(i);
+		obs_property_list_add_int(speedList, obs_module_text(k.c_str()), i);
+	}
 	obs_properties_add_int(props, key::hold, obs_module_text("Laycue.Titles.Hold"), -1, 300, 1);
 
 	obs_properties_add_button2(props, "show", obs_module_text("Laycue.Titles.Show"), showClicked, data);

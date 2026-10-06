@@ -129,10 +129,10 @@ TEST_CASE("titles: the ticker wraps and says how many copies fill the view")
 	CHECK(ticker.offset() >= 0.0);
 }
 
-TEST_CASE("titles: there are 49 built-in templates with unique ids and sensible values")
+TEST_CASE("titles: there are 57 built-in templates with unique ids and sensible values")
 {
 	const auto &all = builtInTemplates();
-	CHECK_EQ(int(all.size()), 49);
+	CHECK_EQ(int(all.size()), 57);
 	std::set<std::string> ids;
 	for (const auto &t : all) {
 		ids.insert(t.id);
@@ -142,7 +142,7 @@ TEST_CASE("titles: there are 49 built-in templates with unique ids and sensible 
 		if (t.tickerSpeed > 0.0)
 			CHECK(t.category == Category::Ticker);
 	}
-	CHECK_EQ(int(ids.size()), 49);
+	CHECK_EQ(int(ids.size()), 57);
 	CHECK(findTemplate("nope") == nullptr);
 }
 
@@ -155,7 +155,8 @@ TEST_CASE("titles: every category has templates, the Live and Social ones are wh
 			   Category::Social, Category::News, Category::Notes})
 		CHECK(perCategory[c] >= 2);
 	CHECK_EQ(perCategory[Category::Notes], 4);
-	for (const char *id : {"logo-sweep", "logo-spin"}) {
+	for (const char *id : {"logo-sweep", "logo-spin", "logo-pulse", "logo-float", "logo-flip", "logo-ripple",
+			       "logo-hop", "logo-reveal", "logo-orbit", "logo-water"}) {
 		const TitleTemplate *t = findTemplate(id);
 		CHECK(t != nullptr);
 		if (t) {
@@ -388,4 +389,46 @@ TEST_CASE("titles: the giving card takes rows, a note and a logo; extra colours 
 	CHECK_EQ(lib.draft.rows.size(), kMaxRows);
 	CHECK(lib.draft.rows[0].value.size() <= 600);
 	CHECK(lib.draft.note.size() <= 600);
+}
+
+TEST_CASE("titles: transition speed steps are a small range and never leave it")
+{
+	CHECK(transitionScale(kDefaultSpeed) == 1.0);
+	CHECK(transitionScale(0) > transitionScale(1)); // slower means a bigger multiplier on the times
+	CHECK(transitionScale(1) > 1.0 && transitionScale(kSpeedSteps - 1) < 1.0);
+	CHECK(transitionScale(-5) == transitionScale(0));
+	CHECK(transitionScale(99) == transitionScale(kSpeedSteps - 1));
+	CHECK(transitionScale(0) <= 2.0 && transitionScale(kSpeedSteps - 1) >= 0.4); // tight on purpose
+	Library lib;
+	lib.speed = 42;
+	sanitize(lib);
+	CHECK_EQ(lib.speed, kSpeedSteps - 1);
+}
+
+TEST_CASE("titles: shape width choices apply to name templates only and are kept in range")
+{
+	for (const char *id : {"clean-bar", "accent-edge", "split-blocks", "pop-card", "corner-tag", "stacked-panels",
+			       "guest-minister", "modern-pill", "modern-card"}) {
+		const TitleTemplate *t = findTemplate(id);
+		CHECK(t != nullptr);
+		if (t)
+			CHECK(supportsFit(*t));
+	}
+	for (const char *id : {"news-bar", "social-youtube", "desk-crawl", "logo-sweep", "notes-card"}) {
+		const TitleTemplate *t = findTemplate(id);
+		CHECK(t != nullptr);
+		if (t)
+			CHECK(!supportsFit(*t));
+	}
+	Library lib;
+	setPlacement(lib, "clean-bar", {0, 100, 2, 99999});
+	CHECK_EQ(placementFor(lib, "clean-bar").fit, 2);
+	CHECK_EQ(placementFor(lib, "clean-bar").width, kMaxFitWidth);
+	setPlacement(lib, "clean-bar", {0, 100, 7, 10});
+	CHECK_EQ(placementFor(lib, "clean-bar").fit, 2);
+	CHECK_EQ(placementFor(lib, "clean-bar").width, kMinFitWidth);
+	setPlacement(lib, "clean-bar", {0, 100, 0, 700}); // back to the default: nothing is stored
+	CHECK(lib.placements.empty());
+	// The width only matters in manual mode, so a stale width does not make a "default" placement look changed.
+	CHECK((Placement{0, 100, 1, 500} == Placement{0, 100, 1, 900}));
 }

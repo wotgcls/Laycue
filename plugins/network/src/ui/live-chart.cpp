@@ -34,9 +34,9 @@ double niceMax(double v)
 
 LiveChart::LiveChart(QWidget *parent) : QWidget(parent)
 {
-	setMinimumHeight(120);
+	setMinimumHeight(84);
 	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	setFixedHeight(150);
+	setFixedHeight(96);
 }
 
 void LiveChart::setData(const std::deque<ChartPoint> &points)

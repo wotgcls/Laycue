@@ -59,7 +59,7 @@ TitleText toText(const TitleContent &c)
 constexpr int kPollMs = 250;
 constexpr int kSaveMs = 700;
 constexpr int kToastMs = 3200;
-constexpr int kCardMinWidth = 150;
+constexpr int kCardMinWidth = 118;
 
 QString fromStd(const std::string &s)
 {
@@ -198,7 +198,13 @@ void TitlesDock::buildUi()
 	root->addWidget(buildStage());
 	root->addWidget(buildTabs(), 1);
 
-	pages_->addWidget(home_);
+	// If the panel is shorter than everything needs, the page scrolls instead of squeezing the templates.
+	auto *homeScroll = new QScrollArea(pages_);
+	homeScroll->setWidgetResizable(true);
+	homeScroll->setFrameShape(QFrame::NoFrame);
+	homeScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	homeScroll->setWidget(home_);
+	pages_->addWidget(homeScroll);
 
 	toast_ = new QWidget(content_);
 	toast_->setObjectName("laycueToast");
@@ -220,43 +226,50 @@ QWidget *TitlesDock::buildStage()
 	auto *stage = new Surface(2, home_);
 	auto *v = new QVBoxLayout(stage);
 	v->setSpacing(size::gapSmall);
-	stage->setPadding(12, 10, 12, 12);
+	stage->setPadding(12, 8, 12, 10);
 
 	preview_ = new TitlePreview(stage);
 	preview_->setAccessibleName(lt("Laycue.Titles.PreviewAccessible"));
 	v->addWidget(preview_);
 
-	const auto field = [&](QLabel *&label, const QString &name) {
-		label = makeLabel(stage, name, 11, 600, color::textTertiary);
-		v->addWidget(label);
+	// Each field is one row, "label  [box]", so a small panel is not spent on a label above every box.
+	constexpr int kLabelWidth = 96;
+	const auto field = [&](QWidget *&row, QLabel *&label, const QString &name,
+			       std::initializer_list<QWidget *> boxes) {
+		row = new QWidget(stage);
+		auto *h = new QHBoxLayout(row);
+		h->setContentsMargins(0, 0, 0, 0);
+		h->setSpacing(size::gapSmall);
+		label = makeLabel(row, name, 11, 600, color::textTertiary);
+		label->setFixedWidth(kLabelWidth);
+		label->setWordWrap(true); // a long field name takes two lines rather than being cut off
+		h->addWidget(label, 0, Qt::AlignTop);
+		for (QWidget *box : boxes)
+			h->addWidget(box, 1);
+		v->addWidget(row);
 	};
 
-	field(label1_, lt("Laycue.Titles.Line1"));
 	edit1_ = new QLineEdit(stage);
 	long1_ = new QPlainTextEdit(stage);
-	long1_->setFixedHeight(74);
+	long1_->setFixedHeight(64);
 	long1_->setTabChangesFocus(true);
-	v->addWidget(edit1_);
-	v->addWidget(long1_);
+	field(fieldRow1_, label1_, lt("Laycue.Titles.Line1"), {edit1_, long1_});
 	connect(edit1_, &QLineEdit::textEdited, this, &TitlesDock::fieldsEdited);
 	connect(long1_, &QPlainTextEdit::textChanged, this, [this]() {
 		if (!buildingFields_)
 			fieldsEdited();
 	});
 
-	field(label2_, lt("Laycue.Titles.Line2"));
 	edit2_ = new QLineEdit(stage);
-	v->addWidget(edit2_);
+	field(fieldRow2_, label2_, lt("Laycue.Titles.Line2"), {edit2_});
 	connect(edit2_, &QLineEdit::textEdited, this, &TitlesDock::fieldsEdited);
 
-	field(label3_, lt("Laycue.Titles.Tag"));
 	edit3_ = new QLineEdit(stage);
-	v->addWidget(edit3_);
+	field(fieldRow3_, label3_, lt("Laycue.Titles.Tag"), {edit3_});
 	connect(edit3_, &QLineEdit::textEdited, this, &TitlesDock::fieldsEdited);
 
-	field(label4_, lt("Laycue.Titles.Note"));
 	edit4_ = new QLineEdit(stage);
-	v->addWidget(edit4_);
+	field(fieldRow4_, label4_, lt("Laycue.Titles.Note"), {edit4_});
 	connect(edit4_, &QLineEdit::textEdited, this, &TitlesDock::fieldsEdited);
 
 	// A logo picture.
@@ -307,7 +320,36 @@ QWidget *TitlesDock::buildStage()
 	bigger->setAccessibleName(lt("Laycue.Titles.Bigger"));
 	connect(bigger, &QAbstractButton::clicked, this, [this]() { changePlacement(-1, +1); });
 	pv->addWidget(bigger);
-	v->addWidget(placementBox_);
+
+	// How wide the name's shape is: the template's own, hugging the text, or a width the operator sets.
+	shapeBox_ = new QWidget(stage);
+	auto *sv = new QVBoxLayout(shapeBox_);
+	sv->setContentsMargins(0, 2, 0, 2);
+	sv->setSpacing(size::gapSmall);
+	fitSeg_ = new Segmented(shapeBox_);
+	fitSeg_->setItems({lt("Laycue.Titles.FitDefault"), lt("Laycue.Titles.FitText"), lt("Laycue.Titles.FitManual")});
+	fitSeg_->setAccessibleName(lt("Laycue.Titles.ShapeWidth"));
+	connect(fitSeg_, &Segmented::changed, this, [this](int i) { changeShape(i, 0); });
+	sv->addWidget(fitSeg_);
+	widthRow_ = new QWidget(shapeBox_);
+	auto *wv = new QHBoxLayout(widthRow_);
+	wv->setContentsMargins(0, 0, 0, 0);
+	wv->setSpacing(size::gapSmall);
+	wv->addWidget(makeLabel(widthRow_, lt("Laycue.Titles.ShapeWidthManual"), 13, 600, color::cream), 1);
+	auto *narrower = button(widthRow_, QStringLiteral("\u2212"), "laycueSecondary");
+	narrower->setAccessibleName(lt("Laycue.Titles.Narrower"));
+	connect(narrower, &QAbstractButton::clicked, this, [this]() { changeShape(-1, -1); });
+	wv->addWidget(narrower);
+	widthValue_ = makeLabel(widthRow_, QString(), 13, 600, color::cream);
+	widthValue_->setAlignment(Qt::AlignCenter);
+	widthValue_->setMinimumWidth(64);
+	widthValue_->setWordWrap(false);
+	wv->addWidget(widthValue_);
+	auto *wider = button(widthRow_, QStringLiteral("+"), "laycueSecondary");
+	wider->setAccessibleName(lt("Laycue.Titles.Wider"));
+	connect(wider, &QAbstractButton::clicked, this, [this]() { changeShape(-1, +1); });
+	wv->addWidget(wider);
+	sv->addWidget(widthRow_);
 
 	// How long it stays on screen before it leaves by itself.
 	holdBox_ = new QWidget(stage);
@@ -328,20 +370,37 @@ QWidget *TitlesDock::buildStage()
 	longer->setAccessibleName(lt("Laycue.Titles.More"));
 	connect(longer, &QAbstractButton::clicked, this, [this]() { changeHold(+1); });
 	hv->addWidget(longer);
-	v->addWidget(holdBox_);
+
+	// Position, size and time on screen fold away into one row; its summary shows what they are set to.
+	optionsRow_ = new RowButton(stage);
+	optionsRow_->setTitle(lt("Laycue.Titles.Options"));
+	connect(optionsRow_, &RowButton::clicked, this, [this]() {
+		optionsOpen_ = !optionsOpen_;
+		refreshOptions();
+		scheduleSave();
+	});
+	v->addWidget(optionsRow_);
+	optionsBox_ = new QWidget(stage);
+	auto *ov = new QVBoxLayout(optionsBox_);
+	ov->setContentsMargins(0, 0, 0, 0);
+	ov->setSpacing(size::gapSmall);
+	ov->addWidget(placementBox_);
+	ov->addWidget(shapeBox_);
+	ov->addWidget(holdBox_);
+	v->addWidget(optionsBox_);
 
 	auto *row = new QHBoxLayout();
 	row->setSpacing(size::gapSmall);
 	primary_ = new ActionButton(lt("Laycue.Titles.ShowOnAir"), ActionButton::Kind::Primary, stage);
-	primary_->setMinimumHeight(size::touch);
+	primary_->setMinimumHeight(size::controlHeight + 6);
 	connect(primary_, &QAbstractButton::clicked, this, &TitlesDock::primaryClicked);
 	row->addWidget(primary_, 3);
 	hide_ = new ActionButton(lt("Laycue.Titles.Hide"), ActionButton::Kind::Secondary, stage);
-	hide_->setMinimumHeight(size::touch);
+	hide_->setMinimumHeight(size::controlHeight + 6);
 	connect(hide_, &QAbstractButton::clicked, this, &TitlesDock::hideClicked);
 	row->addWidget(hide_, 1);
 	queueAdd_ = new ActionButton(lt("Laycue.Titles.QueueAdd"), ActionButton::Kind::Secondary, stage);
-	queueAdd_->setMinimumHeight(size::touch);
+	queueAdd_->setMinimumHeight(size::controlHeight + 6);
 	queueAdd_->setToolTip(lt("Laycue.Titles.QueueAddTip"));
 	connect(queueAdd_, &QAbstractButton::clicked, this, &TitlesDock::addToQueueClicked);
 	row->addWidget(queueAdd_, 1);
@@ -371,6 +430,7 @@ QWidget *TitlesDock::buildTabs()
 	tabScroll_->setWidgetResizable(true);
 	tabScroll_->setFrameShape(QFrame::NoFrame);
 	tabScroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	tabScroll_->setMinimumHeight(190); // the templates always get room; a short panel scrolls instead
 	auto *host = new QWidget(tabScroll_);
 	auto *hostLayout = new QVBoxLayout(host);
 	hostLayout->setContentsMargins(0, 0, 4, 0);
@@ -381,35 +441,12 @@ QWidget *TitlesDock::buildTabs()
 	auto *t = new QVBoxLayout(templatesTab_);
 	t->setContentsMargins(0, 0, 0, 0);
 	t->setSpacing(size::gapSmall + 2);
-	// Seven choices do not fit on one row at a narrow panel width, so they sit on two rows that act as one
-	// control: picking one on a row clears the other.
-	categories_ = new Segmented(templatesTab_);
-	categories_->setItems({lt("Laycue.Titles.CatAll"), lt(categoryKey(Category::People)),
-			       lt(categoryKey(Category::Worship)), lt(categoryKey(Category::Announce)),
-			       lt(categoryKey(Category::Notes))});
-	categories_->setAccessibleName(lt("Laycue.Titles.CategoriesAccessible"));
-	categories2_ = new Segmented(templatesTab_);
-	categories2_->setItems({lt(categoryKey(Category::Ticker)), lt(categoryKey(Category::Live)),
-				lt(categoryKey(Category::Social)), lt(categoryKey(Category::News))});
-	categories2_->setAccessibleName(lt("Laycue.Titles.CategoriesAccessible"));
-	categories2_->setCurrent(-1);
-	// The filter is 0 for all, otherwise the category's number plus one.
-	connect(categories_, &Segmented::changed, this, [this](int i) {
-		static const int filters[] = {0, int(Category::People) + 1, int(Category::Worship) + 1,
-					      int(Category::Announce) + 1, int(Category::Notes) + 1};
-		categories2_->setCurrent(-1);
-		categoryFilter_ = filters[std::clamp(i, 0, 4)];
-		layoutTemplates();
-	});
-	connect(categories2_, &Segmented::changed, this, [this](int i) {
-		static const int filters[] = {int(Category::Ticker) + 1, int(Category::Live) + 1,
-					      int(Category::Social) + 1, int(Category::News) + 1};
-		categories_->setCurrent(-1);
-		categoryFilter_ = filters[std::clamp(i, 0, 3)];
-		layoutTemplates();
-	});
-	t->addWidget(categories_);
-	t->addWidget(categories2_);
+	// Nine categories do not fit on a narrow panel, so they are one row that opens a menu.
+	categoryRow_ = new RowButton(templatesTab_);
+	categoryRow_->setTitle(lt("Laycue.Titles.CategoryRow"));
+	connect(categoryRow_, &RowButton::clicked, this, &TitlesDock::pickCategory);
+	t->addWidget(categoryRow_);
+	refreshCategory();
 	gridHost_ = new QWidget(templatesTab_);
 	grid_ = new QGridLayout(gridHost_);
 	grid_->setContentsMargins(0, 2, 0, 2);
@@ -514,6 +551,10 @@ void TitlesDock::refreshFields()
 	label(label2_, 2, "Laycue.Titles.Line2");
 	label(label3_, 3, "Laycue.Titles.Tag");
 
+	fieldRow1_->setVisible(t.usesLine1);
+	fieldRow2_->setVisible(t.usesLine2);
+	fieldRow3_->setVisible(t.usesTag);
+	fieldRow4_->setVisible(t.usesNote);
 	label1_->setVisible(t.usesLine1);
 	edit1_->setVisible(!t.longText && t.usesLine1);
 	long1_->setVisible(t.longText && t.usesLine1);
@@ -555,6 +596,8 @@ void TitlesDock::updatePreview()
 	preview_->setTitle(t, text, library_.useBrand, library_.brand);
 	const Placement placement = placementFor(library_, library_.selected);
 	preview_->setPlacement(placement.align, placement.percent);
+	preview_->setShape(placement.fit, placement.width);
+	preview_->setSpeed(library_.speed);
 	refreshPlacement();
 	refreshHold();
 }
@@ -1131,6 +1174,31 @@ void TitlesDock::rebuildSetup()
 		connect(plus, &QAbstractButton::clicked, this, [this]() { changeHold(+1); });
 		row->addWidget(plus);
 		v->addLayout(row);
+
+		// How fast titles arrive and leave: a few steps, not a free number.
+		auto *speedRow = new QHBoxLayout();
+		speedRow->setSpacing(size::gapSmall);
+		auto *speedText = new QVBoxLayout();
+		speedText->setSpacing(1);
+		speedText->addWidget(makeLabel(v->parentWidget(), lt("Laycue.Titles.Speed"), 13, 500, color::cream));
+		speedText->addWidget(
+			makeLabel(v->parentWidget(), lt("Laycue.Titles.SpeedSub"), 11, 400, color::textTertiary));
+		speedRow->addLayout(speedText, 1);
+		auto *slower = button(v->parentWidget(), QStringLiteral("\u2212"), "laycueSecondary");
+		slower->setAccessibleName(lt("Laycue.Titles.SpeedSlower"));
+		connect(slower, &QAbstractButton::clicked, this, [this]() { changeSpeed(-1); });
+		speedRow->addWidget(slower);
+		auto *speedValue = makeLabel(v->parentWidget(),
+					     lt(("Laycue.Titles.Speed" + std::to_string(library_.speed)).c_str()), 13,
+					     600, color::cream);
+		speedValue->setAlignment(Qt::AlignCenter);
+		speedValue->setMinimumWidth(78);
+		speedRow->addWidget(speedValue);
+		auto *faster = button(v->parentWidget(), QStringLiteral("+"), "laycueSecondary");
+		faster->setAccessibleName(lt("Laycue.Titles.SpeedFaster"));
+		connect(faster, &QAbstractButton::clicked, this, [this]() { changeSpeed(+1); });
+		speedRow->addWidget(faster);
+		v->addLayout(speedRow);
 	}
 
 	// Hotkeys.
@@ -1147,11 +1215,39 @@ void TitlesDock::refreshPlacement()
 	const TitleTemplate t = resolveStyle(library_, library_.selected);
 	const bool can = supportsPlacement(t);
 	placementBox_->setVisible(can);
+	if (can) {
+		const Placement p = placementFor(library_, library_.selected);
+		alignSeg_->setCurrent(p.align);
+		sizeValue_->setText(QStringLiteral("%1%").arg(p.percent));
+	}
+	refreshShape();
+	refreshOptions();
+}
+
+void TitlesDock::refreshShape()
+{
+	const TitleTemplate t = resolveStyle(library_, library_.selected);
+	const bool can = supportsFit(t);
+	shapeBox_->setVisible(can);
 	if (!can)
 		return;
 	const Placement p = placementFor(library_, library_.selected);
-	alignSeg_->setCurrent(p.align);
-	sizeValue_->setText(QStringLiteral("%1%").arg(p.percent));
+	fitSeg_->setCurrent(p.fit);
+	widthRow_->setVisible(p.fit == 2);
+	widthValue_->setText(lt("Laycue.Titles.WidthPx").arg(p.width));
+}
+
+void TitlesDock::changeShape(int fit, int widthDelta)
+{
+	Placement p = placementFor(library_, library_.selected);
+	if (fit >= 0)
+		p.fit = fit;
+	p.width += 50 * widthDelta;
+	setPlacement(library_, library_.selected, p);
+	refreshPlacement();
+	updatePreview();
+	updateButtons();
+	scheduleSave();
 }
 
 void TitlesDock::changePlacement(int align, int percentDelta)
@@ -1179,6 +1275,7 @@ void TitlesDock::refreshHold()
 	else
 		text = lt("Laycue.Titles.HoldSeconds").arg(hold);
 	holdValue_->setText(text);
+	refreshOptions();
 }
 
 void TitlesDock::draftChanged()
@@ -1288,6 +1385,91 @@ void TitlesDock::changeHold(int delta)
 	scheduleSave();
 }
 
+void TitlesDock::refreshOptions()
+{
+	if (!optionsRow_)
+		return;
+	const TitleTemplate t = resolveStyle(library_, library_.selected);
+	QStringList parts;
+	if (supportsPlacement(t)) {
+		const Placement p = placementFor(library_, library_.selected);
+		static const char *const names[] = {"Laycue.Titles.AlignLeft", "Laycue.Titles.AlignCenter",
+						    "Laycue.Titles.AlignRight"};
+		parts << lt(names[std::clamp(p.align, 0, 2)]) << QStringLiteral("%1%").arg(p.percent);
+	}
+	if (supportsFit(t)) {
+		const int fit = placementFor(library_, library_.selected).fit;
+		if (fit == 1)
+			parts << lt("Laycue.Titles.FitText");
+		else if (fit == 2)
+			parts << lt("Laycue.Titles.WidthPx").arg(placementFor(library_, library_.selected).width);
+	}
+	if (holdValue_)
+		parts << holdValue_->text();
+	optionsRow_->setValue(parts.join(QStringLiteral(" \u00B7 ")));
+	optionsRow_->setOpen(optionsOpen_);
+	optionsBox_->setVisible(optionsOpen_);
+}
+
+void TitlesDock::refreshCategory()
+{
+	if (!categoryRow_)
+		return;
+	QString name = lt("Laycue.Titles.CatAll");
+	if (categoryFilter_ > 0)
+		name = lt(categoryKey(Category(categoryFilter_ - 1)));
+	categoryRow_->setValue(name);
+	categoryRow_->setOpen(true); // the chevron points down: it opens a menu
+}
+
+void TitlesDock::pickCategory()
+{
+	// "All" first, then the categories in the order of the panel's old chips.
+	static const Category order[] = {Category::People, Category::Worship, Category::Announce, Category::Notes,
+					 Category::News,   Category::Live,    Category::Social,   Category::Ticker};
+	QMenu menu(this);
+	const auto count = [](int filter) {
+		int n = 0;
+		for (const TitleTemplate &t : builtInTemplates())
+			if (filter == 0 || int(t.category) + 1 == filter)
+				++n;
+		return n;
+	};
+	QAction *all = menu.addAction(lt("Laycue.Titles.CategoryItem").arg(lt("Laycue.Titles.CatAll")).arg(count(0)));
+	all->setCheckable(true);
+	all->setChecked(categoryFilter_ == 0);
+	all->setData(0);
+	for (Category c : order) {
+		QAction *a =
+			menu.addAction(lt("Laycue.Titles.CategoryItem").arg(lt(categoryKey(c))).arg(count(int(c) + 1)));
+		a->setCheckable(true);
+		a->setChecked(categoryFilter_ == int(c) + 1);
+		a->setData(int(c) + 1);
+	}
+	QAction *chosen = menu.exec(categoryRow_->mapToGlobal(QPoint(0, categoryRow_->height() + 2)));
+	if (!chosen)
+		return;
+	categoryFilter_ = chosen->data().toInt();
+	refreshCategory();
+	layoutTemplates();
+}
+
+void TitlesDock::changeSpeed(int delta)
+{
+	const int next = std::clamp(library_.speed + (delta > 0 ? 1 : -1), 0, kSpeedSteps - 1);
+	if (next == library_.speed)
+		return;
+	library_.speed = next;
+	preview_->setSpeed(next);
+	preview_->play(); // show what the new speed looks like
+	if (status_.onAir() && !onAirStyle_.empty())
+		applyToSource(target(), library_, onAirStyle_, onAirContent_);
+	else
+		applyToSource(target(), library_, library_.selected, library_.draft);
+	rebuildSetup();
+	scheduleSave();
+}
+
 void TitlesDock::pickBrandColour()
 {
 	const QColor start(library_.brand.r, library_.brand.g, library_.brand.b);
@@ -1345,7 +1527,7 @@ void TitlesDock::openCustomize(bool editSelected)
 	auto *page = new CustomizePage(start, library_, this);
 	connect(page, &PageFrame::backRequested, this, [this]() {
 		if (openedPage_) {
-			pages_->setCurrentWidget(home_);
+			pages_->setCurrentIndex(0);
 			pages_->removeWidget(openedPage_);
 			openedPage_->deleteLater();
 			openedPage_ = nullptr;

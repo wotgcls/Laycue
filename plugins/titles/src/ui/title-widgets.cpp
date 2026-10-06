@@ -1,6 +1,7 @@
 #include "ui/title-widgets.hpp"
 
 #include "ui/tokens.hpp"
+#include "core/library.hpp"
 
 #include <QKeyEvent>
 #include <QLinearGradient>
@@ -33,7 +34,7 @@ QImage stageBackground(int width, int height)
 
 TitlePreview::TitlePreview(QWidget *parent) : QWidget(parent)
 {
-	setMinimumHeight(135);
+	setFixedHeight(kPreviewHeight);
 	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	timer_.setInterval(16);
 	connect(&timer_, &QTimer::timeout, this, &TitlePreview::tick);
@@ -43,7 +44,9 @@ TitlePreview::TitlePreview(QWidget *parent) : QWidget(parent)
 
 void TitlePreview::configureClock()
 {
-	clock_.configure(tpl_.inSeconds, tpl_.outSeconds, 0.0); // the panel decides when to hide, not the preview
+	const double k = transitionScale(speed_);
+	clock_.configure(tpl_.inSeconds * k, tpl_.outSeconds * k,
+			 0.0); // the panel decides when to hide, not the preview
 	const FontSet *fonts = sharedFonts();
 	ticker_.configure(fonts ? tickerStripWidth(*fonts, tpl_, text_) : 1.0, continuousSpeed(tpl_));
 }
@@ -56,6 +59,21 @@ void TitlePreview::setTitle(const TitleTemplate &tpl, const TitleText &text, boo
 	brand_ = brand;
 	configureClock();
 	update();
+}
+
+void TitlePreview::setShape(int fit, int width)
+{
+	fit_ = fit;
+	fitWidth_ = width;
+	update();
+}
+
+void TitlePreview::setSpeed(int step)
+{
+	if (speed_ == step)
+		return;
+	speed_ = step;
+	configureClock();
 }
 
 void TitlePreview::setOnAir(bool onAir)
@@ -115,7 +133,11 @@ void TitlePreview::paintEvent(QPaintEvent *)
 {
 	QPainter p(this);
 	p.setRenderHint(QPainter::Antialiasing, true);
-	const QRectF area = QRectF(rect()).adjusted(2, 2, -2, -2);
+	// A 16:9 picture, as large as fits and centred in a short strip: the panel keeps its room for the templates.
+	const QRectF strip = QRectF(rect()).adjusted(2, 2, -2, -2);
+	const double w = std::min(strip.width(), strip.height() * 16.0 / 9.0);
+	const double h = w * 9.0 / 16.0;
+	const QRectF area(strip.center().x() - w / 2, strip.center().y() - h / 2, w, h);
 	QPainterPath clip;
 	clip.addRoundedRect(area, size::pictureRadius, size::pictureRadius);
 	p.setClipPath(clip);
@@ -131,6 +153,8 @@ void TitlePreview::paintEvent(QPaintEvent *)
 		req.accentOverride = brand_;
 		req.align = align_;
 		req.scale = percent_ / 100.0;
+		req.fit = fit_;
+		req.fitWidth = fitWidth_;
 		if (playing_) {
 			req.frame = {clock_.in(), clock_.out(), ticker_.offset()};
 		} else {
@@ -154,6 +178,7 @@ TemplateCard::TemplateCard(QWidget *parent) : QAbstractButton(parent)
 	setCheckable(false);
 	setCursor(Qt::PointingHandCursor);
 	setFocusPolicy(Qt::TabFocus);
+	setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 }
 
 void TemplateCard::setImage(const QImage &image)
@@ -183,7 +208,7 @@ void TemplateCard::setSelectedCard(bool selected)
 
 int TemplateCard::heightForWidth(int width) const
 {
-	return (width - 12) * 9 / 16 + 12 + 26;
+	return (width - 12) * 9 / 16 + 12 + 24;
 }
 
 void TemplateCard::enterEvent(QEnterEvent *)

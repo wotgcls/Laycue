@@ -59,6 +59,10 @@ struct Ctx {
 	QColor shape2;
 	QColor shape3;
 	QColor ink;
+	int fit = 0;       // shape width: 0 the template's own, 1 hug the text, 2 a width the operator set
+	double fitW = 700; // that width, in design pixels (fit == 2)
+	// Side padding: a little more generous when the shape hugs the text.
+	double pad(double x) const { return fit == 1 ? x * 1.15 : x; }
 	QColor palette_ink() const { return ink; }
 
 	// How far one element has got (0..1). Elements enter one after another (`delay`, `length` are
@@ -94,6 +98,29 @@ QFont fitFont(const Ctx &c, FontFace face, double px, double minPx, const QStrin
 	for (double size = px; size > minPx && textWidth(font, s) > maxWidth; size *= 0.96)
 		font = c.font(face, size);
 	return font;
+}
+
+// A name's font for a shape with `chrome` pixels of padding and decoration beside the text. With a width the
+// operator set, the text shrinks (down to a small size) to fit inside the shape instead of the shape growing.
+QFont fitFontFor(const Ctx &c, FontFace face, double px, double minPx, const QString &s, double maxWidth, double chrome)
+{
+	if (c.fit == 2)
+		return fitFont(c, face, px, std::min(minPx, 14.0), s, std::max(60.0, c.fitW - chrome));
+	return fitFont(c, face, px, minPx, s, maxWidth);
+}
+
+// The width of a name's shape. `templateMin` is the template's own minimum; `textW` the text it holds;
+// `share` scales a manual width for the smaller of two stacked shapes.
+double shapeWidth(const Ctx &c, double templateMin, double chrome, double textW, double share = 1.0)
+{
+	switch (c.fit) {
+	case 1:
+		return std::max(220.0 * share, chrome + textW); // hugs the text, with the padding around it
+	case 2:
+		return c.fitW * share;
+	default:
+		return std::max(templateMin, chrome + textW);
+	}
 }
 
 QString elided(const QFont &font, const QString &s, double maxWidth)
@@ -320,13 +347,13 @@ using Style = std::function<void(Ctx &)>;
 // 1. Clean Bar: a dark bar with an accent cap; the name grows out of it.
 void cleanBar(Ctx &c)
 {
-	const double padX = 40, capW = 12;
+	const double padX = c.pad(40), capW = 12;
+	const double chrome = capW + 2 * padX;
 	const bool two = c.has(c.x.line2);
 	const double h = two ? 132 : 98;
-	const QFont f1 = fitFont(c, c.t.display, 62, 40, c.x.line1, 1250);
-	const QFont f2 = fitFont(c, c.t.body, 30, 22, c.x.line2, 1250);
-	const double w =
-		std::max(560.0, capW + 2 * padX + std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
+	const QFont f1 = fitFontFor(c, c.t.display, 62, 40, c.x.line1, 1250, chrome);
+	const QFont f2 = fitFontFor(c, c.t.body, 30, 22, c.x.line2, 1250, chrome);
+	const double w = shapeWidth(c, 560.0, chrome, std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
 	const double y = c.bottom() - h;
 	const double pw = w * c.part(0.0, 0.6);
 	fillPanel(c, QRectF(kLeft, y, pw, h));
@@ -350,13 +377,13 @@ void cleanBar(Ctx &c)
 // 2. Accent Edge: a light card behind a coloured edge that draws down first.
 void accentEdge(Ctx &c)
 {
-	const double padX = 44, edge = 9;
+	const double padX = c.pad(44), edge = 9;
+	const double chrome = edge + 2 * padX;
 	const bool two = c.has(c.x.line2);
 	const double h = two ? 138 : 104;
-	const QFont f1 = fitFont(c, c.t.display, 64, 40, c.x.line1, 1250);
-	const QFont f2 = fitFont(c, c.t.body, 30, 22, c.x.line2, 1250);
-	const double w =
-		std::max(600.0, edge + 2 * padX + std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
+	const QFont f1 = fitFontFor(c, c.t.display, 64, 40, c.x.line1, 1250, chrome);
+	const QFont f2 = fitFontFor(c, c.t.body, 30, 22, c.x.line2, 1250, chrome);
+	const double w = shapeWidth(c, 600.0, chrome, std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
 	const double y = c.bottom() - h;
 	const double eEdge = c.part(0.0, 0.4), eCard = c.part(0.18, 0.6);
 	fillRect(c.p, QRectF(kLeft, y, edge, h * eEdge), c.accent, c.t.cornerRadius);
@@ -383,12 +410,12 @@ void accentEdge(Ctx &c)
 // 3. Split Name: two blocks stepping down; the name in colour, the role in dark.
 void splitBlocks(Ctx &c)
 {
-	const double padX = 36;
-	const QFont f1 = fitFont(c, c.t.display, 62, 40, c.x.line1, 1200);
-	const QFont f2 = fitFont(c, c.t.body, 30, 22, c.x.line2, 1200);
+	const double padX = c.pad(36);
+	const QFont f1 = fitFontFor(c, c.t.display, 62, 40, c.x.line1, 1200, 2 * padX);
+	const QFont f2 = fitFontFor(c, c.t.body, 30, 22, c.x.line2, 1200, 2 * padX + 0.25 * c.fitW);
 	const double h1 = 88, h2 = c.has(c.x.line2) ? 58 : 0;
-	const double w1 = std::max(380.0, textWidth(f1, c.x.line1) + 2 * padX);
-	const double w2 = std::max(300.0, textWidth(f2, c.x.line2) + 2 * padX);
+	const double w1 = shapeWidth(c, 380.0, 2 * padX, textWidth(f1, c.x.line1));
+	const double w2 = shapeWidth(c, 300.0, 2 * padX, textWidth(f2, c.x.line2), 0.75);
 	const double y1 = c.bottom() - h1 - h2;
 	const double e1 = c.part(0.0, 0.55), e2 = c.part(0.14, 0.55);
 	c.p.save();
@@ -429,13 +456,13 @@ void underline(Ctx &c)
 // 5. Box Pop: a rounded card with a tag chip across its top edge. It pops in.
 void popCard(Ctx &c)
 {
-	const double padX = 44;
+	const double padX = c.pad(44);
 	const bool two = c.has(c.x.line2);
-	const QFont f1 = fitFont(c, c.t.display, 58, 38, c.x.line1, 1200);
-	const QFont f2 = fitFont(c, c.t.body, 30, 22, c.x.line2, 1200);
+	const QFont f1 = fitFontFor(c, c.t.display, 58, 38, c.x.line1, 1200, 2 * padX);
+	const QFont f2 = fitFontFor(c, c.t.body, 30, 22, c.x.line2, 1200, 2 * padX);
 	const QFont ft = c.font(c.t.body, 22);
 	const double h = two ? 148 : 112;
-	const double w = std::max(520.0, 2 * padX + std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
+	const double w = shapeWidth(c, 520.0, 2 * padX, std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
 	const double y = c.bottom() - h;
 	fillPanel(c, QRectF(kLeft, y, w, h), c.t.cornerRadius);
 	const double e1 = c.part(0.18, 0.5), e2 = c.part(0.3, 0.5);
@@ -453,21 +480,21 @@ void popCard(Ctx &c)
 		const double tw = textWidth(ft, tag) + 22 * 2 + tag.size() * 2.4;
 		const double ey = c.partBack(0.1, 0.5);
 		fillRect(c.p, QRectF(kLeft + padX - 8, y - 17 + 8 * (1 - ey), tw, 34), c.accent, 8);
-		drawText(c.p, QRectF(kLeft + padX - 8, y - 17 + 8 * (1 - ey), tw, 34), tag, ft, QColor(17, 17, 16),
-			 Qt::AlignCenter, c.part(0.2, 0.4), 2.4);
+		drawText(c.p, QRectF(kLeft + padX - 8, y - 17 + 8 * (1 - ey), tw, 34), tag, ft, c.ink, Qt::AlignCenter,
+			 c.part(0.2, 0.4), 2.4);
 	}
 }
 
 // 6. Corner Tag: a slanted block with a tag label above its corner.
 void cornerTag(Ctx &c)
 {
-	const double padX = 52, skew = 26;
+	const double padX = c.pad(52), skew = 26;
 	const bool two = c.has(c.x.line2);
-	const QFont f1 = fitFont(c, c.t.display, 66, 40, c.x.line1, 1200);
-	const QFont f2 = fitFont(c, c.t.body, 30, 22, c.x.line2, 1200);
+	const QFont f1 = fitFontFor(c, c.t.display, 66, 40, c.x.line1, 1200, 2 * padX);
+	const QFont f2 = fitFontFor(c, c.t.body, 30, 22, c.x.line2, 1200, 2 * padX);
 	const QFont ft = c.font(c.t.display, 26);
 	const double h = two ? 138 : 104;
-	const double w = std::max(560.0, 2 * padX + std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
+	const double w = shapeWidth(c, 560.0, 2 * padX, std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
 	const double y = c.bottom() - h;
 	const double e = c.part(0.0, 0.6);
 	c.p.save();
@@ -486,7 +513,7 @@ void cornerTag(Ctx &c)
 		     << QPointF(kLeft + 26 + tw, y) << QPointF(kLeft + 26, y);
 		c.p.setBrush(c.accent);
 		c.p.drawPolygon(chip);
-		drawText(c.p, QRectF(kLeft + skew + 8, y - 44, tw, 44), tag, ft, QColor(17, 17, 16), Qt::AlignCenter,
+		drawText(c.p, QRectF(kLeft + skew + 8, y - 44, tw, 44), tag, ft, c.ink, Qt::AlignCenter,
 			 c.part(0.3, 0.4), 3.0);
 	}
 	const double e1 = c.part(0.28, 0.5), e2 = c.part(0.4, 0.5);
@@ -506,12 +533,12 @@ void cornerTag(Ctx &c)
 // 7. Stacked: the name on a light panel, the role on a coloured one tucked under it.
 void stackedPanels(Ctx &c)
 {
-	const double padX = 40;
-	const QFont f1 = fitFont(c, c.t.display, 64, 40, c.x.line1, 1200);
-	const QFont f2 = fitFont(c, c.t.body, 30, 22, c.x.line2, 1200);
+	const double padX = c.pad(40);
+	const QFont f1 = fitFontFor(c, c.t.display, 64, 40, c.x.line1, 1200, 2 * padX);
+	const QFont f2 = fitFontFor(c, c.t.body, 30, 22, c.x.line2, 1200, 2 * padX + 0.25 * c.fitW);
 	const double h1 = 92, h2 = c.has(c.x.line2) ? 56 : 0;
-	const double w1 = std::max(420.0, textWidth(f1, c.x.line1) + 2 * padX);
-	const double w2 = std::max(300.0, textWidth(f2, c.x.line2) + 2 * padX);
+	const double w1 = shapeWidth(c, 420.0, 2 * padX, textWidth(f1, c.x.line1));
+	const double w2 = shapeWidth(c, 300.0, 2 * padX, textWidth(f2, c.x.line2), 0.75);
 	const double y1 = c.bottom() - h1 - h2;
 	const double e1 = c.part(0.0, 0.55), e2 = c.part(0.16, 0.55);
 	fillPanel(c, QRectF(kLeft, y1 + 22 * (1 - e1), w1, h1));
@@ -606,7 +633,7 @@ void announcement(Ctx &c)
 		fillRect(c.p, QRectF(kLeft, y, tagW * et, h), c.accent);
 		c.p.save();
 		c.p.setClipRect(QRectF(kLeft, y, tagW * et, h));
-		drawText(c.p, QRectF(kLeft, y, tagW, h), tag, ft, QColor(17, 17, 16), Qt::AlignCenter, 1.0, 3.0);
+		drawText(c.p, QRectF(kLeft, y, tagW, h), tag, ft, c.ink, Qt::AlignCenter, 1.0, 3.0);
 		c.p.restore();
 	}
 	const QFont f1 = fitFont(c, c.t.display, 58, 36, c.x.line1, w - tagW - 2 * padX);
@@ -643,8 +670,7 @@ void breaking(Ctx &c)
 		if (flash > 0.0 && c.in > 0.25)
 			fillRect(c.p, QRectF(kLeft, y, tagW, h), QColor(255, 255, 255, int(160 * flash)));
 	}
-	drawText(c.p, QRectF(kLeft, y, tagW, h), tag, ft, QColor(255, 255, 255), Qt::AlignCenter, c.part(0.2, 0.4),
-		 3.0);
+	drawText(c.p, QRectF(kLeft, y, tagW, h), tag, ft, c.ink, Qt::AlignCenter, c.part(0.2, 0.4), 3.0);
 	const QFont f1 = fitFont(c, c.t.display, 56, 34, c.x.line1, w - tagW - 2 * padX);
 	const QFont f2 = fitFont(c, c.t.body, 28, 20, c.x.line2, w - tagW - 2 * padX);
 	const double e1 = c.part(0.3, 0.5), e2 = c.part(0.4, 0.5);
@@ -678,8 +704,7 @@ void newsBar(Ctx &c)
 	c.p.setPen(Qt::NoPen);
 	c.p.setBrush(QColor(255, 255, 255));
 	c.p.drawEllipse(QPointF(kLeft + 38, y + h / 2), 8, 8);
-	drawText(c.p, QRectF(kLeft + 56, y, tagW, h), tag, ft, QColor(255, 255, 255), Qt::AlignLeft | Qt::AlignVCenter,
-		 1.0, 3.0);
+	drawText(c.p, QRectF(kLeft + 56, y, tagW, h), tag, ft, c.ink, Qt::AlignLeft | Qt::AlignVCenter, 1.0, 3.0);
 	c.p.restore();
 	const QFont f1 = fitFont(c, c.t.display, 54, 34, c.x.line1, w - tagW - 2 * padX);
 	const QFont f2 = fitFont(c, c.t.body, 28, 20, c.x.line2, w - tagW - 2 * padX);
@@ -788,7 +813,7 @@ void liveBadge(Ctx &c)
 	c.p.setClipRect(block);
 	fillRect(c.p, QRectF(kLeft, top, bw, h), c.accent, 12);
 	drawLiveDot(c, QPointF(kLeft + padL + 10, top + h / 2), 10, QColor(255, 255, 255), c.part(0.15, 0.4));
-	drawText(c.p, QRectF(kLeft + padL + dotArea, top, ww + 10, h), word, fw, QColor(255, 255, 255),
+	drawText(c.p, QRectF(kLeft + padL + dotArea, top, ww + 10, h), word, fw, c.ink,
 		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.2, 0.4), 3.0);
 	c.p.restore();
 	if (c.has(c.x.line2)) {
@@ -824,8 +849,8 @@ void onAir(Ctx &c)
 	c.p.setClipRect(QRectF(kLeft, y, pw, h));
 	fillRect(c.p, QRectF(kLeft, y, blockW, h), c.accent);
 	drawLiveDot(c, QPointF(kLeft + 46, y + h / 2), 11, QColor(255, 255, 255), c.part(0.2, 0.4));
-	drawText(c.p, QRectF(kLeft + 74, y, blockW - 74, h), word, fw, QColor(255, 255, 255),
-		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.25, 0.4), 3.0);
+	drawText(c.p, QRectF(kLeft + 74, y, blockW - 74, h), word, fw, c.ink, Qt::AlignLeft | Qt::AlignVCenter,
+		 c.part(0.25, 0.4), 3.0);
 	const double e1 = c.part(0.3, 0.5), e2 = c.part(0.42, 0.5);
 	const double tx = kLeft + blockW + padX;
 	if (two) {
@@ -1052,7 +1077,7 @@ void newsReport(Ctx &c)
 	const QRectF block(kLeft + w - blockW, y, blockW, h);
 	fillRect(c.p, block, c.accent);
 	drawLiveDot(c, QPointF(block.left() + 44, block.center().y()), 10, QColor(255, 255, 255), c.part(0.5, 0.4));
-	drawText(c.p, QRectF(block.left() + 70, y, blockW - 70, h), QStringLiteral("LIVE"), fw, QColor(255, 255, 255),
+	drawText(c.p, QRectF(block.left() + 70, y, blockW - 70, h), QStringLiteral("LIVE"), fw, c.ink,
 		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.5, 0.4), 2.0);
 	c.p.restore();
 }
@@ -1079,7 +1104,7 @@ void newsDesk(Ctx &c)
 	fillRect(c.p, QRectF(kLeft + blockW, y, w - blockW, h), c.panel);
 	fillRect(c.p, QRectF(kLeft, y, blockW, totalH), c.accent.darker(125));
 	drawLiveDot(c, QPointF(kLeft + 58, y + h / 2), 12, QColor(255, 255, 255), c.part(0.2, 0.4));
-	drawText(c.p, QRectF(kLeft + 88, y, blockW - 88, h), QStringLiteral("LIVE"), fw, QColor(255, 255, 255),
+	drawText(c.p, QRectF(kLeft + 88, y, blockW - 88, h), QStringLiteral("LIVE"), fw, c.ink,
 		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.25, 0.4), 2.0);
 	const double e1 = c.part(0.3, 0.5);
 	drawText(c.p, QRectF(kLeft + blockW + padX + 24 * (1 - e1), y, w, h), c.x.line1.toUpper(), f1, c.text,
@@ -1155,14 +1180,15 @@ void drawHeart(QPainter &p, const QPointF &centre, double size, const QColor &co
 // 31. Guest Minister: an orange tab over a blue bar (logo and name), a white tab under it.
 void guestMinister(Ctx &c)
 {
-	const double h = 100, padX = 30, tabH = 42, tab2H = 38;
+	const double h = 100, padX = c.pad(30), tabH = 42, tab2H = 38;
 	const QImage logo = logoImage(c.x.logoPath);
 	const double logoW = logo.isNull() ? 0.0 : h - 24;
 	const QString name = c.x.line1.toUpper();
-	const QFont f1 = fitFont(c, c.t.display, 66, 38, name, 1150);
+	const double chrome = 2 * padX + (logo.isNull() ? 0.0 : logoW + 26);
+	const QFont f1 = fitFontFor(c, c.t.display, 66, 38, name, 1150, chrome);
 	const QFont ft = c.font(c.t.display, 28);
 	const QFont fb = c.font(c.t.display, 26);
-	const double w = std::max(520.0, padX + (logo.isNull() ? 0.0 : logoW + 26) + textWidth(f1, name) + padX);
+	const double w = shapeWidth(c, 520.0, chrome, textWidth(f1, name));
 	const bool hasBottom = c.has(c.x.line2);
 	const double y = c.bottom() - h - (hasBottom ? tab2H : 0.0);
 	const double e = c.part(0.0, 0.6);
@@ -1428,7 +1454,7 @@ QStringList twoLines(const QString &s)
 	const QStringList words = s.simplified().split(' ', Qt::SkipEmptyParts);
 	if (words.size() <= 1)
 		return words;
-	const int half = (words.size() + 1) / 2;
+	const int half = int(words.size() + 1) / 2;
 	return {words.mid(0, half).join(' '), words.mid(half).join(' ')};
 }
 
@@ -1468,10 +1494,11 @@ QString clockText()
 // Modern Pill: an orange name pill with a cream role tab tucked under it.
 void modernPill(Ctx &c)
 {
-	const QFont f1 = fitFont(c, c.t.display, 58, 34, c.x.line1, 1100);
+	const double padX = c.pad(40);
+	const QFont f1 = fitFontFor(c, c.t.display, 58, 34, c.x.line1, 1100, 2 * padX);
 	const QFont f2 = c.font(c.t.body, 30);
 	const double h = 88, tabH = 50;
-	const double w = textWidth(f1, c.x.line1) + 2 * 40;
+	const double w = shapeWidth(c, 0.0, 2 * padX, textWidth(f1, c.x.line1));
 	const bool two = c.has(c.x.line2);
 	const double y = c.bottom() - h - (two ? tabH + 6 : 0.0);
 	const double e = c.part(0.0, 0.55);
@@ -1481,7 +1508,7 @@ void modernPill(Ctx &c)
 	c.p.translate(-(kLeft + w * 0.5), 0);
 	solidShape(c, QRectF(kLeft, y, w, h), c.panel, 24);
 	c.p.restore();
-	drawText(c.p, QRectF(kLeft + 40, y, w, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
+	drawText(c.p, QRectF(kLeft + padX, y, w, h), c.x.line1, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
 		 c.part(0.2, 0.5));
 	if (two) {
 		const double tw = textWidth(f2, c.x.line2) + 2 * 28;
@@ -1534,10 +1561,10 @@ void modernBadge(Ctx &c)
 // Modern Card: a big cream card with an orange block offset behind it.
 void modernCard(Ctx &c)
 {
-	const double pad = 56, h = c.has(c.x.line2) ? 200 : 150;
-	const QFont f1 = fitFont(c, c.t.display, 68, 38, c.x.line1, 1000);
-	const QFont f2 = fitFont(c, c.t.body, 38, 24, c.x.line2, 1000);
-	const double w = std::max(620.0, 2 * pad + std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
+	const double pad = c.pad(56), h = c.has(c.x.line2) ? 200 : 150;
+	const QFont f1 = fitFontFor(c, c.t.display, 68, 38, c.x.line1, 1000, 2 * pad);
+	const QFont f2 = fitFontFor(c, c.t.body, 38, 24, c.x.line2, 1000, 2 * pad);
+	const double w = shapeWidth(c, 620.0, 2 * pad, std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2)));
 	const double y = c.bottom() - h - 24;
 	const double e = c.part(0.0, 0.6);
 	const QRectF card(kLeft, y, w, h);
@@ -1568,7 +1595,7 @@ void modernStack(Ctx &c)
 	const QFont f1 = fitFont(c, c.t.display, 104, 48, longest, 760);
 	const double lh = QFontMetricsF(f1).height() * 0.86;
 	const QFont f2 = c.font(c.t.body, 28);
-	const double blockH = lh * std::max<int>(1, lines.size());
+	const double blockH = lh * std::max<int>(1, int(lines.size()));
 	const double tagH = 44, tagRoom = c.has(c.x.line2) ? tagH + 10 : 0.0;
 	const double top = c.bottom() - blockH - tagRoom;
 	for (int i = 0; i < lines.size(); ++i) {
@@ -1885,9 +1912,13 @@ void logoSweep(Ctx &c)
 			const double bw = box.width() * 0.55;
 			const double x = -bw + (box.width() + 2 * bw) * t;
 			QLinearGradient g(x, 0, x + bw, 0);
-			g.setColorAt(0.0, QColor(255, 255, 255, 0));
-			g.setColorAt(0.5, QColor(255, 255, 255, 230));
-			g.setColorAt(1.0, QColor(255, 255, 255, 0));
+			// Silver edges around a bright core: the core shows on dark and coloured logos, the silver
+			// edges show on white ones, so the sweep is visible whatever the logo looks like.
+			g.setColorAt(0.0, QColor(150, 158, 170, 0));
+			g.setColorAt(0.3, QColor(125, 133, 148, 215));
+			g.setColorAt(0.5, QColor(255, 255, 255, 240));
+			g.setColorAt(0.7, QColor(125, 133, 148, 215));
+			g.setColorAt(1.0, QColor(150, 158, 170, 0));
 			q.setPen(Qt::NoPen);
 			q.setBrush(g);
 			QPolygonF band;
@@ -1933,6 +1964,234 @@ void logoSpin(Ctx &c)
 	c.p.translate(-box.center());
 	c.p.drawImage(box, layer);
 	c.p.restore();
+}
+
+// ---- More logo animations: modern broadcast "bug" motions, all quiet and repeating ---------------------------
+
+enum class LogoFx { Pulse, Float, Flip, Ripple, Hop, Reveal, Orbit, Water };
+
+// The logo drawn once into a square picture, so a motion can move it as one piece.
+QImage logoLayer(const Ctx &c, const QImage &logo, const QRectF &box)
+{
+	const int size = int(std::ceil(box.width() * c.p.transform().m11()));
+	QImage layer(std::max(size, 1), std::max(size, 1), QImage::Format_ARGB32_Premultiplied);
+	layer.fill(Qt::transparent);
+	{
+		QPainter q(&layer);
+		q.setRenderHint(QPainter::Antialiasing, true);
+		q.setRenderHint(QPainter::SmoothPixmapTransform, true);
+		q.scale(layer.width() / box.width(), layer.height() / box.height());
+		drawLogoOrMarkOn(q, c, logo, QRectF(0, 0, box.width(), box.height()), c.accent, c.ink, 1.0);
+	}
+	return layer;
+}
+
+// The logo's own shape pushed about like a reflection in water: rows slide sideways and columns up and down
+// in travelling waves. `amount` is 0 (still) to 1 (the strongest the effect gets).
+QImage waterWarp(const QImage &src, double amount, double phase)
+{
+	const int w = src.width(), h = src.height();
+	if (w < 4 || h < 4)
+		return src;
+	QImage out(w, h, QImage::Format_ARGB32_Premultiplied);
+	out.fill(Qt::transparent);
+	QImage mid(w, h, QImage::Format_ARGB32_Premultiplied);
+	mid.fill(Qt::transparent);
+	const double ampX = amount * w * 0.02, ampY = amount * h * 0.012;
+	for (int y = 0; y < h; ++y) {
+		const double dx = ampX * std::sin(2.0 * kPi * (y * 2.4 / h) - phase);
+		const int shift = int(std::lround(dx));
+		const QRgb *from = reinterpret_cast<const QRgb *>(src.constScanLine(y));
+		QRgb *to = reinterpret_cast<QRgb *>(mid.scanLine(y));
+		for (int x = 0; x < w; ++x) {
+			const int sx = x - shift;
+			if (sx >= 0 && sx < w)
+				to[x] = from[sx];
+		}
+	}
+	for (int x = 0; x < w; ++x) {
+		const double dy = ampY * std::sin(2.0 * kPi * (x * 1.8 / w) - phase * 0.8 + 1.2);
+		const int shift = int(std::lround(dy));
+		for (int y = 0; y < h; ++y) {
+			const int sy = y - shift;
+			if (sy >= 0 && sy < h)
+				reinterpret_cast<QRgb *>(out.scanLine(y))[x] =
+					reinterpret_cast<const QRgb *>(mid.constScanLine(sy))[x];
+		}
+	}
+	return out;
+}
+
+void softShadow(Ctx &c, const QPointF &centre, double width, double alpha)
+{
+	c.p.setPen(Qt::NoPen);
+	QRadialGradient g(centre, width / 2.0);
+	g.setColorAt(0.0, QColor(0, 0, 0, int(alpha)));
+	g.setColorAt(1.0, QColor(0, 0, 0, 0));
+	c.p.setBrush(g);
+	c.p.drawEllipse(QRectF(centre.x() - width / 2.0, centre.y() - width * 0.09, width, width * 0.18));
+}
+
+void logoFx(Ctx &c, LogoFx fx)
+{
+	const QImage logo = logoImage(c.x.logoPath);
+	const QRectF box = logoBox(c);
+	const QImage layer = logoLayer(c, logo, box);
+	const double ph = logoPhase(c);
+	const QPointF mid = box.center();
+	c.p.save();
+	c.p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+	c.p.setOpacity(c.p.opacity() * c.part(0.0, 0.6));
+	switch (fx) {
+	case LogoFx::Pulse: { // a soft glow swells behind the logo, which grows a touch with it
+		const double bump = ph < 0.5 ? std::sin(ph / 0.5 * kPi) : 0.0;
+		const double r = box.width() * 0.9;
+		QColor halo = c.accent;
+		QRadialGradient g(mid, r);
+		halo.setAlpha(int(115 * bump));
+		g.setColorAt(0.4, halo);
+		halo.setAlpha(0);
+		g.setColorAt(1.0, halo);
+		c.p.setPen(Qt::NoPen);
+		c.p.setBrush(g);
+		c.p.drawEllipse(mid, r, r);
+		c.p.translate(mid);
+		c.p.scale(1.0 + 0.08 * bump, 1.0 + 0.08 * bump);
+		c.p.translate(-mid);
+		c.p.drawImage(box, layer);
+		break;
+	}
+	case LogoFx::Float: { // a slow drift up and down over a soft shadow
+		const double lift = std::sin(ph * 2.0 * kPi);
+		softShadow(c, QPointF(mid.x(), box.bottom() + 22), box.width() * (0.62 - 0.1 * lift), 90 - 30 * lift);
+		c.p.drawImage(box.translated(0, -10 * lift), layer);
+		break;
+	}
+	case LogoFx::Flip: { // turns over on its horizontal axis, shading as it goes edge-on
+		const double angle = ph < 0.45 ? easeInOut(ph / 0.45) * 2.0 * kPi : 0.0;
+		const double sy = std::max(0.02, std::abs(std::cos(angle)));
+		QImage shaded = layer;
+		{
+			QPainter q(&shaded);
+			q.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+			q.fillRect(shaded.rect(), QColor(0, 0, 0, int(150 * (1.0 - sy))));
+		}
+		c.p.translate(mid);
+		c.p.scale(1.0 - 0.05 * (1.0 - sy), sy);
+		c.p.translate(-mid);
+		c.p.drawImage(box, shaded);
+		break;
+	}
+	case LogoFx::Ripple: { // two rings spread out from the logo and fade
+		c.p.drawImage(box, layer);
+		for (int k = 0; k < 2; ++k) {
+			const double t = ph / 0.75 - 0.22 * k;
+			if (t <= 0.0 || t >= 1.0)
+				continue;
+			const double r = box.width() * (0.5 + 0.5 * easeInOut(t));
+			QColor ring = c.accent;
+			ring.setAlpha(int(210 * (1.0 - t)));
+			c.p.setBrush(Qt::NoBrush);
+			c.p.setPen(QPen(ring, 6.0 * (1.0 - t) + 1.5));
+			c.p.drawEllipse(mid, r, r);
+		}
+		break;
+	}
+	case LogoFx::Hop: { // two small hops that settle, with a touch of squash on landing
+		const double u = std::clamp(ph / 0.4, 0.0, 1.0);
+		const double arc = ph < 0.4 ? std::abs(std::sin(u * 2.0 * kPi)) * (1.0 - 0.55 * u) : 0.0;
+		const double squash = ph < 0.4 ? 0.07 * (1.0 - arc) * (1.0 - u) : 0.0;
+		softShadow(c, QPointF(mid.x(), box.bottom() + 22), box.width() * (0.7 - 0.25 * arc), 90 - 50 * arc);
+		c.p.translate(mid.x(), box.bottom());
+		c.p.scale(1.0 + squash * 0.8, 1.0 - squash);
+		c.p.translate(-mid.x(), -box.bottom());
+		c.p.drawImage(box.translated(0, -34 * arc), layer);
+		break;
+	}
+	case LogoFx::Reveal: { // wipes away to the left behind a thin line, then wipes back in
+		double r = 1.0;
+		if (ph < 0.18)
+			r = 1.0 - easeInOut(ph / 0.18);
+		else if (ph < 0.36)
+			r = easeInOut((ph - 0.18) / 0.18);
+		const double edge = box.left() + box.width() * r;
+		c.p.save();
+		c.p.setClipRect(QRectF(box.left() - 4, box.top() - 4, box.width() * r + 4, box.height() + 8));
+		c.p.drawImage(box, layer);
+		c.p.restore();
+		if (r > 0.01 && r < 0.99)
+			fillRect(c.p, QRectF(edge - 1.5, box.top(), 3, box.height()), c.accent);
+		break;
+	}
+	case LogoFx::Water: { // the logo ripples like water while a silver sheen drifts across it
+		const double u = ph < 0.6 ? ph / 0.6 : 0.0;
+		const double env = std::sin(u * kPi); // swells in, settles out
+		QImage rippled = waterWarp(layer, env, u * 4.0 * kPi);
+		if (env > 0.01) {
+			QPainter q(&rippled);
+			q.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+			const double w = rippled.width(), h = rippled.height();
+			const double x = -w * 0.5 + w * 2.0 * u;
+			QLinearGradient g(x, 0, x + w * 0.5, h * 0.3);
+			g.setColorAt(0.0, QColor(150, 158, 170, 0));
+			g.setColorAt(0.3, QColor(150, 158, 170, int(150 * env)));
+			g.setColorAt(0.5, QColor(255, 255, 255, int(230 * env)));
+			g.setColorAt(0.7, QColor(150, 158, 170, int(150 * env)));
+			g.setColorAt(1.0, QColor(150, 158, 170, 0));
+			q.fillRect(rippled.rect(), g);
+		}
+		c.p.drawImage(box, rippled);
+		break;
+	}
+	case LogoFx::Orbit: { // a short arc circles the logo
+		c.p.drawImage(box, layer);
+		const double r = box.width() * 0.62;
+		const QRectF ring(mid.x() - r, mid.y() - r, 2 * r, 2 * r);
+		QColor faint = c.accent;
+		faint.setAlpha(60);
+		c.p.setBrush(Qt::NoBrush);
+		c.p.setPen(QPen(faint, 3.0));
+		c.p.drawEllipse(ring);
+		c.p.setPen(QPen(c.accent, 6.0, Qt::SolidLine, Qt::RoundCap));
+		c.p.drawArc(ring, int(-ph * 360.0 * 16.0), 100 * 16);
+		break;
+	}
+	}
+	c.p.restore();
+}
+
+void logoPulse(Ctx &c)
+{
+	logoFx(c, LogoFx::Pulse);
+}
+void logoFloat(Ctx &c)
+{
+	logoFx(c, LogoFx::Float);
+}
+void logoFlip(Ctx &c)
+{
+	logoFx(c, LogoFx::Flip);
+}
+void logoRipple(Ctx &c)
+{
+	logoFx(c, LogoFx::Ripple);
+}
+void logoHop(Ctx &c)
+{
+	logoFx(c, LogoFx::Hop);
+}
+void logoReveal(Ctx &c)
+{
+	logoFx(c, LogoFx::Reveal);
+}
+void logoOrbit(Ctx &c)
+{
+	logoFx(c, LogoFx::Orbit);
+}
+
+void logoWater(Ctx &c)
+{
+	logoFx(c, LogoFx::Water);
 }
 
 // ---- Sermon notes -------------------------------------------------------------------------------------
@@ -2146,7 +2405,7 @@ void notesKey(Ctx &c)
 void notesColumns(Ctx &c)
 {
 	const auto points = notePoints(c);
-	const int n = std::max<int>(1, points.size());
+	const int n = std::max<int>(1, int(points.size()));
 	const double gap = 0, pad = 36, colW = n <= 2 ? 460 : n == 3 ? 400 : 340;
 	const double w = 2 * pad + n * colW;
 	const QFont fnum = c.font(c.t.display, 64);
@@ -2238,6 +2497,14 @@ const std::vector<StyleInfo> &styles()
 		{"angular-logo", angularLogo},
 		{"logo-sweep", logoSweep},
 		{"logo-spin", logoSpin},
+		{"logo-pulse", logoPulse},
+		{"logo-float", logoFloat},
+		{"logo-flip", logoFlip},
+		{"logo-ripple", logoRipple},
+		{"logo-hop", logoHop},
+		{"logo-reveal", logoReveal},
+		{"logo-orbit", logoOrbit},
+		{"logo-water", logoWater},
 		{"notes-card", notesCard},
 		{"notes-points", notesPoints},
 		{"notes-key", notesKey},
@@ -2292,7 +2559,7 @@ double regionDesignHeight(const TitleTemplate &tpl, int canvasWidth, int canvasH
 		return kDesignWidth * double(canvasHeight) / double(std::max(canvasWidth, 1));
 	if (tpl.id == "live-badge")
 		return 200.0;
-	if (tpl.id == "logo-sweep" || tpl.id == "logo-spin")
+	if (tpl.id.rfind("logo-", 0) == 0)
 		return 300.0;
 	if (tpl.id.rfind("notes-", 0) == 0)
 		return 760.0;
@@ -2328,12 +2595,13 @@ Extent measureExtent(const FontSet &fonts, const RenderRequest &request)
 	for (const auto &row : request.text.rows)
 		rowsKey += row.first + QLatin1Char('=') + row.second + QLatin1Char(';');
 	const QString key =
-		QStringLiteral("%1|%2|%3|%4|%5|%6|%7|%8|%9")
+		QStringLiteral("%1|%2|%3|%4|%5|%6|%7|%8|%9|%10|%11")
 			.arg(QString::fromStdString(request.tpl.id),
 			     request.text.line1 + request.text.note + request.text.logoPath + rowsKey,
 			     request.text.line2, request.text.tag, QString::number(int(request.tpl.display)),
 			     QString::number(int(request.tpl.body)), QString::number(request.tpl.cornerRadius),
-			     QString::number(request.canvasWidth), QString::number(request.canvasHeight));
+			     QString::number(request.canvasWidth), QString::number(request.canvasHeight),
+			     QString::number(request.fit), QString::number(request.fitWidth));
 	thread_local QHash<QString, Extent> cache;
 	const auto found = cache.constFind(key);
 	if (found != cache.constEnd())
@@ -2423,6 +2691,10 @@ RenderedTitle renderImpl(const FontSet &fonts, const RenderRequest &request, boo
 		ctx.shape2 = toQ(request.tpl.palette.shape2);
 		ctx.shape3 = toQ(request.tpl.palette.shape3);
 		ctx.ink = toQ(request.tpl.palette.ink);
+		if (supportsFit(request.tpl)) {
+			ctx.fit = std::clamp(request.fit, 0, 2);
+			ctx.fitW = std::clamp(request.fitWidth, kMinFitWidth, kMaxFitWidth);
+		}
 
 		painter.save();
 		const double size = std::clamp(request.scale, 0.5, 1.5);

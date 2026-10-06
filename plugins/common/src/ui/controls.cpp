@@ -236,6 +236,128 @@ void Segmented::leaveEvent(QEvent *)
 	update();
 }
 
+// ----- RowButton -----
+
+RowButton::RowButton(QWidget *parent) : QWidget(parent)
+{
+	setFocusPolicy(Qt::TabFocus);
+	setMouseTracking(true);
+	setCursor(Qt::PointingHandCursor);
+	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+}
+
+void RowButton::setTitle(const QString &title)
+{
+	title_ = title;
+	setAccessibleName(title_);
+	update();
+}
+
+void RowButton::setValue(const QString &value)
+{
+	value_ = value;
+	update();
+}
+
+void RowButton::setOpen(bool open)
+{
+	open_ = open;
+	update();
+}
+
+QSize RowButton::sizeHint() const
+{
+	return {200, size::controlHeight};
+}
+
+QSize RowButton::minimumSizeHint() const
+{
+	return {120, size::controlHeight};
+}
+
+void RowButton::paintEvent(QPaintEvent *)
+{
+	QPainter p(this);
+	p.setRenderHint(QPainter::Antialiasing);
+	const QRectF box = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+	const qreal radius = size::radius + 1;
+	p.setPen(QPen(QColor(255, 255, 255, 12), 1));
+	p.setBrush(pressed_ ? color::control : hovered_ ? QColor(0x14, 0x13, 0x12) : color::recess);
+	p.drawRoundedRect(box, radius, radius);
+
+	const int pad = 12;
+	const QRectF chevron(box.right() - pad - 10, box.center().y() - 5, 10, 10);
+	QRectF text = box.adjusted(pad, 0, -(pad + 18), 0);
+	p.setFont(uiFont(12, 600));
+	p.setPen(color::textTertiary);
+	const int titleW = QFontMetrics(uiFont(12, 600)).horizontalAdvance(title_);
+	p.drawText(text, Qt::AlignLeft | Qt::AlignVCenter, title_);
+	if (!value_.isEmpty()) {
+		// The value gets what is left of the row and is cut with an ellipsis rather than overlapping.
+		QRectF valueBox = text.adjusted(titleW + 10, 0, 0, 0);
+		p.setPen(color::cream);
+		const QString shown =
+			QFontMetrics(uiFont(12, 600)).elidedText(value_, Qt::ElideRight, int(valueBox.width()));
+		p.drawText(valueBox, Qt::AlignRight | Qt::AlignVCenter, shown);
+	}
+	p.setPen(QPen(color::textSecondary, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+	QPainterPath path;
+	if (open_) { // down
+		path.moveTo(chevron.left() + 1, chevron.center().y() - 2);
+		path.lineTo(chevron.center().x(), chevron.center().y() + 2.5);
+		path.lineTo(chevron.right() - 1, chevron.center().y() - 2);
+	} else { // right
+		path.moveTo(chevron.center().x() - 2, chevron.top() + 1);
+		path.lineTo(chevron.center().x() + 2.5, chevron.center().y());
+		path.lineTo(chevron.center().x() - 2, chevron.bottom() - 1);
+	}
+	p.setBrush(Qt::NoBrush);
+	p.drawPath(path);
+
+	if (hasFocus()) {
+		p.setPen(QPen(color::setup, 2));
+		p.drawRoundedRect(QRectF(rect()).adjusted(1, 1, -1, -1), radius, radius);
+	}
+}
+
+void RowButton::mousePressEvent(QMouseEvent *event)
+{
+	if (event->button() == Qt::LeftButton) {
+		pressed_ = true;
+		update();
+	}
+}
+
+void RowButton::mouseReleaseEvent(QMouseEvent *event)
+{
+	const bool inside = rect().contains(event->pos());
+	const bool was = pressed_;
+	pressed_ = false;
+	update();
+	if (was && inside)
+		emit clicked();
+}
+
+void RowButton::keyPressEvent(QKeyEvent *event)
+{
+	if (event->key() == Qt::Key_Space || event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
+		emit clicked();
+	else
+		QWidget::keyPressEvent(event);
+}
+
+void RowButton::enterEvent(QEnterEvent *)
+{
+	hovered_ = true;
+	update();
+}
+
+void RowButton::leaveEvent(QEvent *)
+{
+	hovered_ = false;
+	update();
+}
+
 // ----- Switch -----
 
 Switch::Switch(QWidget *parent) : QAbstractButton(parent)

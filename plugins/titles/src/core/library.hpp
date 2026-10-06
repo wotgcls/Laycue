@@ -46,7 +46,12 @@ struct QueueItem {
 struct Placement {
 	int align = 0;     // Align: 0 left, 1 center, 2 right
 	int percent = 100; // size, kMinSizePercent..kMaxSizePercent
-	bool operator==(const Placement &o) const { return align == o.align && percent == o.percent; }
+	int fit = 0;       // shape width for name templates: 0 the template's own, 1 hug the text, 2 manual
+	int width = 700;   // the manual width in design pixels, kMinFitWidth..kMaxFitWidth
+	bool operator==(const Placement &o) const
+	{
+		return align == o.align && percent == o.percent && fit == o.fit && (fit != 2 || width == o.width);
+	}
 };
 
 struct Library {
@@ -56,10 +61,17 @@ struct Library {
 	TitleContent draft;                 // what is in the text boxes
 	bool useBrand = false;              // paint every title's accent in the operator's brand colour
 	Rgba brand{0xFF, 0xB3, 0x1A, 255};
+	int speed = 2;                               // transition speed step, 0 slowest .. kSpeedSteps-1 fastest
 	int holdOverride = -1;                       // seconds on air before hiding by itself; -1 = the template's own
 	std::map<std::string, Placement> placements; // by style id; a style not listed uses the default
 	std::string targetSource;                    // name of the "Laycue Title" source the panel controls
 };
+
+// How fast titles come and go. A small range on purpose: lower thirds look wrong when they crawl or snap.
+constexpr int kSpeedSteps = 5;
+constexpr int kDefaultSpeed = 2;
+// The multiplier on a template's own arrival and exit times for a speed step (out of range is clamped).
+double transitionScale(int step);
 
 constexpr size_t kMaxQueue = 50;
 constexpr size_t kMaxCustoms = 40;

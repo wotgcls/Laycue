@@ -41,6 +41,8 @@ struct RenderRequest {
 	Rgba accentOverride;
 	int align = 0;      // Align: where the title sits across the picture (titles that do not span it)
 	double scale = 1.0; // size, 0.5 to 1.5
+	int fit = 0;        // shape width for name templates: 0 the template's own, 1 hug the text, 2 manual
+	int fitWidth = 700; // the manual width, in design pixels
 };
 
 struct RenderedTitle {

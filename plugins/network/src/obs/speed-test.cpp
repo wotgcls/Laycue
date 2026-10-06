@@ -3,6 +3,10 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QRandomGenerator>
+#include <QSslSocket>
+
+#include <obs-module.h>
+#include <plugin-support.h>
 
 #include <algorithm>
 
@@ -31,6 +35,15 @@ void SpeedTest::start(const QUrl &server, int seconds, int connections)
 		return;
 	if (!server.isValid() || server.scheme().isEmpty()) {
 		emit failed(Failure::BadAddress);
+		return;
+	}
+	detail_.clear();
+	// A secure address needs the TLS part of Qt, which not every OBS install carries. Say so plainly
+	// instead of failing three times with a generic message.
+	if (server.scheme().toLower() == QLatin1String("https") && !QSslSocket::supportsSsl()) {
+		detail_ = QStringLiteral("no TLS backend");
+		obs_log(LOG_WARNING, "Speed test: this OBS cannot make https connections (no TLS backend)");
+		emit failed(Failure::NoSecure);
 		return;
 	}
 	server_ = server;
@@ -98,8 +111,11 @@ void SpeedTest::measureLatency()
 			return;
 		if (reply->error() == QNetworkReply::NoError || reply->error() >= QNetworkReply::ContentAccessDenied)
 			rtts_.push_back(double(latencyClock_.nsecsElapsed()) / 1.0e6);
-		else
+		else {
 			++failedRequests_;
+			detail_ = reply->errorString();
+			obs_log(LOG_WARNING, "Speed test: request failed: %s", detail_.toUtf8().constData());
+		}
 		// Nothing answered at all in the first requests: no point going on.
 		if (failedRequests_ >= 3 && rtts_.empty()) {
 			fail(Failure::Unreachable);
@@ -151,6 +167,7 @@ void SpeedTest::launchUpload()
 				launchUpload(); // keep the pipe full until time is up
 		} else {
 			++failedRequests_;
+			detail_ = reply->errorString();
 			// An upload that was cut short still sent bytes; the sampler already counted them via progress.
 		}
 	});

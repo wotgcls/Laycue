@@ -90,9 +90,12 @@ bool applyToSource(const std::string &sourceName, const Library &lib, const std:
 	obs_data_set_bool(settings, key::accentOn, lib.useBrand);
 	obs_data_set_int(settings, key::accent, toObsColour(lib.brand));
 	obs_data_set_int(settings, key::hold, lib.holdOverride);
+	obs_data_set_int(settings, key::speed, lib.speed);
 	const Placement placement = placementFor(lib, styleId);
 	obs_data_set_int(settings, key::align, placement.align);
 	obs_data_set_int(settings, key::sizePercent, placement.percent);
+	obs_data_set_int(settings, key::fit, placement.fit);
+	obs_data_set_int(settings, key::fitWidth, placement.width);
 
 	OBSDataAutoRelease custom = obs_data_create();
 	if (isCustomId(styleId)) {
