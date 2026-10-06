@@ -34,6 +34,9 @@ TitleStatus statusOf(const std::string &sourceName);
 // source's name, or "" with `error` set.
 std::string addToCurrentScene(const std::string &preferredName, std::string &error);
 
+// Makes a brand-new title layer ("Laycue Title 2", ...) and puts it in the scene that is live now.
+std::string addNewLayerToCurrentScene(std::string &error);
+
 // Puts the source in every scene that doesn't have it yet. Returns how many scenes got it.
 int addToAllScenes(const std::string &sourceName);
 

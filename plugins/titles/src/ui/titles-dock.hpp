@@ -88,6 +88,10 @@ private:
 	bool applyAndShow();
 	void pollStatus();
 	void addToThisScene();
+	void newLayerClicked();
+	void pickLayer();
+	void switchLayer(const std::string &name);
+	void refreshLayerRow();
 	void addToAllScenesClicked();
 	void openCustomize(bool editSelected);
 	void deleteSelectedCustom();
@@ -140,6 +144,7 @@ private:
 	QWidget *home_ = nullptr;
 	QWidget *openedPage_ = nullptr;
 	laycue::ui::Segmented *tabs_ = nullptr;
+	laycue::ui::RowButton *layerRow_ = nullptr;    // which title layer the buttons act on
 	laycue::ui::RowButton *categoryRow_ = nullptr; // the category menu
 	laycue::ui::RowButton *optionsRow_ = nullptr;  // folds out position, size and time on screen
 	QWidget *optionsBox_ = nullptr;

@@ -233,6 +233,12 @@ QWidget *TitlesDock::buildStage()
 	v->setSpacing(size::gapSmall);
 	stage->setPadding(12, 8, 12, 10);
 
+	layerRow_ = new RowButton(stage);
+	layerRow_->setTitle(lt("Laycue.Titles.LayerRow"));
+	layerRow_->setOpen(true);
+	connect(layerRow_, &RowButton::clicked, this, &TitlesDock::pickLayer);
+	v->addWidget(layerRow_);
+
 	preview_ = new TitlePreview(stage);
 	preview_->setAccessibleName(lt("Laycue.Titles.PreviewAccessible"));
 	v->addWidget(preview_);
@@ -956,6 +962,7 @@ void TitlesDock::pollStatus()
 		if (preview_->onAir())
 			preview_->stop();
 	}
+	refreshLayerRow();
 	preview_->setOnAir(status_.live());
 	if (status_.live() && !prevLive_)
 		preview_->play(); // the scene just went live: the panel's picture arrives with it
@@ -1113,6 +1120,9 @@ void TitlesDock::rebuildSetup()
 		connect(addAll, &QAbstractButton::clicked, this, &TitlesDock::addToAllScenesClicked);
 		row->addWidget(addAll);
 		v->addLayout(row);
+		auto *newLayer = button(v->parentWidget(), lt("Laycue.Titles.NewLayer"), "laycueSecondary");
+		connect(newLayer, &QAbstractButton::clicked, this, &TitlesDock::newLayerClicked);
+		v->addWidget(newLayer);
 		if (sources_.size() > 1) {
 			auto *choose = button(v->parentWidget(), lt("Laycue.Titles.ChooseLayer"), "laycueLink");
 			connect(choose, &QAbstractButton::clicked, this, [this, choose]() {
@@ -1121,12 +1131,7 @@ void TitlesDock::rebuildSetup()
 					QAction *a = menu.addAction(fromStd(name));
 					a->setCheckable(true);
 					a->setChecked(name == target());
-					connect(a, &QAction::triggered, this, [this, name]() {
-						library_.targetSource = name;
-						scheduleSave();
-						pollStatus();
-						rebuildSetup();
-					});
+					connect(a, &QAction::triggered, this, [this, name]() { switchLayer(name); });
 				}
 				menu.exec(choose->mapToGlobal(QPoint(0, choose->height())));
 			});
@@ -1548,6 +1553,84 @@ void TitlesDock::addToThisScene()
 	scheduleSave();
 }
 
+// Which layers are on air right now, by name, for the layer menu and its summary.
+void TitlesDock::refreshLayerRow()
+{
+	if (!layerRow_)
+		return;
+	layerRow_->setVisible(!sources_.empty());
+	int others = 0;
+	for (const std::string &name : sources_) {
+		if (name != target() && statusOf(name).live())
+			++others;
+	}
+	QString value = fromStd(target());
+	if (others > 0)
+		value += QStringLiteral("  \u00B7  ") + lt("Laycue.Titles.LayersOnAir").arg(others);
+	layerRow_->setValue(value);
+}
+
+void TitlesDock::pickLayer()
+{
+	QMenu menu(this);
+	for (const std::string &name : sources_) {
+		const TitleStatus st = statusOf(name);
+		QString text = fromStd(name);
+		if (st.live())
+			text += QStringLiteral("   \u25CF ") + lt("Laycue.Titles.StatusOnAir");
+		else if (st.onAir())
+			text += QStringLiteral("   ") + lt("Laycue.Titles.StatusCued");
+		QAction *a = menu.addAction(text);
+		a->setCheckable(true);
+		a->setChecked(name == target());
+		connect(a, &QAction::triggered, this, [this, name]() { switchLayer(name); });
+	}
+	menu.addSeparator();
+	connect(menu.addAction(lt("Laycue.Titles.NewLayer")), &QAction::triggered, this, &TitlesDock::newLayerClicked);
+	menu.exec(layerRow_->mapToGlobal(QPoint(0, layerRow_->height() + 2)));
+}
+
+// Moves the panel to another layer: the one it leaves keeps its template and text, the new one brings back its own.
+void TitlesDock::switchLayer(const std::string &name)
+{
+	if (name == target() || name.empty())
+		return;
+	rememberLayer(library_, target());
+	library_.targetSource = name;
+	recallLayer(library_, name);
+	onAirStyle_.clear(); // what is on air is read from the new layer again
+	lastSampleStyle_ = std::string();
+	refreshFields();
+	updatePreview();
+	for (auto &entry : cards_)
+		entry.second->setSelectedCard(entry.first == library_.selected);
+	pollStatus();
+	refreshLayerRow();
+	if (tab_ == Tab::Setup)
+		rebuildSetup();
+	scheduleSave();
+}
+
+void TitlesDock::newLayerClicked()
+{
+	std::string error;
+	const std::string name = addNewLayerToCurrentScene(error);
+	if (name.empty()) {
+		toast(fromStd(error));
+		return;
+	}
+	rememberLayer(library_, target());
+	library_.targetSource = name;
+	rememberLayer(library_, name); // a new layer starts with what the panel shows now, and keeps its own from here
+	onAirStyle_.clear();
+	refreshSources();
+	toast(lt("Laycue.Titles.LayerAddedToast"));
+	pollStatus();
+	refreshLayerRow();
+	rebuildSetup();
+	scheduleSave();
+}
+
 void TitlesDock::addToAllScenesClicked()
 {
 	const auto answer = QMessageBox::question(this, lt("Laycue.Titles.AddToAll"), lt("Laycue.Titles.AddToAllAsk"));
@@ -1637,6 +1720,7 @@ void TitlesDock::scheduleSave()
 void TitlesDock::saveNow()
 {
 	saveTimer_.stop();
+	rememberLayer(library_, target());
 	saveLibrary(library_);
 }
 

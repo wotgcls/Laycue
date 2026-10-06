@@ -62,6 +62,12 @@ struct Placement {
 	}
 };
 
+// What one title layer last held, so switching layers brings back its own template and text.
+struct LayerState {
+	std::string selected;
+	TitleContent draft;
+};
+
 struct Library {
 	std::vector<Overrides> customs;
 	std::vector<QueueItem> queue;
@@ -73,6 +79,7 @@ struct Library {
 	int holdOverride = -1;                       // seconds on air before hiding by itself; -1 = the template's own
 	std::map<std::string, Placement> placements; // by style id; a style not listed uses the default
 	std::string targetSource;                    // name of the "Laycue Title" source the panel controls
+	std::map<std::string, LayerState> layers;    // by source name; what each layer held when last left
 };
 
 // How fast titles come and go. A small range on purpose: lower thirds look wrong when they crawl or snap.
@@ -94,6 +101,11 @@ const Overrides *findCustom(const Library &lib, const std::string &name);
 // first built-in template if the id is unknown (a deleted custom template must never break a title).
 // `baseId` is set to the built-in template the result draws like.
 TitleTemplate resolveStyle(const Library &lib, const std::string &styleId, std::string *baseId = nullptr);
+
+// Saves the template and text now in the panel under the layer `name`.
+void rememberLayer(Library &lib, const std::string &name);
+// Brings back what `name` held. A layer the panel has not held yet keeps what is in the panel now.
+void recallLayer(Library &lib, const std::string &name);
 
 Placement placementFor(const Library &lib, const std::string &styleId);
 // Stores it (and forgets it again when it is the default). Numbers are kept in range.

@@ -233,3 +233,23 @@ double transitionScale(int step)
 }
 
 } // namespace laycue::titles
+
+namespace laycue::titles {
+
+void rememberLayer(Library &lib, const std::string &name)
+{
+	if (name.empty())
+		return;
+	lib.layers[name] = LayerState{lib.selected, lib.draft};
+}
+
+void recallLayer(Library &lib, const std::string &name)
+{
+	const auto it = lib.layers.find(name);
+	if (it == lib.layers.end())
+		return;
+	lib.selected = it->second.selected;
+	lib.draft = it->second.draft;
+}
+
+} // namespace laycue::titles

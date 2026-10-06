@@ -190,6 +190,19 @@ std::string addToCurrentScene(const std::string &preferredName, std::string &err
 	return name;
 }
 
+std::string addNewLayerToCurrentScene(std::string &error)
+{
+	const std::string base = str(obs_module_text("Laycue.Titles.SourceName"));
+	std::string candidate = base;
+	for (int n = 2;; ++n) {
+		OBSSourceAutoRelease other = obs_get_source_by_name(candidate.c_str());
+		if (!other)
+			break;
+		candidate = base + " " + std::to_string(n);
+	}
+	return addToCurrentScene(candidate, error);
+}
+
 int addToAllScenes(const std::string &sourceName)
 {
 	OBSSourceAutoRelease source = openTitle(sourceName);

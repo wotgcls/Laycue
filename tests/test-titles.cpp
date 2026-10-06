@@ -432,3 +432,27 @@ TEST_CASE("titles: shape width choices apply to name templates only and are kept
 	// The width only matters in manual mode, so a stale width does not make a "default" placement look changed.
 	CHECK((Placement{0, 100, 1, 500} == Placement{0, 100, 1, 900}));
 }
+
+TEST_CASE("titles: each layer remembers its own template and text")
+{
+	Library lib;
+	lib.selected = "clean-bar";
+	lib.draft.line1 = "Live";
+	rememberLayer(lib, "Laycue Title");
+
+	lib.selected = "news-bar";
+	lib.draft.line1 = "Crawl text";
+	rememberLayer(lib, "Laycue Title 2");
+
+	recallLayer(lib, "Laycue Title");
+	CHECK_EQ(lib.selected, std::string("clean-bar"));
+	CHECK_EQ(lib.draft.line1, std::string("Live"));
+	recallLayer(lib, "Laycue Title 2");
+	CHECK_EQ(lib.draft.line1, std::string("Crawl text"));
+
+	// A layer never held before keeps what the panel shows; an empty name is ignored.
+	recallLayer(lib, "Laycue Title 3");
+	CHECK_EQ(lib.draft.line1, std::string("Crawl text"));
+	rememberLayer(lib, "");
+	CHECK_EQ(lib.layers.size(), size_t(2));
+}

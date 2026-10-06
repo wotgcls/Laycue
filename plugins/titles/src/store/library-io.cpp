@@ -95,6 +95,19 @@ Library loadLibrary()
 			lib.draft = contentFromData(draft);
 		}
 		{
+			OBSDataArrayAutoRelease layers = obs_data_get_array(root, "layers");
+			const size_t n = layers ? obs_data_array_count(layers) : 0;
+			for (size_t i = 0; i < n; ++i) {
+				OBSDataAutoRelease item = obs_data_array_item(layers, i);
+				const std::string name = str(obs_data_get_string(item, "name"));
+				if (name.empty())
+					continue;
+				OBSDataAutoRelease content = obs_data_get_obj(item, "content");
+				lib.layers[name] = LayerState{str(obs_data_get_string(item, "selected")),
+							      contentFromData(content)};
+			}
+		}
+		{
 			OBSDataArrayAutoRelease customs = obs_data_get_array(root, "customs");
 			const size_t n = customs ? obs_data_array_count(customs) : 0;
 			for (size_t i = 0; i < n; ++i) {
@@ -179,6 +192,18 @@ bool saveLibrary(const Library &lib)
 		{
 			OBSData draft = contentToData(lib.draft);
 			obs_data_set_obj(root, "draft", draft);
+		}
+		{
+			OBSDataArrayAutoRelease layers = obs_data_array_create();
+			for (const auto &kv : lib.layers) {
+				OBSDataAutoRelease item = obs_data_create();
+				obs_data_set_string(item, "name", kv.first.c_str());
+				obs_data_set_string(item, "selected", kv.second.selected.c_str());
+				OBSData content = contentToData(kv.second.draft);
+				obs_data_set_obj(item, "content", content);
+				obs_data_array_push_back(layers, item);
+			}
+			obs_data_set_array(root, "layers", layers);
 		}
 		{
 			OBSDataArrayAutoRelease customs = obs_data_array_create();
