@@ -22,6 +22,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QGridLayout>
+#include <QInputDialog>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -861,11 +862,18 @@ void TitlesDock::addToQueueClicked()
 		toast(lt("Laycue.Titles.QueueNeedsText"));
 		return;
 	}
-	if (!enqueue(library_, {library_.selected, c})) {
-		toast(lt("Laycue.Titles.QueueFull"));
-		return;
+	const QueueItem item{library_.selected, c, target()};
+	if (editingRow_ >= 0 && replaceInQueue(library_, size_t(editingRow_), item)) {
+		editingRow_ = -1;
+		toast(lt("Laycue.Titles.RowSaved"));
+	} else {
+		editingRow_ = -1;
+		if (!enqueue(library_, item)) {
+			toast(lt("Laycue.Titles.QueueFull"));
+			return;
+		}
+		toast(lt("Laycue.Titles.QueuedToast").arg(int(library_.queue.size())));
 	}
-	toast(lt("Laycue.Titles.QueuedToast").arg(int(library_.queue.size())));
 	rebuildQueue();
 	updateButtons();
 	scheduleSave();
@@ -876,7 +884,10 @@ void TitlesDock::playQueueItem(size_t index)
 	if (index >= library_.queue.size())
 		return;
 	const QueueItem item = library_.queue[index];
-	removeFromQueue(library_, index);
+	library_.queueCurrent = int(index); // the list keeps the title; the marker moves to it
+	if (!item.layer.empty() && item.layer != target() &&
+	    std::find(sources_.begin(), sources_.end(), item.layer) != sources_.end())
+		switchLayer(item.layer); // a crawl row plays on the crawl layer
 	library_.selected = item.styleId;
 	library_.draft = item.content;
 	lastSampleStyle_ = std::string();
@@ -905,7 +916,26 @@ void TitlesDock::playNextClicked()
 		toast(lt("Laycue.Titles.QueueEmptyToast"));
 		return;
 	}
-	playQueueItem(0);
+	const int next = nextQueueIndex(library_);
+	if (next < 0) {
+		toast(lt("Laycue.Titles.QueueEndToast"));
+		return;
+	}
+	playQueueItem(size_t(next));
+}
+
+void TitlesDock::previousClicked()
+{
+	if (library_.queue.empty()) {
+		toast(lt("Laycue.Titles.QueueEmptyToast"));
+		return;
+	}
+	const int previous = previousQueueIndex(library_);
+	if (previous < 0) {
+		toast(lt("Laycue.Titles.QueueStartToast"));
+		return;
+	}
+	playQueueItem(size_t(previous));
 }
 
 void TitlesDock::runHotkey(int index)
@@ -919,6 +949,9 @@ void TitlesDock::runHotkey(int index)
 		break;
 	case 1:
 		playNextClicked();
+		break;
+	case 3:
+		previousClicked();
 		break;
 	case 2:
 		for (const std::string &name : sources_)
@@ -963,6 +996,11 @@ void TitlesDock::pollStatus()
 			preview_->stop();
 	}
 	refreshLayerRow();
+	if (status_.onAir() != lastQueueOnAir_) {
+		lastQueueOnAir_ = status_.onAir();
+		if (!library_.queue.empty())
+			rebuildQueue(); // the ON AIR mark moves with it
+	}
 	preview_->setOnAir(status_.live());
 	if (status_.live() && !prevLive_)
 		preview_->play(); // the scene just went live: the panel's picture arrives with it
@@ -1024,6 +1062,7 @@ void TitlesDock::updateButtons()
 		hint_->setText(QString());
 	}
 	hide_->setVisible(onAir && changed); // when nothing changed, the main button already says Hide
+	queueAdd_->setText(editingRow_ >= 0 ? lt("Laycue.Titles.QueueSaveRow") : lt("Laycue.Titles.QueueAdd"));
 	queueAdd_->setVisible(!noLayer);
 	hint_->setVisible(!hint_->text().isEmpty());
 }
@@ -1033,6 +1072,15 @@ void TitlesDock::updateButtons()
 void TitlesDock::rebuildQueue()
 {
 	page::clear(queueLayout_);
+
+	auto *serviceRow = new RowButton(queueTab_);
+	serviceRow->setTitle(lt("Laycue.Titles.ServiceRow"));
+	serviceRow->setValue(library_.serviceName.empty() ? lt("Laycue.Titles.ServiceUnsaved")
+							  : fromStd(library_.serviceName));
+	serviceRow->setOpen(true);
+	connect(serviceRow, &RowButton::clicked, this, [this, serviceRow]() { serviceMenu(serviceRow); });
+	queueLayout_->addWidget(serviceRow);
+
 	if (library_.queue.empty()) {
 		auto *empty = new Surface(1, queueTab_);
 		auto *v = new QVBoxLayout(empty);
@@ -1044,47 +1092,212 @@ void TitlesDock::rebuildQueue()
 		queueLayout_->addStretch(1);
 		return;
 	}
+
+	auto *buttons = new QHBoxLayout();
+	buttons->setSpacing(size::gapSmall);
+	auto *previous = button(queueTab_, lt("Laycue.Titles.Previous"), "laycueSecondary");
+	previous->setMinimumHeight(size::touch);
+	previous->setEnabled(previousQueueIndex(library_) >= 0);
+	connect(previous, &QAbstractButton::clicked, this, &TitlesDock::previousClicked);
+	buttons->addWidget(previous, 1);
 	auto *playNext = button(queueTab_, lt("Laycue.Titles.PlayNext"), "laycuePrimary");
 	playNext->setMinimumHeight(size::touch);
+	playNext->setEnabled(nextQueueIndex(library_) >= 0);
 	connect(playNext, &QAbstractButton::clicked, this, &TitlesDock::playNextClicked);
-	queueLayout_->addWidget(playNext);
+	buttons->addWidget(playNext, 2);
+	queueLayout_->addLayout(buttons);
 
+	const int next = nextQueueIndex(library_);
 	for (size_t i = 0; i < library_.queue.size(); ++i) {
 		const QueueItem &item = library_.queue[i];
+		const bool onAirRow = int(i) == library_.queueCurrent && status_.onAir();
+		const bool played = int(i) <= library_.queueCurrent;
 		auto *card = new Surface(1, queueTab_);
 		auto *h = new QHBoxLayout(card);
 		h->setSpacing(size::gapSmall);
 		card->setPadding(12, 8, 10, 8);
 		auto *textColumn = new QVBoxLayout();
 		textColumn->setSpacing(1);
+		if (onAirRow)
+			textColumn->addWidget(makeLabel(card, lt("Laycue.Titles.RowOnAir"), 10, 700, color::live));
+		else if (int(i) == next)
+			textColumn->addWidget(makeLabel(card, lt("Laycue.Titles.RowNext"), 10, 700, color::next));
 		QString first = fromStd(item.content.line1).simplified();
 		if (first.size() > 60)
 			first = first.left(58) + QStringLiteral("…");
-		textColumn->addWidget(
-			makeLabel(card, first.isEmpty() ? lt("Laycue.Titles.Untitled") : first, 13, 600, color::cream));
+		textColumn->addWidget(makeLabel(card, first.isEmpty() ? lt("Laycue.Titles.Untitled") : first, 13, 600,
+						played && !onAirRow ? color::textTertiary : color::cream));
 		std::string baseId;
 		const TitleTemplate t = resolveStyle(library_, item.styleId, &baseId);
 		QString detail = isCustomId(item.styleId) ? fromStd(customNameOf(item.styleId))
 							  : fromStd(localised(nameKey(t)));
 		if (!item.content.line2.empty())
 			detail += QStringLiteral(" · ") + fromStd(item.content.line2).simplified().left(40);
+		if (!item.layer.empty() && sources_.size() > 1)
+			detail += QStringLiteral(" · ") + fromStd(item.layer);
 		textColumn->addWidget(makeLabel(card, detail, 11, 400, color::textTertiary));
 		h->addLayout(textColumn, 1);
 		auto *play = button(card, lt("Laycue.Titles.PlayNow"), "laycueSecondary");
 		const size_t index = i;
 		connect(play, &QAbstractButton::clicked, this, [this, index]() { playQueueItem(index); });
 		h->addWidget(play);
-		auto *remove = button(card, QStringLiteral("✕"), "laycueLink");
-		remove->setAccessibleName(lt("Laycue.Titles.Remove"));
-		connect(remove, &QAbstractButton::clicked, this, [this, index]() {
-			removeFromQueue(library_, index);
-			rebuildQueue();
-			scheduleSave();
-		});
-		h->addWidget(remove);
+		auto *more = button(card, QStringLiteral("⋯"), "laycueLink");
+		more->setAccessibleName(lt("Laycue.Titles.RowMore"));
+		connect(more, &QAbstractButton::clicked, this, [this, index, more]() { rowMenu(index, more); });
+		h->addWidget(more);
 		queueLayout_->addWidget(card);
 	}
 	queueLayout_->addStretch(1);
+}
+
+void TitlesDock::rowMenu(size_t index, QWidget *anchor)
+{
+	QMenu menu(this);
+	QAction *edit = menu.addAction(lt("Laycue.Titles.RowEdit"));
+	QAction *up = menu.addAction(lt("Laycue.Titles.RowUp"));
+	up->setEnabled(index > 0);
+	QAction *down = menu.addAction(lt("Laycue.Titles.RowDown"));
+	down->setEnabled(index + 1 < library_.queue.size());
+	menu.addSeparator();
+	QAction *remove = menu.addAction(lt("Laycue.Titles.RowRemove"));
+	QAction *chosen = menu.exec(anchor->mapToGlobal(QPoint(0, anchor->height() + 2)));
+	if (!chosen)
+		return;
+	if (chosen == edit) {
+		editRow(index);
+		return;
+	}
+	editingRow_ = -1;
+	if (chosen == up)
+		moveInQueue(library_, index, index - 1);
+	else if (chosen == down)
+		moveInQueue(library_, index, index + 1);
+	else if (chosen == remove)
+		removeFromQueue(library_, index);
+	rebuildQueue();
+	updateButtons();
+	scheduleSave();
+}
+
+// Puts a row's template and text in the boxes. "Save row" then writes the changes back to the same row.
+void TitlesDock::editRow(size_t index)
+{
+	if (index >= library_.queue.size())
+		return;
+	const QueueItem item = library_.queue[index];
+	if (!item.layer.empty() && item.layer != target() &&
+	    std::find(sources_.begin(), sources_.end(), item.layer) != sources_.end())
+		switchLayer(item.layer);
+	library_.selected = item.styleId;
+	library_.draft = item.content;
+	lastSampleStyle_ = std::string();
+	editingRow_ = int(index);
+	refreshFields();
+	updatePreview();
+	for (auto &entry : cards_)
+		entry.second->setSelectedCard(entry.first == library_.selected);
+	updateButtons();
+	toast(lt("Laycue.Titles.RowEditing"));
+	scheduleSave();
+}
+
+// Saved run orders: keep "Sunday 9am", load it again next week.
+void TitlesDock::serviceMenu(QWidget *anchor)
+{
+	QMenu menu(this);
+	QAction *saveAs = menu.addAction(lt("Laycue.Titles.ServiceSaveAs"));
+	saveAs->setEnabled(!library_.queue.empty());
+	QAction *saveHere = nullptr;
+	if (!library_.serviceName.empty()) {
+		saveHere = menu.addAction(lt("Laycue.Titles.ServiceSaveHere").arg(fromStd(library_.serviceName)));
+		saveHere->setEnabled(!library_.queue.empty());
+	}
+	QMenu *load = menu.addMenu(lt("Laycue.Titles.ServiceLoad"));
+	load->setEnabled(!library_.services.empty());
+	for (const auto &kv : library_.services) {
+		const std::string name = kv.first;
+		QAction *a = load->addAction(fromStd(name));
+		a->setCheckable(true);
+		a->setChecked(name == library_.serviceName);
+		connect(a, &QAction::triggered, this, [this, name]() {
+			const auto saved = library_.services.find(name);
+			bool same = !library_.queue.empty() && name == library_.serviceName &&
+				    saved != library_.services.end() && saved->second.size() == library_.queue.size();
+			for (size_t i = 0; same && i < library_.queue.size(); ++i) {
+				const QueueItem &a2 = library_.queue[i];
+				const QueueItem &b2 = saved->second[i];
+				same = a2.styleId == b2.styleId && a2.content == b2.content && a2.layer == b2.layer;
+			}
+			if (!library_.queue.empty() && !same &&
+			    QMessageBox::question(this, lt("Laycue.Titles.ServiceLoad"),
+						  lt("Laycue.Titles.ServiceLoadAsk").arg(fromStd(name))) !=
+				    QMessageBox::Yes)
+				return;
+			loadService(library_, name);
+			editingRow_ = -1;
+			rebuildQueue();
+			updateButtons();
+			scheduleSave();
+		});
+	}
+	QMenu *del = menu.addMenu(lt("Laycue.Titles.ServiceDelete"));
+	del->setEnabled(!library_.services.empty());
+	for (const auto &kv : library_.services) {
+		const std::string name = kv.first;
+		connect(del->addAction(fromStd(name)), &QAction::triggered, this, [this, name]() {
+			if (QMessageBox::question(this, lt("Laycue.Titles.ServiceDelete"),
+						  lt("Laycue.Titles.ServiceDeleteAsk").arg(fromStd(name))) !=
+			    QMessageBox::Yes)
+				return;
+			deleteService(library_, name);
+			rebuildQueue();
+			scheduleSave();
+		});
+	}
+	menu.addSeparator();
+	QAction *top = menu.addAction(lt("Laycue.Titles.ServiceTop"));
+	top->setEnabled(library_.queueCurrent >= 0);
+	QAction *clearAll = menu.addAction(lt("Laycue.Titles.ServiceClear"));
+	clearAll->setEnabled(!library_.queue.empty());
+
+	QAction *chosen = menu.exec(anchor->mapToGlobal(QPoint(0, anchor->height() + 2)));
+	if (!chosen)
+		return;
+	if (chosen == saveAs || chosen == saveHere) {
+		std::string name = library_.serviceName;
+		if (chosen == saveAs) {
+			bool ok = false;
+			const QString typed = QInputDialog::getText(this, lt("Laycue.Titles.ServiceSaveAs"),
+								    lt("Laycue.Titles.ServiceNamePrompt"),
+								    QLineEdit::Normal, fromStd(library_.serviceName),
+								    &ok);
+			if (!ok)
+				return;
+			name = typed.trimmed().toStdString();
+			if (library_.services.count(name) &&
+			    QMessageBox::question(this, lt("Laycue.Titles.ServiceSaveAs"),
+						  lt("Laycue.Titles.ServiceReplaceAsk").arg(fromStd(name))) !=
+				    QMessageBox::Yes)
+				return;
+		}
+		if (saveService(library_, name))
+			toast(lt("Laycue.Titles.ServiceSavedToast").arg(fromStd(library_.serviceName)));
+		else
+			toast(lt("Laycue.Titles.ServiceSaveFailed"));
+	} else if (chosen == top) {
+		library_.queueCurrent = -1;
+	} else if (chosen == clearAll) {
+		if (QMessageBox::question(this, lt("Laycue.Titles.ServiceClear"),
+					  lt("Laycue.Titles.ServiceClearAsk")) != QMessageBox::Yes)
+			return;
+		library_.queue.clear();
+		library_.queueCurrent = -1;
+		library_.serviceName.clear();
+		editingRow_ = -1;
+	}
+	rebuildQueue();
+	updateButtons();
+	scheduleSave();
 }
 
 // ---- Setup -------------------------------------------------------------------------------------------------

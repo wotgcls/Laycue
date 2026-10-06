@@ -72,6 +72,38 @@ TitleContent contentFromData(obs_data_t *d)
 
 } // namespace
 
+// A list of queued titles <-> obs_data. The caller owns the returned array (queueFromArray frees its argument).
+static std::vector<QueueItem> queueFromArray(obs_data_array_t *array)
+{
+	OBSDataArrayAutoRelease owned(array);
+	std::vector<QueueItem> items;
+	const size_t n = owned ? obs_data_array_count(owned) : 0;
+	for (size_t i = 0; i < n; ++i) {
+		OBSDataAutoRelease item = obs_data_array_item(owned, i);
+		QueueItem q;
+		q.styleId = str(obs_data_get_string(item, "style"));
+		q.layer = str(obs_data_get_string(item, "layer"));
+		OBSDataAutoRelease content = obs_data_get_obj(item, "content");
+		q.content = contentFromData(content);
+		items.push_back(std::move(q));
+	}
+	return items;
+}
+
+static obs_data_array_t *queueToArray(const std::vector<QueueItem> &items)
+{
+	obs_data_array_t *array = obs_data_array_create();
+	for (const QueueItem &q : items) {
+		OBSDataAutoRelease item = obs_data_create();
+		obs_data_set_string(item, "style", q.styleId.c_str());
+		obs_data_set_string(item, "layer", q.layer.c_str());
+		OBSData content = contentToData(q.content);
+		obs_data_set_obj(item, "content", content);
+		obs_data_array_push_back(array, item);
+	}
+	return array;
+}
+
 Library loadLibrary()
 {
 	Library lib;
@@ -121,16 +153,19 @@ Library loadLibrary()
 				lib.customs.push_back(fromMap(values));
 			}
 		}
+		lib.queue = queueFromArray(obs_data_get_array(root, "queue"));
+		lib.queueCurrent = obs_data_has_user_value(root, "queueCurrent")
+					   ? int(obs_data_get_int(root, "queueCurrent"))
+					   : -1;
+		lib.serviceName = str(obs_data_get_string(root, "service"));
 		{
-			OBSDataArrayAutoRelease queue = obs_data_get_array(root, "queue");
-			const size_t n = queue ? obs_data_array_count(queue) : 0;
+			OBSDataArrayAutoRelease services = obs_data_get_array(root, "services");
+			const size_t n = services ? obs_data_array_count(services) : 0;
 			for (size_t i = 0; i < n; ++i) {
-				OBSDataAutoRelease item = obs_data_array_item(queue, i);
-				QueueItem q;
-				q.styleId = str(obs_data_get_string(item, "style"));
-				OBSDataAutoRelease content = obs_data_get_obj(item, "content");
-				q.content = contentFromData(content);
-				lib.queue.push_back(std::move(q));
+				OBSDataAutoRelease entry = obs_data_array_item(services, i);
+				const std::string name = str(obs_data_get_string(entry, "name"));
+				if (!name.empty())
+					lib.services[name] = queueFromArray(obs_data_get_array(entry, "items"));
 			}
 		}
 		{
@@ -216,15 +251,19 @@ bool saveLibrary(const Library &lib)
 			obs_data_set_array(root, "customs", customs);
 		}
 		{
-			OBSDataArrayAutoRelease queue = obs_data_array_create();
-			for (const QueueItem &q : lib.queue) {
-				OBSDataAutoRelease item = obs_data_create();
-				obs_data_set_string(item, "style", q.styleId.c_str());
-				OBSData content = contentToData(q.content);
-				obs_data_set_obj(item, "content", content);
-				obs_data_array_push_back(queue, item);
-			}
+			OBSDataArrayAutoRelease queue = queueToArray(lib.queue);
 			obs_data_set_array(root, "queue", queue);
+			obs_data_set_int(root, "queueCurrent", lib.queueCurrent);
+			obs_data_set_string(root, "service", lib.serviceName.c_str());
+			OBSDataArrayAutoRelease services = obs_data_array_create();
+			for (const auto &kv : lib.services) {
+				OBSDataAutoRelease entry = obs_data_create();
+				obs_data_set_string(entry, "name", kv.first.c_str());
+				OBSDataArrayAutoRelease items = queueToArray(kv.second);
+				obs_data_set_array(entry, "items", items);
+				obs_data_array_push_back(services, entry);
+			}
+			obs_data_set_array(root, "services", services);
 		}
 		// Make sure the folder exists, then write through a temporary file so a crash never leaves half a file.
 		char *dir = obs_module_config_path("");

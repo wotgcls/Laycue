@@ -456,3 +456,69 @@ TEST_CASE("titles: each layer remembers its own template and text")
 	rememberLayer(lib, "");
 	CHECK_EQ(lib.layers.size(), size_t(2));
 }
+
+TEST_CASE("titles queue: a service run order keeps its items and walks forward and back")
+{
+	Library lib;
+	for (int i = 0; i < 4; ++i)
+		CHECK(enqueue(lib, {"clean-bar", contentOf(std::to_string(i), "", ""), ""}));
+	CHECK_EQ(nextQueueIndex(lib), 0); // nothing played yet: Next plays the first
+	CHECK_EQ(previousQueueIndex(lib), -1);
+	lib.queueCurrent = 1;
+	CHECK_EQ(nextQueueIndex(lib), 2);
+	CHECK_EQ(previousQueueIndex(lib), 0);
+	lib.queueCurrent = 3; // the last one: there is no next
+	CHECK_EQ(nextQueueIndex(lib), -1);
+
+	// The marker stays on the title it points to when rows move or go.
+	lib.queueCurrent = 1;
+	CHECK(moveInQueue(lib, 1, 3));
+	CHECK_EQ(lib.queueCurrent, 3);
+	CHECK_EQ(lib.queue[3].content.line1, std::string("1"));
+	CHECK(moveInQueue(lib, 0, 3)); // a row from before it moves past it
+	CHECK_EQ(lib.queueCurrent, 2);
+	CHECK_EQ(lib.queue[lib.queueCurrent].content.line1, std::string("1"));
+	CHECK(moveInQueue(lib, 3, 0)); // a row from after it moves before it
+	CHECK_EQ(lib.queueCurrent, 3);
+	CHECK(removeFromQueue(lib, 0));
+	CHECK_EQ(lib.queueCurrent, 2);
+	CHECK_EQ(lib.queue[lib.queueCurrent].content.line1, std::string("1"));
+
+	CHECK(replaceInQueue(lib, 0, {"news-bar", contentOf("edited", "", ""), "Crawl"}));
+	CHECK_EQ(lib.queue[0].layer, std::string("Crawl"));
+	CHECK(!replaceInQueue(lib, 9, {}));
+}
+
+TEST_CASE("titles queue: saved services")
+{
+	Library lib;
+	CHECK(enqueue(lib, {"clean-bar", contentOf("Welcome", "", ""), ""}));
+	CHECK(enqueue(lib, {"clean-bar", contentOf("Offering", "", ""), ""}));
+	CHECK(!saveService(lib, "   "));
+	CHECK(saveService(lib, "  Sunday 9am "));
+	CHECK_EQ(lib.serviceName, std::string("Sunday 9am"));
+	CHECK(lib.services.count("Sunday 9am") == 1);
+
+	lib.queue.clear();
+	lib.queueCurrent = 3;
+	CHECK(loadService(lib, "Sunday 9am"));
+	CHECK_EQ(int(lib.queue.size()), 2);
+	CHECK_EQ(lib.queueCurrent, -1); // back at the top
+	CHECK(!loadService(lib, "Nope"));
+
+	lib.queue.pop_back();
+	CHECK(saveService(lib, "Sunday 9am")); // same name replaces
+	CHECK_EQ(int(lib.services.size()), 1);
+	CHECK_EQ(int(lib.services["Sunday 9am"].size()), 1);
+
+	for (size_t i = 0; i < kMaxServices + 5; ++i)
+		saveService(lib, "S" + std::to_string(i));
+	CHECK(lib.services.size() <= kMaxServices);
+
+	CHECK(deleteService(lib, "Sunday 9am"));
+	CHECK(!deleteService(lib, "Sunday 9am"));
+
+	lib.queueCurrent = 99;
+	sanitize(lib);
+	CHECK_EQ(lib.queueCurrent, -1);
+}

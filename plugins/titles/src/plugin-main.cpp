@@ -81,6 +81,7 @@ bool obs_module_load(void)
 					{"Laycue.Titles.Toggle", "Laycue.Titles.Hotkey.PanelToggle"},
 					{"Laycue.Titles.PlayNext", "Laycue.Titles.Hotkey.PlayNext"},
 					{"Laycue.Titles.HideAll", "Laycue.Titles.Hotkey.HideAll"},
+					{"Laycue.Titles.PlayPrevious", "Laycue.Titles.Hotkey.PlayPrevious"},
 				},
 				[](int index) {
 					if (g_dock)

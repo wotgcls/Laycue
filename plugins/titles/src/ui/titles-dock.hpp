@@ -85,6 +85,10 @@ private:
 	void addToQueueClicked();
 	void playNextClicked();
 	void playQueueItem(size_t index);
+	void previousClicked();
+	void serviceMenu(QWidget *anchor);
+	void rowMenu(size_t index, QWidget *anchor);
+	void editRow(size_t index);
 	bool applyAndShow();
 	void pollStatus();
 	void addToThisScene();
@@ -129,6 +133,8 @@ private:
 		lastSampleStyle_; // the style whose sample text is in the boxes (to know if the operator typed their own)
 	bool pendingPlay_ = false;
 	bool buildingFields_ = false;
+	int editingRow_ = -1;         // the queue row whose text is in the boxes; "Save row" writes back to it
+	bool lastQueueOnAir_ = false; // to redraw the run order when a title goes on or off air
 
 	QTimer pollTimer_;
 	QTimer saveTimer_;

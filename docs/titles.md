@@ -83,3 +83,15 @@ Nothing appears on air by itself. Show and hide are explicit; "hide by itself" i
   Large text with a shadow used to take 73 ms (Sermon Series, Thank You) and would have stalled OBS during
   the arrival; the text and its shadow are now drawn once and re-used on each frame of the animation.
 - Not yet verified: brand-colour override and hotkeys on real hardware.
+
+## Layers and the run order
+
+**Layers.** Each title layer is its own OBS source, so a crawl and a lower third can be on and off air separately. The **Layer** row at the top of the panel chooses the layer the buttons act on. **New layer** makes another one. Each layer remembers its own template and text. The **Hide all** hotkey hides every layer.
+
+**Run order (the Queue tab).** Add every title you plan to show with **+ Queue**, in order. Titles stay in the list after they play, so you can go back or play one again.
+- **Play next** plays the title after the one played last. **Previous** goes back one. Both have OBS hotkeys (Settings > Hotkeys, "Laycue Titles").
+- The row on air shows **ON AIR**, the one after it shows **NEXT**, and rows already played are dimmed.
+- Each row remembers the layer it was queued on, and plays there.
+- The **⋯** menu on a row: Edit (then press **Save row**), Move up, Move down, Remove.
+- The **Run order** row at the top: **Save as…** keeps the list under a name such as "Sunday 9am". **Load** brings a saved one back. Also: Delete, Back to the top, Clear the list.
+- Up to 50 titles in a list and 30 saved run orders.

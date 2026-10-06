@@ -1,6 +1,7 @@
 #include "core/library.hpp"
 
 #include <algorithm>
+#include <cctype>
 
 namespace laycue::titles {
 
@@ -158,6 +159,9 @@ bool removeFromQueue(Library &lib, size_t index)
 	if (index >= lib.queue.size())
 		return false;
 	lib.queue.erase(lib.queue.begin() + static_cast<std::ptrdiff_t>(index));
+	// The marker follows the title it pointed at; if that title was removed, it points to the one before.
+	if (lib.queueCurrent >= 0 && static_cast<size_t>(lib.queueCurrent) >= index)
+		--lib.queueCurrent;
 	return true;
 }
 
@@ -170,6 +174,16 @@ bool moveInQueue(Library &lib, size_t from, size_t to)
 	QueueItem item = lib.queue[from];
 	lib.queue.erase(lib.queue.begin() + static_cast<std::ptrdiff_t>(from));
 	lib.queue.insert(lib.queue.begin() + static_cast<std::ptrdiff_t>(to), item);
+	// Keep the "played last" marker on the same title.
+	if (lib.queueCurrent >= 0) {
+		const size_t cur = static_cast<size_t>(lib.queueCurrent);
+		if (cur == from)
+			lib.queueCurrent = static_cast<int>(to);
+		else if (from < cur && to >= cur)
+			--lib.queueCurrent;
+		else if (from > cur && to <= cur)
+			++lib.queueCurrent;
+	}
 	return true;
 }
 
@@ -179,6 +193,65 @@ bool popQueue(Library &lib, QueueItem &out)
 		return false;
 	out = lib.queue.front();
 	lib.queue.erase(lib.queue.begin());
+	return true;
+}
+
+int nextQueueIndex(const Library &lib)
+{
+	const int next = lib.queueCurrent + 1;
+	return next >= 0 && static_cast<size_t>(next) < lib.queue.size() ? next : -1;
+}
+
+int previousQueueIndex(const Library &lib)
+{
+	const int previous = lib.queueCurrent - 1;
+	return previous >= 0 && static_cast<size_t>(previous) < lib.queue.size() ? previous : -1;
+}
+
+bool replaceInQueue(Library &lib, size_t index, const QueueItem &item)
+{
+	if (index >= lib.queue.size())
+		return false;
+	lib.queue[index] = item;
+	return true;
+}
+
+bool saveService(Library &lib, const std::string &name)
+{
+	std::string trimmed = name;
+	const auto space = [](unsigned char c) {
+		return std::isspace(c) != 0;
+	};
+	while (!trimmed.empty() && space(trimmed.front()))
+		trimmed.erase(trimmed.begin());
+	while (!trimmed.empty() && space(trimmed.back()))
+		trimmed.pop_back();
+	if (trimmed.empty() || trimmed.size() > 60)
+		return false;
+	if (lib.services.find(trimmed) == lib.services.end() && lib.services.size() >= kMaxServices)
+		return false;
+	lib.services[trimmed] = lib.queue;
+	lib.serviceName = trimmed;
+	return true;
+}
+
+bool loadService(Library &lib, const std::string &name)
+{
+	const auto it = lib.services.find(name);
+	if (it == lib.services.end())
+		return false;
+	lib.queue = it->second;
+	lib.queueCurrent = -1;
+	lib.serviceName = name;
+	return true;
+}
+
+bool deleteService(Library &lib, const std::string &name)
+{
+	if (lib.services.erase(name) == 0)
+		return false;
+	if (lib.serviceName == name)
+		lib.serviceName.clear();
 	return true;
 }
 
@@ -220,6 +293,22 @@ void sanitize(Library &lib)
 	}
 	if (lib.queue.size() > kMaxQueue)
 		lib.queue.resize(kMaxQueue);
+	if (lib.queueCurrent < -1 || lib.queueCurrent >= static_cast<int>(lib.queue.size()))
+		lib.queueCurrent = -1;
+	for (auto it = lib.services.begin(); it != lib.services.end();) {
+		if (it->first.empty() || lib.services.size() > kMaxServices) {
+			it = lib.services.erase(it);
+			continue;
+		}
+		for (QueueItem &q : it->second) {
+			if (!valid(q.styleId))
+				q.styleId = builtInTemplates().front().id;
+			clipContent(q.content);
+		}
+		if (it->second.size() > kMaxQueue)
+			it->second.resize(kMaxQueue);
+		++it;
+	}
 	clipContent(lib.draft);
 	if (lib.holdOverride < -1 || lib.holdOverride > 600)
 		lib.holdOverride = -1;

@@ -47,6 +47,7 @@ struct TitleContent {
 struct QueueItem {
 	std::string styleId;
 	TitleContent content;
+	std::string layer = {}; // the title layer it plays on; empty = whichever layer the panel is on
 };
 
 // Where a style sits and how big it is, remembered per style (a social card may sit on the right while the
@@ -70,10 +71,13 @@ struct LayerState {
 
 struct Library {
 	std::vector<Overrides> customs;
-	std::vector<QueueItem> queue;
-	std::string selected = "clean-bar"; // built-in id or "custom:<name>"
-	TitleContent draft;                 // what is in the text boxes
-	bool useBrand = false;              // paint every title's accent in the operator's brand colour
+	std::vector<QueueItem> queue; // the service run order: items stay after they play
+	int queueCurrent = -1; // index of the title played last (on air, or the last one that was); -1 = none yet
+	std::map<std::string, std::vector<QueueItem>> services; // saved run orders by name
+	std::string serviceName;                                // the saved run order the list came from, if any
+	std::string selected = "clean-bar";                     // built-in id or "custom:<name>"
+	TitleContent draft;                                     // what is in the text boxes
+	bool useBrand = false; // paint every title's accent in the operator's brand colour
 	Rgba brand{0xFF, 0xB3, 0x1A, 255};
 	int speed = 2;                               // transition speed step, 0 slowest .. kSpeedSteps-1 fastest
 	int holdOverride = -1;                       // seconds on air before hiding by itself; -1 = the template's own
@@ -89,6 +93,7 @@ constexpr int kDefaultSpeed = 2;
 double transitionScale(int step);
 
 constexpr size_t kMaxQueue = 50;
+constexpr size_t kMaxServices = 30;
 constexpr size_t kMaxCustoms = 40;
 
 std::string customId(const std::string &name);
@@ -124,6 +129,19 @@ bool removeFromQueue(Library &lib, size_t index);
 bool moveInQueue(Library &lib, size_t from, size_t to);
 // Takes the first item out of the queue. False if it is empty.
 bool popQueue(Library &lib, QueueItem &out);
+
+// The service run order. `queueCurrent` is the title played last; Next plays the one after it.
+// Each returns an index into lib.queue, or -1 when there is nothing there.
+int nextQueueIndex(const Library &lib);
+int previousQueueIndex(const Library &lib);
+// Replaces one row (the operator edited it). False if there is no such row.
+bool replaceInQueue(Library &lib, size_t index, const QueueItem &item);
+
+// Saved run orders ("Sunday 9am"). Saving the same name again replaces it.
+bool saveService(Library &lib, const std::string &name);
+// Puts a saved run order in the list (back at the top). False if there is no such name.
+bool loadService(Library &lib, const std::string &name);
+bool deleteService(Library &lib, const std::string &name);
 
 // Repairs a library read from a file: bad ids, over-long text, too many entries.
 void sanitize(Library &lib);
