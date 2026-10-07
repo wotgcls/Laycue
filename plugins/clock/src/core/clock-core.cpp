@@ -222,4 +222,47 @@ double secondsUntilTimeOfDay(int nowSecondOfDay, int targetSecondOfDay)
 	return double(diff % 86400);
 }
 
+std::string formatTimeOfDay(int secondOfDay)
+{
+	const int t = shiftTimeOfDay(secondOfDay, 0);
+	const int h = t / 3600, m = (t / 60) % 60;
+	const int h12 = h % 12 == 0 ? 12 : h % 12;
+	char buffer[24];
+	std::snprintf(buffer, sizeof(buffer), "%d:%02d %s", h12, m, h < 12 ? "AM" : "PM");
+	return buffer;
+}
+
+std::string formatTimeOfDay24(int secondOfDay)
+{
+	const int t = shiftTimeOfDay(secondOfDay, 0);
+	char buffer[16];
+	std::snprintf(buffer, sizeof(buffer), "%02d:%02d", t / 3600, (t / 60) % 60);
+	return buffer;
+}
+
+int shiftTimeOfDay(int secondOfDay, int deltaSeconds)
+{
+	long t = (long(secondOfDay) + long(deltaSeconds)) % 86400L;
+	if (t < 0)
+		t += 86400L;
+	return int(t);
+}
+
+std::string describeWait(double seconds)
+{
+	const long total = seconds < 0.0 ? 0L : long(seconds + 0.5);
+	const long minutes = (total + 30) / 60; // nearest minute
+	if (total < 60)
+		return "under 1 min";
+	char buffer[32];
+	if (minutes < 60) {
+		std::snprintf(buffer, sizeof(buffer), "%ld min", minutes);
+	} else if (minutes % 60 == 0) {
+		std::snprintf(buffer, sizeof(buffer), "%ld h", minutes / 60);
+	} else {
+		std::snprintf(buffer, sizeof(buffer), "%ld h %02ld min", minutes / 60, minutes % 60);
+	}
+	return buffer;
+}
+
 } // namespace laycue::clock

@@ -37,3 +37,11 @@ The same settings are in the source's Properties window.
 
 A separate **stage clock** for the speaker (a private screen only they see, with "5 minutes left" colours). It needs its own
 output window, so it waits until someone asks for it.
+
+## Counting to a time of day ("At a time")
+
+The first tab. Pick the time the service starts and the clock counts down to it using this computer's clock, so nobody
+has to work out the minutes. Type a time (`5:00 PM`, `5pm`, `17:00`), nudge it with -5 and +5, or press **In 15 min**,
+**In 30 min** or **Next hour**. A line under it shows the PC time and what is left ("Now 4:18 PM. Starts in 42 min."), and
+says so if that time has already passed today (then it counts to tomorrow). It starts by itself: there is no Start to press.
+After zero it keeps counting up as overtime unless that is turned off in Look.

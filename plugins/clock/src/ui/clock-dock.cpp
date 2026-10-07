@@ -20,9 +20,12 @@
 #include <QMenu>
 #include <QPainter>
 #include <QScrollArea>
+#include <QTime>
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <cctype>
+#include <functional>
 #include <cstdio>
 #include <vector>
 
@@ -258,13 +261,19 @@ void ClockDock::rebuild()
 		v->addLayout(nudge);
 	}
 
-	// What it counts.
+	// What it counts. "At a time" comes first: it is what a service needs ("count down to 5:00 PM").
+	static const int kModeOrder[3] = {int(Mode::Until), int(Mode::Countdown), int(Mode::CountUp)};
 	auto *mode = new Segmented(stage);
-	mode->setItems({lt("Laycue.Clock.Mode.0"), lt("Laycue.Clock.Mode.1"), lt("Laycue.Clock.Mode.2")});
-	mode->setCurrent(settings_.mode);
+	mode->setItems({lt("Laycue.Clock.Mode.2"), lt("Laycue.Clock.Mode.0"), lt("Laycue.Clock.Mode.1")});
+	int modeIndex = 0;
+	for (int i = 0; i < 3; ++i) {
+		if (kModeOrder[i] == settings_.mode)
+			modeIndex = i;
+	}
+	mode->setCurrent(modeIndex);
 	mode->setAccessibleName(lt("Laycue.Clock.Mode"));
 	connect(mode, &Segmented::changed, this, [this](int i) {
-		settings_.mode = i;
+		settings_.mode = kModeOrder[std::clamp(i, 0, 2)];
 		rebuild();
 		changed();
 	});
@@ -272,52 +281,118 @@ void ClockDock::rebuild()
 
 	entryHint_ = innerLabel(stage, QString(), 11, 500, color::overlay);
 	entryHint_->hide();
-	if (settings_.mode != int(Mode::CountUp)) {
-		const bool until = settings_.mode == int(Mode::Until);
+	nowLabel_ = nullptr;
+	if (settings_.mode == int(Mode::Until)) {
+		// Count down to a time of day, read from this computer's clock, so nobody has to work out the minutes.
+		int targetSecond = 0;
+		if (!parseTimeOfDay(settings_.target, targetSecond))
+			targetSecond = 10 * 3600;
 		auto *entry = new QWidget(stage);
 		auto *h = new QHBoxLayout(entry);
 		h->setContentsMargins(0, 0, 0, 0);
 		h->setSpacing(size::gapSmall);
-		auto *name = innerLabel(entry, lt(until ? "Laycue.Clock.Target" : "Laycue.Clock.Duration"), 11, 600,
-					color::textTertiary);
+		auto *name = innerLabel(entry, lt("Laycue.Clock.StartsAt"), 11, 600, color::textTertiary);
+		name->setFixedWidth(96);
+		name->setWordWrap(true);
+		h->addWidget(name, 0, Qt::AlignTop);
+		auto nudge = [&](const QString &text, int delta) {
+			auto *b = new ActionButton(text, ActionButton::Kind::Secondary, entry);
+			connect(b, &QAbstractButton::clicked, this, [this, delta]() {
+				int t = 0;
+				if (!parseTimeOfDay(settings_.target, t))
+					t = 10 * 3600;
+				settings_.target = formatTimeOfDay24(shiftTimeOfDay(t, delta));
+				rebuild();
+				changed();
+			});
+			return b;
+		};
+		h->addWidget(nudge(lt("Laycue.Clock.Minus5"), -300));
+		auto *edit = new QLineEdit(entry);
+		edit->setText(qs(formatTimeOfDay(targetSecond)));
+		edit->setAlignment(Qt::AlignCenter);
+		edit->setPlaceholderText("5:00 PM");
+		connect(edit, &QLineEdit::textEdited, this, [this](const QString &text) {
+			int secondOfDay = 0;
+			std::string lowered = stdstr(text.trimmed());
+			std::transform(lowered.begin(), lowered.end(), lowered.begin(),
+				       [](unsigned char c) { return char(std::tolower(c)); });
+			const bool ok = parseTimeOfDay(lowered, secondOfDay);
+			entryHint_->setVisible(!ok && !text.trimmed().isEmpty());
+			entryHint_->setText(lt("Laycue.Clock.TargetHint"));
+			if (!ok)
+				return; // wait until it reads as a time
+			settings_.target = formatTimeOfDay24(secondOfDay);
+			changed();
+		});
+		h->addWidget(edit, 1);
+		h->addWidget(nudge(lt("Laycue.Clock.Plus5"), 300));
+		v->addWidget(entry);
+		v->addWidget(entryHint_);
+
+		nowLabel_ = innerLabel(stage, QString(), 12, 600, color::cream);
+		nowLabel_->setWordWrap(true);
+		v->addWidget(nowLabel_);
+
+		// Quick starts, worked out from this computer's clock right now.
+		auto *quick = new QHBoxLayout();
+		quick->setSpacing(size::gapSmall);
+		auto quickButton = [&](const QString &text, std::function<int(int)> from) {
+			auto *b = new ActionButton(text, ActionButton::Kind::Secondary, stage);
+			connect(b, &QAbstractButton::clicked, this, [this, from]() {
+				const QTime now = QTime::currentTime();
+				const int nowSecond = now.hour() * 3600 + now.minute() * 60;
+				settings_.target = formatTimeOfDay24(from(nowSecond));
+				rebuild();
+				changed();
+			});
+			quick->addWidget(b, 1);
+		};
+		quickButton(lt("Laycue.Clock.In15"), [](int now) { return shiftTimeOfDay(now, 15 * 60); });
+		quickButton(lt("Laycue.Clock.In30"), [](int now) { return shiftTimeOfDay(now, 30 * 60); });
+		quickButton(lt("Laycue.Clock.NextHour"),
+			    [](int now) { return shiftTimeOfDay(now - now % 3600, 3600); });
+		v->addLayout(quick);
+	} else if (settings_.mode == int(Mode::Countdown)) {
+		auto *entry = new QWidget(stage);
+		auto *h = new QHBoxLayout(entry);
+		h->setContentsMargins(0, 0, 0, 0);
+		h->setSpacing(size::gapSmall);
+		auto *name = innerLabel(entry, lt("Laycue.Clock.Duration"), 11, 600, color::textTertiary);
 		name->setFixedWidth(96);
 		name->setWordWrap(true);
 		h->addWidget(name, 0, Qt::AlignTop);
 		auto *edit = new QLineEdit(entry);
-		edit->setText(qs(until ? settings_.target : settings_.duration));
-		edit->setPlaceholderText(until ? "10:00" : "05:00");
-		connect(edit, &QLineEdit::textEdited, this, [this, until](const QString &text) {
+		edit->setText(qs(settings_.duration));
+		edit->setPlaceholderText("05:00");
+		connect(edit, &QLineEdit::textEdited, this, [this](const QString &text) {
 			double seconds = 0.0;
-			int secondOfDay = 0;
-			const bool ok = until ? parseTimeOfDay(stdstr(text), secondOfDay)
-					      : parseDuration(stdstr(text), seconds);
+			const bool ok = parseDuration(stdstr(text), seconds);
 			entryHint_->setVisible(!ok && !text.trimmed().isEmpty());
-			entryHint_->setText(lt(until ? "Laycue.Clock.TargetHint" : "Laycue.Clock.DurationHint"));
+			entryHint_->setText(lt("Laycue.Clock.DurationHint"));
 			if (!ok)
-				return; // wait until it reads as a time
-			(until ? settings_.target : settings_.duration) = stdstr(text.trimmed());
+				return;
+			settings_.duration = stdstr(text.trimmed());
 			changed();
 		});
 		h->addWidget(edit, 1);
 		v->addWidget(entry);
 		v->addWidget(entryHint_);
-		if (!until) {
-			auto *presets = new QHBoxLayout();
-			presets->setSpacing(size::gapSmall);
-			for (int minutes : {1, 5, 10, 15, 30}) {
-				auto *b = new ActionButton(lt("Laycue.Clock.PresetMinutes").arg(minutes),
-							   ActionButton::Kind::Secondary, stage);
-				connect(b, &QAbstractButton::clicked, this, [this, minutes]() {
-					char text[16];
-					snprintf(text, sizeof(text), "%02d:00", minutes);
-					settings_.duration = text;
-					rebuild();
-					changed();
-				});
-				presets->addWidget(b, 1);
-			}
-			v->addLayout(presets);
+		auto *presets = new QHBoxLayout();
+		presets->setSpacing(size::gapSmall);
+		for (int minutes : {1, 5, 10, 15, 30}) {
+			auto *b = new ActionButton(lt("Laycue.Clock.PresetMinutes").arg(minutes),
+						   ActionButton::Kind::Secondary, stage);
+			connect(b, &QAbstractButton::clicked, this, [this, minutes]() {
+				char text[16];
+				snprintf(text, sizeof(text), "%02d:00", minutes);
+				settings_.duration = text;
+				rebuild();
+				changed();
+			});
+			presets->addWidget(b, 1);
 		}
+		v->addLayout(presets);
 	}
 
 	auto *labelRow = new QWidget(stage);
@@ -622,6 +697,19 @@ void ClockDock::poll()
 		if (status_.found != hadLayer && !building_) {
 			rebuild(); // show the controls (or the empty state) that fit
 			return;
+		}
+		if (nowLabel_) {
+			const QTime now = QTime::currentTime();
+			const int nowSecond = now.hour() * 3600 + now.minute() * 60 + now.second();
+			int targetSecond = 0;
+			if (parseTimeOfDay(settings_.target, targetSecond)) {
+				const double wait = secondsUntilTimeOfDay(nowSecond, targetSecond);
+				QString text = lt("Laycue.Clock.NowLine")
+						       .arg(qs(formatTimeOfDay(nowSecond)), qs(describeWait(wait)));
+				if (targetSecond < nowSecond)
+					text += lt("Laycue.Clock.Tomorrow");
+				nowLabel_->setText(text);
+			}
 		}
 		if (!readout_)
 			return;

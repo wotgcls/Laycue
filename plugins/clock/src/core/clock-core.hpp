@@ -66,4 +66,13 @@ bool parseTimeOfDay(const std::string &text, int &secondOfDay);
 // has already passed today; 0 if it is exactly now.
 double secondsUntilTimeOfDay(int nowSecondOfDay, int targetSecondOfDay);
 
+// A time of day for people: "5:00 PM". `secondOfDay` is seconds since midnight (wraps around a day).
+std::string formatTimeOfDay(int secondOfDay);
+// The same time in the form that is saved and read back by parseTimeOfDay: "17:00".
+std::string formatTimeOfDay24(int secondOfDay);
+// Moves a time of day by `deltaSeconds`, staying inside one day (23:58 + 5 minutes = 00:03).
+int shiftTimeOfDay(int secondOfDay, int deltaSeconds);
+// A wait in a few plain words: "under 1 min", "42 min", "1 h 05 min", "5 h".
+std::string describeWait(double seconds);
+
 } // namespace laycue::clock

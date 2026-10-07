@@ -8,7 +8,7 @@
 namespace laycue::clock {
 
 struct ClockSettings {
-	int mode = 0;                   // Mode: 0 countdown, 1 count up, 2 until a time of day
+	int mode = 2;                   // Mode: 0 countdown, 1 count up, 2 until a time of day (the default)
 	std::string duration = "05:00"; // typed by the operator, read with parseDuration
 	std::string target = "10:00";   // typed by the operator, read with parseTimeOfDay
 	std::string label = "Service starts in";

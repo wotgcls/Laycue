@@ -112,3 +112,33 @@ TEST_CASE("clock: counting down to a time of day goes to tomorrow when it has pa
 	CHECK_EQ(secondsUntilTimeOfDay(10 * 3600 + 1, 10 * 3600), 86399.0);
 	CHECK_EQ(secondsUntilTimeOfDay(23 * 3600, 1 * 3600), 2.0 * 3600.0); // across midnight
 }
+
+TEST_CASE("clock: times of day are shown and shifted for people")
+{
+	using namespace laycue::clock;
+	CHECK_EQ(formatTimeOfDay(17 * 3600), std::string("5:00 PM"));
+	CHECK_EQ(formatTimeOfDay(0), std::string("12:00 AM"));
+	CHECK_EQ(formatTimeOfDay(12 * 3600 + 5 * 60), std::string("12:05 PM"));
+	CHECK_EQ(formatTimeOfDay(9 * 3600 + 30 * 60), std::string("9:30 AM"));
+	CHECK_EQ(formatTimeOfDay24(17 * 3600 + 5 * 60), std::string("17:05"));
+	// What is saved reads back to the same time.
+	int back = 0;
+	CHECK(parseTimeOfDay(formatTimeOfDay24(21 * 3600 + 45 * 60), back));
+	CHECK_EQ(back, 21 * 3600 + 45 * 60);
+	CHECK(parseTimeOfDay(formatTimeOfDay(21 * 3600 + 45 * 60), back)); // "9:45 PM" too
+	CHECK_EQ(back, 21 * 3600 + 45 * 60);
+	CHECK_EQ(shiftTimeOfDay(23 * 3600 + 58 * 60, 300), 3 * 60);
+	CHECK_EQ(shiftTimeOfDay(120, -300), 86400 - 180);
+}
+
+TEST_CASE("clock: a wait is described in plain words")
+{
+	using namespace laycue::clock;
+	CHECK_EQ(describeWait(20), std::string("under 1 min"));
+	CHECK_EQ(describeWait(60), std::string("1 min"));
+	CHECK_EQ(describeWait(42 * 60 + 10), std::string("42 min"));
+	CHECK_EQ(describeWait(3600), std::string("1 h"));
+	CHECK_EQ(describeWait(3600 + 5 * 60), std::string("1 h 05 min"));
+	CHECK_EQ(describeWait(5 * 3600 + 20 * 60), std::string("5 h 20 min"));
+	CHECK_EQ(describeWait(-4), std::string("under 1 min"));
+}
