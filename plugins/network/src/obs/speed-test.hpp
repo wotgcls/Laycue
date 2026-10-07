@@ -4,15 +4,13 @@
 #pragma once
 
 #include "core/speed-analysis.hpp"
+#include "net/http.hpp"
 
 #include <QElapsedTimer>
 #include <QList>
-#include <QNetworkAccessManager>
 #include <QObject>
 #include <QTimer>
 #include <QUrl>
-
-class QNetworkReply;
 
 namespace laycue::network {
 
@@ -50,14 +48,14 @@ private:
 	QString detail_;
 	void teardown();
 
-	QNetworkAccessManager manager_;
+	net::Http http_;
 	QUrl server_;
 	int seconds_ = 8;
 	int connections_ = 3;
 	bool running_ = false;
 
 	QByteArray payload_;
-	QList<QNetworkReply *> uploads_;
+	QList<net::Reply *> uploads_;
 	QList<qint64> sentPerReply_; // bytes sent so far by each active reply
 	qint64 finishedBytes_ = 0;   // bytes of requests that completed
 	qint64 lastTotal_ = 0;

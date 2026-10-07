@@ -13,9 +13,8 @@
 #include <QUrl>
 
 #include <QCryptographicHash>
-#include <QNetworkAccessManager>
 
-class QNetworkReply;
+#include "net/http.hpp"
 
 namespace laycue::update {
 
@@ -68,15 +67,15 @@ signals:
 private:
 	void fail(Error error, const QString &detail = QString());
 	void setState(State state);
-	QNetworkReply *get(const QUrl &url, int hops = 0);
+	net::Reply *get(const QUrl &url);
 	void readRelease(const QByteArray &json);
 	void fetchChecksum();
 	void fetchInstaller();
 	void stopReply();
 	bool allowed(const QUrl &url) const;
 
-	QNetworkAccessManager manager_;
-	QPointer<QNetworkReply> reply_;
+	net::Http http_;
+	QPointer<net::Reply> reply_;
 	State state_ = State::Idle;
 	Error error_ = Error::None;
 	QString detail_;

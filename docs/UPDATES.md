@@ -39,3 +39,7 @@ redirect). If this OBS cannot make secure connections it says so and offers **Op
    their checksum files to `laycue-releases`. Anyone with an older Laycue then sees the update.
 
 Versions look like `0.2.0`; a release with `-rc1` or `-beta1` after it is marked a pre-release and is not offered.
+
+## Secure connections on Windows
+
+Some OBS installs on Windows have no TLS part in their copy of Qt, so Qt cannot make https connections (the Updates card used to say "This OBS cannot make secure connections", and the speed test failed). Laycue now checks, and when Qt cannot do https it uses Windows' own web client (WinHTTP, part of Windows, nothing to download) for the update check, the download and the speed test. Everything else is unchanged: redirects are still checked against the allowed hosts, and the download is still checked against its SHA-256. The code is `plugins/common/src/net/` (`http.cpp` for Qt, `http-win.cpp` for WinHTTP). macOS and Linux still use Qt only.

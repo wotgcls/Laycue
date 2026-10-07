@@ -1,9 +1,6 @@
 #include "obs/speed-test.hpp"
 
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #include <QRandomGenerator>
-#include <QSslSocket>
 
 #include <obs-module.h>
 #include <plugin-support.h>
@@ -40,7 +37,7 @@ void SpeedTest::start(const QUrl &server, int seconds, int connections)
 	detail_.clear();
 	// A secure address needs the TLS part of Qt, which not every OBS install carries. Say so plainly
 	// instead of failing three times with a generic message.
-	if (server.scheme().toLower() == QLatin1String("https") && !QSslSocket::supportsSsl()) {
+	if (server.scheme().toLower() == QLatin1String("https") && !net::Http::secureAvailable()) {
 		detail_ = QStringLiteral("no TLS backend");
 		obs_log(LOG_WARNING, "Speed test: this OBS cannot make https connections (no TLS backend)");
 		emit failed(Failure::NoSecure);
@@ -79,10 +76,10 @@ void SpeedTest::teardown()
 {
 	running_ = false;
 	sampleTimer_.stop();
-	const QList<QNetworkReply *> replies = uploads_;
+	const QList<net::Reply *> replies = uploads_;
 	uploads_.clear();
 	sentPerReply_.clear();
-	for (QNetworkReply *reply : replies) {
+	for (net::Reply *reply : replies) {
 		reply->disconnect(this);
 		reply->abort();
 		reply->deleteLater();
@@ -100,16 +97,13 @@ void SpeedTest::measureLatency()
 	}
 	--latencyLeft_;
 	++requests_;
-	QNetworkRequest request(server_);
-	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/octet-stream");
-	request.setTransferTimeout(5000);
 	latencyClock_.start();
-	QNetworkReply *reply = manager_.post(request, QByteArray(1, 'x'));
-	connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+	net::Reply *reply = http_.post(server_, QByteArray(1, 'x'), "application/octet-stream", 5000);
+	connect(reply, &net::Reply::finished, this, [this, reply]() {
 		reply->deleteLater();
 		if (!running_)
 			return;
-		if (reply->error() == QNetworkReply::NoError || reply->error() >= QNetworkReply::ContentAccessDenied)
+		if (!reply->failed()) // any answer counts, even an error page: the round trip happened
 			rtts_.push_back(double(latencyClock_.nsecsElapsed()) / 1.0e6);
 		else {
 			++failedRequests_;
@@ -139,24 +133,21 @@ void SpeedTest::launchUpload()
 {
 	if (!running_)
 		return;
-	QNetworkRequest request(server_);
-	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/octet-stream");
-	request.setTransferTimeout(15000);
-	QNetworkReply *reply = manager_.post(request, payload_);
+	net::Reply *reply = http_.post(server_, payload_, "application/octet-stream", 15000);
 	uploads_.push_back(reply);
 	sentPerReply_.push_back(0);
-	connect(reply, &QNetworkReply::uploadProgress, this, [this, reply](qint64 sent, qint64) {
+	connect(reply, &net::Reply::uploadProgress, this, [this, reply](qint64 sent, qint64) {
 		const int index = int(uploads_.indexOf(reply));
 		if (index >= 0)
 			sentPerReply_[index] = sent;
 	});
-	connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+	connect(reply, &net::Reply::finished, this, [this, reply]() {
 		const int index = int(uploads_.indexOf(reply));
 		if (index >= 0) {
 			uploads_.removeAt(index);
 			sentPerReply_.removeAt(index);
 		}
-		const bool ok = reply->error() == QNetworkReply::NoError;
+		const bool ok = !reply->failed() && reply->status() < 400;
 		reply->deleteLater();
 		if (!running_)
 			return;

@@ -11,10 +11,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #include <QProcess>
-#include <QSslSocket>
 #include <QStandardPaths>
 
 #include <functional>
@@ -113,15 +110,10 @@ void Updater::stopReply()
 }
 
 // One request; redirects are followed by hand so every address can be checked against the allowed hosts.
-QNetworkReply *Updater::get(const QUrl &url, int hops)
+net::Reply *Updater::get(const QUrl &url)
 {
-	QNetworkRequest request(url);
-	request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
-	request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Laycue-Updater"));
-	request.setRawHeader("Accept", "application/vnd.github+json");
-	request.setTransferTimeout(kTimeoutMs * 6);
-	(void)hops;
-	return manager_.get(request);
+	return http_.get(url, {{"User-Agent", "Laycue-Updater"}, {"Accept", "application/vnd.github+json"}},
+			 kTimeoutMs * 6);
 }
 
 void Updater::check()
@@ -133,24 +125,24 @@ void Updater::check()
 	error_ = Error::None;
 	detail_.clear();
 	scheduled_ = false;
-	if (apiUrl_.scheme() == QLatin1String("https") && !QSslSocket::supportsSsl()) {
+	if (apiUrl_.scheme() == QLatin1String("https") && !net::Http::secureAvailable()) {
 		fail(Error::NoSecure, QStringLiteral("no TLS backend"));
 		return;
 	}
 	setState(State::Checking);
 	const quint64 gen = generation_;
 	reply_ = get(apiUrl_);
-	QNetworkReply *reply = reply_;
-	connect(reply, &QNetworkReply::finished, this, [this, reply, gen]() {
+	net::Reply *reply = reply_;
+	connect(reply, &net::Reply::finished, this, [this, reply, gen]() {
 		reply->deleteLater();
 		if (gen != generation_)
 			return;
-		const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+		const int status = reply->status();
 		if (status == 404) {
 			fail(Error::NoReleases);
 			return;
 		}
-		if (reply->error() != QNetworkReply::NoError || status != 200) {
+		if (reply->failed() || status != 200) {
 			fail(Error::NoConnection, reply->errorString());
 			return;
 		}
@@ -236,15 +228,14 @@ void Updater::fetchChecksum()
 	*step = [this, gen, step](QUrl url, int hops) {
 		stopReply();
 		reply_ = get(url);
-		QNetworkReply *reply = reply_;
-		connect(reply, &QNetworkReply::finished, this, [this, reply, gen, step, hops]() {
+		net::Reply *reply = reply_;
+		connect(reply, &net::Reply::finished, this, [this, reply, gen, step, hops]() {
 			reply->deleteLater();
 			if (gen != generation_)
 				return;
-			const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+			const int status = reply->status();
 			if (status >= 300 && status < 400 && hops < kMaxRedirects) {
-				const QUrl next =
-					reply->url().resolved(reply->header(QNetworkRequest::LocationHeader).toUrl());
+				const QUrl next = reply->url().resolved(reply->location());
 				if (!allowed(next)) {
 					fail(Error::Blocked, next.host());
 					return;
@@ -252,7 +243,7 @@ void Updater::fetchChecksum()
 				(*step)(next, hops + 1);
 				return;
 			}
-			if (reply->error() != QNetworkReply::NoError || status != 200) {
+			if (reply->failed() || status != 200) {
 				fail(Error::NoConnection, reply->errorString());
 				return;
 			}
@@ -289,11 +280,11 @@ void Updater::fetchInstaller()
 	*step = [this, gen, step](QUrl url, int hops) {
 		stopReply();
 		reply_ = get(url);
-		QNetworkReply *reply = reply_;
-		connect(reply, &QNetworkReply::readyRead, this, [this, reply, gen]() {
+		net::Reply *reply = reply_;
+		connect(reply, &net::Reply::readyRead, this, [this, reply, gen]() {
 			if (gen != generation_)
 				return;
-			const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+			const int status = reply->status();
 			if (status != 200)
 				return; // a redirect's body is not the file
 			const QByteArray chunk = reply->readAll();
@@ -303,20 +294,19 @@ void Updater::fetchInstaller()
 			}
 			hash_.addData(chunk);
 		});
-		connect(reply, &QNetworkReply::downloadProgress, this, [this, gen](qint64 got, qint64 total) {
+		connect(reply, &net::Reply::downloadProgress, this, [this, gen](qint64 got, qint64 total) {
 			if (gen != generation_ || total <= 0)
 				return;
 			progress_ = double(got) / double(total);
 			emit changed();
 		});
-		connect(reply, &QNetworkReply::finished, this, [this, reply, gen, step, hops]() {
+		connect(reply, &net::Reply::finished, this, [this, reply, gen, step, hops]() {
 			reply->deleteLater();
 			if (gen != generation_)
 				return;
-			const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+			const int status = reply->status();
 			if (status >= 300 && status < 400 && hops < kMaxRedirects) {
-				const QUrl next =
-					reply->url().resolved(reply->header(QNetworkRequest::LocationHeader).toUrl());
+				const QUrl next = reply->url().resolved(reply->location());
 				if (!allowed(next)) {
 					fail(Error::Blocked, next.host());
 					return;
@@ -324,7 +314,7 @@ void Updater::fetchInstaller()
 				(*step)(next, hops + 1);
 				return;
 			}
-			if (reply->error() != QNetworkReply::NoError || status != 200) {
+			if (reply->failed() || status != 200) {
 				fail(Error::NoConnection, reply->errorString());
 				return;
 			}

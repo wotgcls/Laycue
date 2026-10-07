@@ -10,6 +10,8 @@ target_sources(
     src/core/update-info.hpp
     src/hotkey-set.cpp
     src/hotkey-set.hpp
+    src/net/http.cpp
+    src/net/http.hpp
     src/ui/controls.cpp
     src/ui/controls.hpp
     src/ui/laycue-menu.cpp
@@ -28,6 +30,12 @@ target_sources(
     src/update/updater.cpp
     src/update/updater.hpp
 )
+
+if(WIN32)
+  # Windows' own secure web client, used when OBS's Qt has no TLS part (part of Windows, not a download).
+  target_sources(laycue-common PRIVATE src/net/http-win.cpp)
+  target_link_libraries(laycue-common PUBLIC winhttp)
+endif()
 
 target_include_directories(laycue-common PUBLIC src include)
 target_link_libraries(
