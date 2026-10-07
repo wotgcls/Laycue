@@ -5,6 +5,7 @@
 #include "store/clock-io.hpp"
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
+#include "ui/pack-switcher.hpp"
 #include "ui/presence-text.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/style.hpp"
@@ -212,6 +213,7 @@ void ClockDock::rebuild()
 	pageLayout_->setSpacing(6);
 
 	// Header.
+	pageLayout_->addWidget(new PackSwitcher(page_));
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 2, size::shadowMargin, 2);
 	header->setSpacing(size::gapSmall);

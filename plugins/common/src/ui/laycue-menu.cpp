@@ -23,6 +23,7 @@ void addToLaycueMenu(QWidget *dockContent, const QString &menuTitle, const QStri
 		auto *window = qobject_cast<QMainWindow *>(static_cast<QWidget *>(obs_frontend_get_main_window()));
 		if (!dockWidget || !window)
 			return;
+		dockWidget->setProperty("laycuePackName", itemText); // the panel switcher finds the pack by this
 		QMenuBar *bar = window->menuBar();
 		if (!bar)
 			return;

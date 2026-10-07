@@ -5,6 +5,7 @@
 #include "store/library-io.hpp"
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
+#include "ui/pack-switcher.hpp"
 #include "ui/presence-text.hpp"
 #include "ui/customize-page.hpp"
 #include "ui/logo-parts-dialog.hpp"
@@ -197,6 +198,7 @@ void TitlesDock::buildUi()
 	root->setSpacing(4);
 
 	// Header: the name and whether a title is on air.
+	root->addWidget(new PackSwitcher(home_));
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 2, size::shadowMargin, 2);
 	header->setSpacing(size::gapSmall);

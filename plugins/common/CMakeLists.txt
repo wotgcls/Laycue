@@ -20,6 +20,8 @@ target_sources(
     src/ui/controls.hpp
     src/ui/laycue-menu.cpp
     src/ui/laycue-menu.hpp
+    src/ui/pack-switcher.cpp
+    src/ui/pack-switcher.hpp
     src/ui/pages/helpers.hpp
     src/ui/presence-text.cpp
     src/ui/presence-text.hpp

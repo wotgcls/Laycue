@@ -10,6 +10,7 @@
 #include "obs/switcher.hpp"
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
+#include "ui/pack-switcher.hpp"
 #include "ui/labels.hpp"
 #include "ui/pages/add-pushback-page.hpp"
 #include "ui/pages/helpers.hpp"
@@ -221,6 +222,7 @@ QWidget *LaycueDock::buildHome()
 	root->setSpacing(4);
 
 	// Header: the brand mark and the tabs.
+	root->addWidget(new PackSwitcher(home));
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 0, size::shadowMargin, 0);
 	header->setSpacing(size::gap - 2);

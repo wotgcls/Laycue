@@ -4,6 +4,7 @@
 #include "store/settings-io.hpp"
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
+#include "ui/pack-switcher.hpp"
 #include "ui/live-chart.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/style.hpp"
@@ -284,6 +285,7 @@ void NetworkDock::buildUi()
 	root->setContentsMargins(size::margin - size::shadowMargin, 6, size::margin - size::shadowMargin, 4);
 	root->setSpacing(4);
 
+	root->addWidget(new PackSwitcher(home_));
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 2, size::shadowMargin, 2);
 	header->setSpacing(size::gapSmall);
