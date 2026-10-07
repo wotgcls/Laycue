@@ -117,3 +117,5 @@ holds the one list of them (the Overlays tab):
 - **Show in every scene** (right-click an overlay in Set up overlays): Laycue keeps that source in every scene, also in scenes
   made later. Unpinning stops Laycue adding it; it does not remove it from scenes that have it.
 - The Titles panel's own "Add to all scenes" does the same one-time job for a title layer when the Scenes plugin is not installed.
+
+![How the Laycue pack works](pack-sketch.svg)
