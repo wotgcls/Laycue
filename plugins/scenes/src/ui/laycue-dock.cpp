@@ -470,7 +470,7 @@ QWidget *LaycueDock::buildHome()
 			if (!setItemVisible(sceneUuid, itemId, show))
 				showToast(text("Laycue.Overlays.Gone"));
 		});
-	connect(overlaysTab_, &OverlaysTab::setupRequested, this, &LaycueDock::openOverlaySetup);
+	connect(overlaysTab_, &OverlaysTab::setupRequested, this, [this]() { openOverlaySetup(); });
 	tabHostLayout->addWidget(overlaysTab_);
 	tabHostLayout->addStretch(1);
 
@@ -1096,15 +1096,15 @@ void LaycueDock::updateGuide()
 		std::function<void()> run;
 	};
 	const std::vector<Step> steps = {
-		{text("Laycue.Guide.Overlays"), text("Laycue.Guide.OverlaysSub"), !config.tags.empty(),
-		 text("Laycue.Guide.OverlaysAction"),
-		 [this]() {
-			 openOverlaySetup();
-		 }},
 		{text("Laycue.Guide.Pushback"), text("Laycue.Guide.PushbackSub"),
 		 !config.pushbacks.empty() || !config.layouts.empty(), text("Laycue.Guide.PushbackAction"),
 		 [this]() {
 			 showTab(Tab::Pushbacks);
+		 }},
+		{text("Laycue.Guide.Overlays"), text("Laycue.Guide.OverlaysSub"), !config.tags.empty(),
+		 text("Laycue.Guide.OverlaysAction"),
+		 [this]() {
+			 openOverlaySetup(true); // labels what it can right away; the operator checks and corrects
 		 }},
 		{text("Laycue.Guide.GoLive"), text("Laycue.Guide.GoLiveSub"), config.wentLive, QString(), nullptr},
 	};
@@ -1142,11 +1142,13 @@ void LaycueDock::updateGuide()
 	layout->addWidget(card);
 }
 
-void LaycueDock::openOverlaySetup()
+void LaycueDock::openOverlaySetup(bool autoLabel)
 {
 	auto *page = new ui::OverlaySetupPage(app_);
 	connect(page, &ui::PageFrame::backRequested, this, &LaycueDock::closePage);
 	openPage(page);
+	if (autoLabel)
+		page->autoTag();
 }
 
 void LaycueDock::openSettings()

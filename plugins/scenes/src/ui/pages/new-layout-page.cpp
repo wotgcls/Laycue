@@ -167,7 +167,7 @@ void NewLayoutPage::rebuildSlotRows()
 		h->addWidget(innerLabel(row, lt(shape.shapes[i].nameKey), 13, 600, color::cream), 2);
 		const bool set = !chosen_[i].uuid.empty();
 		auto *pick = button(row, set ? QString::fromStdString(chosen_[i].name) : lt("Laycue.Layout.Choose"),
-				    set ? "laycueSecondary" : "laycuePrimary");
+				    "laycueSecondary"); // the one filled button on this page is "Make this layout"
 		pick->setToolTip(lt("Laycue.Layout.ChooseTip"));
 		connect(pick, &QAbstractButton::clicked, this, [this, i, pick]() { chooseFor(int(i), pick); });
 		h->addWidget(pick, 3);

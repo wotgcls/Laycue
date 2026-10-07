@@ -94,7 +94,7 @@ private:
 	void updateGuide();
 	void openSettings();
 	void applyView(); // Laycue view on/off, to match the setting
-	void openOverlaySetup();
+	void openOverlaySetup(bool autoLabel = false);
 	void repairPushbacks();
 	const Pushback *pushbackForScene(const std::string &sceneUuid) const;
 	const Layout *layoutForScene(const std::string &sceneUuid) const;

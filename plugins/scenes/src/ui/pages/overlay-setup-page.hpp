@@ -18,11 +18,13 @@ class OverlaySetupPage : public PageFrame {
 public:
 	explicit OverlaySetupPage(App &app, QWidget *parent = nullptr);
 
+	// Labels every unlabelled source it is sure about, and says why under each name.
+	void autoTag();
+
 private:
 	std::map<std::string, QString> reasons_; // why Auto-label chose a label, shown under the source's name
 	void rebuildSources();
 	void rebuildRules();
-	void autoTag();
 
 	App &app_;
 	QWidget *sourcesHost_ = nullptr;

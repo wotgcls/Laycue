@@ -522,6 +522,7 @@ void TitlesDock::showTab(Tab tab)
 		rebuildSetup();
 	if (tab == Tab::Queue)
 		rebuildQueue();
+	updateButtons();
 }
 
 // ---- Content -----------------------------------------------------------------------------------------------
@@ -1061,6 +1062,9 @@ void TitlesDock::updateButtons()
 		primary_->setEnabled(true);
 		hint_->setText(QString());
 	}
+	// On the Queue tab, "Play next" is the main action, so the stage's button steps back.
+	if (tab_ == Tab::Queue && !library_.queue.empty() && !noLayer && !changed)
+		primary_->setKind(ActionButton::Kind::Secondary);
 	hide_->setVisible(onAir && changed); // when nothing changed, the main button already says Hide
 	queueAdd_->setText(editingRow_ >= 0 ? lt("Laycue.Titles.QueueSaveRow") : lt("Laycue.Titles.QueueAdd"));
 	queueAdd_->setVisible(!noLayer);

@@ -92,7 +92,7 @@ OverlaySetupPage::OverlaySetupPage(App &app, QWidget *parent)
 	auto *sourcesHeader = new QHBoxLayout();
 	sourcesHeader->setContentsMargins(0, 0, size::shadowMargin, 0);
 	sourcesHeader->addWidget(label(this, lt("Laycue.OverlaySetup.Sources"), 15, 700, color::cream), 1);
-	auto *autoButton = button(this, lt("Laycue.AutoTag"), "laycueSecondary");
+	auto *autoButton = button(this, lt("Laycue.AutoTag"), "laycuePrimary"); // the one thing to do here
 	autoButton->setToolTip(lt("Laycue.AutoTagTip"));
 	connect(autoButton, &QAbstractButton::clicked, this, &OverlaySetupPage::autoTag);
 	sourcesHeader->addWidget(autoButton);
@@ -178,7 +178,7 @@ void OverlaySetupPage::rebuildSources()
 		const std::string current = tagOf(app_.config(), row.uuid);
 		auto *tagButton =
 			button(widget, current.empty() ? lt("Laycue.OverlaySetup.NotOverlay") : tagDisplayName(current),
-			       current.empty() ? "laycueSecondary" : "laycuePrimary");
+			       "laycueSecondary");
 		tagButton->setAccessibleName(QString::fromStdString(row.name) + QStringLiteral(": ") +
 					     tagButton->text());
 		h->addWidget(tagButton);
