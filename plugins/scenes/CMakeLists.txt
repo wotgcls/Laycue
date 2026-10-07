@@ -25,6 +25,8 @@ laycue_add_plugin(
     src/obs/switcher.cpp
     src/obs/pixel-reader.cpp
     src/obs/overlay-items.cpp
+    src/obs/source-facts.cpp
+    src/obs/source-facts.hpp
     src/obs/pushback-scene.cpp
     src/obs/layout-scene.cpp
     src/obs/scene-util.cpp

@@ -23,6 +23,7 @@ struct OverlayItem {
 	std::string sourceUuid;
 	std::string sourceName;
 	SourceKind kind = SourceKind::Other;
+	std::string typeId; // OBS's id for the source's kind, e.g. "image_source"
 	bool visible = false;
 	RectF box; // where the item shows on the canvas (its bounding box), no pixel measuring
 };

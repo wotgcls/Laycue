@@ -1,6 +1,7 @@
 #include "ui/pages/overlay-setup-page.hpp"
 
 #include "core/autotag.hpp"
+#include "obs/source-facts.hpp"
 #include "core/config.hpp"
 #include "features/app.hpp"
 #include "obs/overlay-items.hpp"
@@ -34,6 +35,7 @@ struct SourceRow {
 	SourceKind kind = SourceKind::Other;
 	int sceneCount = 0;
 	RectF box; // from the first scene it is in, for guessing what it is
+	std::string typeId;
 };
 
 std::vector<SourceRow> readSourceRows()
@@ -44,7 +46,7 @@ std::vector<SourceRow> readSourceRows()
 		auto found = index.find(item.sourceUuid);
 		if (found == index.end()) {
 			index[item.sourceUuid] = rows.size();
-			rows.push_back({item.sourceUuid, item.sourceName, item.kind, 1, item.box});
+			rows.push_back({item.sourceUuid, item.sourceName, item.kind, 1, item.box, item.typeId});
 		} else {
 			rows[found->second].sceneCount++;
 		}
@@ -161,12 +163,14 @@ void OverlaySetupPage::rebuildSources()
 		auto *text = new QVBoxLayout();
 		text->setSpacing(1);
 		text->addWidget(label(widget, QString::fromStdString(row.name), 13, 600, color::cream));
-		text->addWidget(label(widget,
-				      kindDisplayName(row.kind) + QStringLiteral(" · ") +
-					      lt(row.sceneCount == 1 ? "Laycue.OverlaySetup.InScene"
-								     : "Laycue.OverlaySetup.InScenes")
-						      .arg(row.sceneCount),
-				      11, 400, color::textTertiary));
+		QString subtitle =
+			kindDisplayName(row.kind) + QStringLiteral(" · ") +
+			lt(row.sceneCount == 1 ? "Laycue.OverlaySetup.InScene" : "Laycue.OverlaySetup.InScenes")
+				.arg(row.sceneCount);
+		const auto why = reasons_.find(row.uuid);
+		if (why != reasons_.end())
+			subtitle += QStringLiteral(" · ") + why->second;
+		text->addWidget(label(widget, subtitle, 11, 400, color::textTertiary));
 		h->addLayout(text, 1);
 
 		const std::string current = tagOf(app_.config(), row.uuid);
@@ -379,17 +383,38 @@ void OverlaySetupPage::autoTag()
 	canvasSize(canvasW, canvasH);
 	int tagged = 0;
 	const std::vector<SourceRow> rows = readSourceRows();
+	// Look at each unlabelled source: its type, its filters and (for pictures) what the picture is made of.
+	std::vector<std::pair<SourceRow, TagSuggestion>> found;
+	for (const SourceRow &row : rows) {
+		if (!tagOf(app_.config(), row.uuid).empty())
+			continue;
+		SourceFacts facts;
+		facts.name = row.name;
+		facts.kind = row.kind;
+		facts.spot = row.box;
+		facts.canvasWidth = canvasW;
+		facts.canvasHeight = canvasH;
+		const bool picture = row.kind == SourceKind::Image || row.kind == SourceKind::Slideshow ||
+				     row.kind == SourceKind::Media || row.kind == SourceKind::Browser ||
+				     row.kind == SourceKind::Other || row.kind == SourceKind::Color;
+		const PictureFacts seen = readPictureFacts(row.uuid, picture);
+		facts.typeId = seen.typeId.empty() ? row.typeId : seen.typeId;
+		facts.keyFilter = seen.keyFilter;
+		facts.seeThrough = seen.seeThrough;
+		facts.green = seen.green;
+		if (const auto suggestion = classifySource(facts))
+			found.push_back({row, *suggestion});
+	}
 	app_.modify([&](Config &c) {
-		for (const SourceRow &row : rows) {
-			if (!tagOf(c, row.uuid).empty())
-				continue;
-			const auto suggestion = suggestTag(row.name, row.box, canvasW, canvasH);
-			if (!suggestion)
-				continue;
-			setTag(c, row.uuid, row.name, suggestion->tag);
+		for (const auto &entry : found) {
+			setTag(c, entry.first.uuid, entry.first.name, entry.second.tag);
 			++tagged;
 		}
 	});
+	for (const auto &entry : found) {
+		const std::string key = "Laycue.AutoWhy." + entry.second.why;
+		reasons_[entry.first.uuid] = lt(key.c_str());
+	}
 	message_->setText(tagged > 0 ? lt("Laycue.AutoTagDone").arg(tagged) : lt("Laycue.AutoTagNone"));
 	message_->show();
 	rebuildSources();

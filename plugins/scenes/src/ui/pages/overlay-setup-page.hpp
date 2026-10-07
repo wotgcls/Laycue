@@ -19,6 +19,7 @@ public:
 	explicit OverlaySetupPage(App &app, QWidget *parent = nullptr);
 
 private:
+	std::map<std::string, QString> reasons_; // why Auto-label chose a label, shown under the source's name
 	void rebuildSources();
 	void rebuildRules();
 	void autoTag();

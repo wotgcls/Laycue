@@ -63,7 +63,8 @@ void addItem(Collector &c, obs_sceneitem_t *item)
 	o.itemId = c.groupId * kGroupIdStep + obs_sceneitem_get_id(item);
 	o.sourceUuid = str(obs_source_get_uuid(source));
 	o.sourceName = str(obs_source_get_name(source));
-	o.kind = kindFromTypeId(str(obs_source_get_id(source)));
+	o.typeId = str(obs_source_get_id(source));
+	o.kind = kindFromTypeId(o.typeId);
 	o.visible = obs_sceneitem_visible(item);
 	o.box = boxBounds(item);
 	c.out->push_back(std::move(o));
