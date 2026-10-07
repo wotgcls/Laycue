@@ -12,6 +12,7 @@
 #include "ui/labels.hpp"
 #include "ui/pages/add-pushback-page.hpp"
 #include "ui/pages/helpers.hpp"
+#include "core/autotag.hpp"
 #include "ui/pages/new-layout-page.hpp"
 #include "ui/template-card.hpp"
 #include "ui/pages/overlay-setup-page.hpp"
@@ -672,6 +673,7 @@ void LaycueDock::refreshNow()
 
 	try {
 		watcher_->attachAll(); // new scenes or groups may have appeared
+		syncOverlays();
 		const Snapshot snapshot = readSnapshot();
 
 		if (!repairChecked_) {
@@ -1027,6 +1029,36 @@ const Pushback *LaycueDock::pushbackForScene(const std::string &sceneUuid) const
 			return &pushback;
 	}
 	return nullptr;
+}
+
+// Laycue Titles and Laycue Clock layers are overlays by design, so they get their label by themselves and show up in
+// the Overlays tab. Sources the operator pinned are kept in every scene, including scenes made later.
+void LaycueDock::syncOverlays()
+{
+	std::vector<std::pair<std::string, std::pair<std::string, std::string>>> toLabel; // uuid -> (name, tag)
+	for (const OverlayItem &item : readAllItems()) {
+		if (item.typeId.rfind("laycue_", 0) != 0 || !tagOf(app_.config(), item.sourceUuid).empty())
+			continue;
+		SourceFacts facts;
+		facts.name = item.sourceName;
+		facts.typeId = item.typeId;
+		facts.kind = item.kind;
+		const auto suggestion = classifySource(facts);
+		if (!suggestion)
+			continue;
+		const bool seen = std::any_of(toLabel.begin(), toLabel.end(),
+					      [&](const auto &entry) { return entry.first == item.sourceUuid; });
+		if (!seen)
+			toLabel.push_back({item.sourceUuid, {item.sourceName, suggestion->tag}});
+	}
+	if (!toLabel.empty()) {
+		app_.modify([&](Config &config) {
+			for (const auto &entry : toLabel)
+				setTag(config, entry.first, entry.second.first, entry.second.second);
+		});
+	}
+	for (const std::string &uuid : app_.config().pinned)
+		addSourceToAllScenes(uuid);
 }
 
 void LaycueDock::updateLayoutsTab()

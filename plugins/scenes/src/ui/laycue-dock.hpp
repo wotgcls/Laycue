@@ -81,6 +81,7 @@ private:
 	void layoutCards();
 	void layoutGrid(QGridLayout *grid, const std::vector<Shot> &shots, int available);
 	void updateLayoutsTab();
+	void syncOverlays(); // Laycue's own title and clock layers become overlays; pinned sources stay in every scene
 	void updateInsideBar();
 	void switchInside(const std::string &pushbackId, const std::string &feedUuid);
 	void unpin();

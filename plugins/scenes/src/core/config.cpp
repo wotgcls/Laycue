@@ -77,6 +77,20 @@ void setTag(Config &config, const std::string &sourceUuid, const std::string &so
 		config.tags.push_back({sourceUuid, sourceName, tagName});
 }
 
+bool isPinned(const Config &config, const std::string &sourceUuid)
+{
+	return std::find(config.pinned.begin(), config.pinned.end(), sourceUuid) != config.pinned.end();
+}
+
+void setPinned(Config &config, const std::string &sourceUuid, bool pinned)
+{
+	const auto it = std::find(config.pinned.begin(), config.pinned.end(), sourceUuid);
+	if (pinned && it == config.pinned.end() && !sourceUuid.empty())
+		config.pinned.push_back(sourceUuid);
+	else if (!pinned && it != config.pinned.end())
+		config.pinned.erase(it);
+}
+
 bool tipDismissed(const Config &config, const std::string &tipId)
 {
 	return std::find(config.dismissedTips.begin(), config.dismissedTips.end(), tipId) != config.dismissedTips.end();

@@ -167,6 +167,8 @@ void OverlaySetupPage::rebuildSources()
 			kindDisplayName(row.kind) + QStringLiteral(" · ") +
 			lt(row.sceneCount == 1 ? "Laycue.OverlaySetup.InScene" : "Laycue.OverlaySetup.InScenes")
 				.arg(row.sceneCount);
+		if (isPinned(app_.config(), row.uuid))
+			subtitle += QStringLiteral(" · ") + lt("Laycue.OverlaySetup.Pinned");
 		const auto why = reasons_.find(row.uuid);
 		if (why != reasons_.end())
 			subtitle += QStringLiteral(" · ") + why->second;
@@ -199,6 +201,19 @@ void OverlaySetupPage::rebuildSources()
 			for (const std::string &tagId : knownTags(app_.config()))
 				addChoice(tagDisplayName(tagId), tagId);
 			menu.addSeparator();
+			if (!current.empty()) {
+				// An overlay can be kept in every scene, so a logo or a title never has to be added scene by scene.
+				QAction *pin = menu.addAction(lt("Laycue.OverlaySetup.Pin"));
+				pin->setCheckable(true);
+				pin->setChecked(isPinned(app_.config(), captured.uuid));
+				connect(pin, &QAction::triggered, this, [this, captured](bool on) {
+					app_.modify([&](Config &c) { setPinned(c, captured.uuid, on); });
+					if (on)
+						addSourceToAllScenes(captured.uuid);
+					rebuildSources();
+				});
+				menu.addSeparator();
+			}
 			QAction *custom = menu.addAction(lt("Laycue.OverlaySetup.CustomTag"));
 			connect(custom, &QAction::triggered, this, [this, captured]() {
 				bool ok = false;

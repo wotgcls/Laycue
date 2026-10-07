@@ -81,3 +81,20 @@ TEST_CASE("config: layouts keep their template's slot count and drop unknown tem
 	CHECK_EQ(int(c.layouts[0].sources.size()), 2);
 	CHECK_EQ(laycue::newLayoutId(c), std::string("ly2"));
 }
+
+TEST_CASE("config: pinning keeps a source in every scene, once")
+{
+	laycue::Config config;
+	CHECK(!laycue::isPinned(config, "a"));
+	laycue::setPinned(config, "a", true);
+	laycue::setPinned(config, "a", true); // pinning twice is still one pin
+	laycue::setPinned(config, "b", true);
+	laycue::setPinned(config, "", true); // nothing to pin
+	CHECK_EQ(int(config.pinned.size()), 2);
+	CHECK(laycue::isPinned(config, "a"));
+	laycue::setPinned(config, "a", false);
+	CHECK(!laycue::isPinned(config, "a"));
+	CHECK(laycue::isPinned(config, "b"));
+	laycue::setPinned(config, "zzz", false); // unpinning what was never pinned is harmless
+	CHECK_EQ(int(config.pinned.size()), 1);
+}

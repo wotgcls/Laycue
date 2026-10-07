@@ -65,6 +65,7 @@ OBSData configToData(const Config &config)
 	obs_data_set_bool(root, "rulesInitialised", config.rulesInitialised);
 	obs_data_set_bool(root, "wentLive", config.wentLive);
 	putStrings(root, "dismissedTips", config.dismissedTips);
+	putStrings(root, "pinned", config.pinned);
 
 	{
 		OBSDataAutoRelease s = obs_data_create();
@@ -176,6 +177,7 @@ Config configFromData(obs_data_t *data)
 	config.rulesInitialised = obs_data_get_bool(data, "rulesInitialised");
 	config.wentLive = obs_data_get_bool(data, "wentLive");
 	config.dismissedTips = getStrings(data, "dismissedTips");
+	config.pinned = getStrings(data, "pinned");
 
 	{
 		OBSDataAutoRelease s = obs_data_get_obj(data, "settings");

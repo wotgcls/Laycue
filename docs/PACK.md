@@ -106,3 +106,14 @@ Updates (a "Check for updates" button in each plugin, published through a small 
 ## The Laycue menu
 
 Every plugin adds its own entry to a **Laycue** menu in OBS's menu bar (between Tools and Help): Clock, Network, Scenes, Titles. Click an entry to show or hide that panel; a tick means it is open. Whichever plugin loads first makes the menu, so with only some installed the menu shows only those. The code is `plugins/common/src/ui/laycue-menu.*`.
+
+## One idea of "overlay"
+
+An overlay is anything that sits on top of the picture: scripture, lyrics, a name bar, a logo, a title, a clock. Laycue Scenes
+holds the one list of them (the Overlays tab):
+- **Laycue Titles and Laycue Clock layers are overlays automatically.** They get their label by themselves.
+- **Auto-label** looks at each other source: its name, what it is, whether its picture has no background or a green screen,
+  and where it sits. It never labels a camera or a capture, and says why under each name ("see-through picture").
+- **Show in every scene** (right-click an overlay in Set up overlays): Laycue keeps that source in every scene, also in scenes
+  made later. Unpinning stops Laycue adding it; it does not remove it from scenes that have it.
+- The Titles panel's own "Add to all scenes" does the same one-time job for a title layer when the Scenes plugin is not installed.

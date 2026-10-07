@@ -80,6 +80,7 @@ struct Config {
 	std::vector<Rule> rules;
 	std::vector<Pushback> pushbacks;
 	std::vector<Layout> layouts;
+	std::vector<std::string> pinned;        // sources (UUIDs) kept in every scene, including scenes made later
 	std::vector<std::string> dismissedTips; // guide cards the operator has closed
 	bool rulesInitialised = false;          // the starter rule has been offered once
 	bool wentLive = false;                  // Go Live or Cut has been used (ticks off the getting-started guide)
@@ -94,6 +95,10 @@ std::string tagOf(const Config &config, const std::string &sourceUuid);
 
 // Sets or clears (empty tag) a source's tag.
 void setTag(Config &config, const std::string &sourceUuid, const std::string &sourceName, const std::string &tagName);
+
+// Pinned sources show in every scene (also in scenes made later).
+bool isPinned(const Config &config, const std::string &sourceUuid);
+void setPinned(Config &config, const std::string &sourceUuid, bool pinned);
 
 bool tipDismissed(const Config &config, const std::string &tipId);
 void dismissTip(Config &config, const std::string &tipId);

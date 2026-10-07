@@ -42,6 +42,10 @@ bool setItemVisible(const std::string &sceneUuid, int64_t itemId, bool visible);
 // bounding box if the source has no picture. Empty if the item can't be found.
 RectF measureSpot(const std::string &sceneUuid, int64_t itemId);
 
+// Puts the source in every scene that does not have it yet (on top, visible). Never moves or hides what is already
+// there. Returns how many scenes got it.
+int addSourceToAllScenes(const std::string &sourceUuid);
+
 // Canvas size, or 0 x 0 if OBS can't say.
 void canvasSize(double &width, double &height);
 

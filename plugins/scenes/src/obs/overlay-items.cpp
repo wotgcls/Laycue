@@ -190,6 +190,34 @@ RectF measureSpot(const std::string &sceneUuid, int64_t itemId)
 	return mapped.empty() ? fallback : mapped;
 }
 
+int addSourceToAllScenes(const std::string &sourceUuid)
+{
+	int added = 0;
+	try {
+		OBSSourceAutoRelease source = obs_get_source_by_uuid(sourceUuid.c_str());
+		if (!source)
+			return 0;
+		const char *sourceName = obs_source_get_name(source);
+		obs_frontend_source_list scenes = {};
+		obs_frontend_get_scenes(&scenes);
+		for (size_t i = 0; i < scenes.sources.num; ++i) {
+			obs_scene_t *scene = obs_scene_from_source(scenes.sources.array[i]);
+			if (!scene || !sourceName || obs_scene_find_source(scene, sourceName))
+				continue;
+			if (obs_scene_from_source(source) == scene)
+				continue; // a scene cannot hold itself
+			if (obs_sceneitem_t *item = obs_scene_add(scene, source)) {
+				obs_sceneitem_set_order(item, OBS_ORDER_MOVE_TOP);
+				++added;
+			}
+		}
+		obs_frontend_source_list_free(&scenes);
+	} catch (...) {
+		obs_log(LOG_ERROR, "Laycue: could not add a source to every scene");
+	}
+	return added;
+}
+
 void canvasSize(double &width, double &height)
 {
 	obs_video_info video = {};
