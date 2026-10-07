@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laycue Loop</title>
+<style>
+/*FONTS*/
+
+/* ------------------------------------------------------------------------------------------------
+   TUNE THE ANIMATION HERE. Times are seconds from the start of the loop.
+   Each beat is one scene of the story; everything inside a beat is timed relative to it,
+   so moving a beat moves its whole scene. Keep --t-logo-in + 1.0 <= --loop.
+   ------------------------------------------------------------------------------------------------ */
+:root {
+  --loop: 15;          /* total length of the loop */
+  --t-logo-out: 1.1;   /* the wordmark tucks behind the mark and the logo leaves */
+  --t-window: 1.5;     /* the OBS window rises */
+  --t-menu: 2.3;       /* cursor opens the Laycue menu */
+  --t-layout1: 5.35;   /* click: Cam + Slides + Chat */
+  --t-layout2: 7.45;   /* click: Split */
+  --t-fit: 9.0;        /* click: Frame, the camera finds its window */
+  --t-title: 11.35;    /* click: Show on air */
+  --t-outro: 13.6;     /* the window recedes */
+  --t-logo-in: 13.9;   /* the logo builds, ready exactly at the end */
+  --move: 0.75;        /* how long one tile takes to move into place */
+  --stagger: 0.09;     /* delay between tiles */
+
+  /* look */
+  --ink: #111110; --graphite: #1C1B19; --line: #2C2A27; --cream: #F1EBDD;
+  --blue: #2E8BFF; --green: #2FD18B; --amber: #FFB31A; --red: #FF4D2E;
+  --obs-bg: #1d1f26; --obs-bar: #2b2e38; --obs-btn: #3c404d; --obs-sel: #2850b8; --obs-text: #e7e9ee; --obs-dim: #9aa0ad;
+  --font: "Archivo", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #000; height: 100%; overflow: hidden; }
+body { display: grid; place-items: center; font-family: var(--font); color: var(--cream); }
+
+#fit { width: 1280px; height: 720px; transform-origin: center; flex: none; }
+#stage { position: relative; width: 1280px; height: 720px; overflow: hidden; background: var(--ink); isolation: isolate; }
+
+/* ---- backdrop ---- */
+#bg { position: absolute; inset: 0; }
+#bg i { position: absolute; width: 1100px; height: 1100px; border-radius: 50%; opacity: .2; }
+#bg .b1 { background: radial-gradient(closest-side, var(--blue), transparent); left: -420px; top: -520px; }
+#bg .b2 { background: radial-gradient(closest-side, var(--green), transparent); right: -480px; top: -480px; opacity: .11; }
+#bg .b3 { background: radial-gradient(closest-side, var(--amber), transparent); left: -100px; bottom: -820px; opacity: .10; }
+#bg .b4 { background: radial-gradient(closest-side, var(--red), transparent); right: -380px; bottom: -760px; opacity: .08; }
+#bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(0,0,0,.55) 100%); }
+#grain { position: absolute; inset: 0; z-index: 60; pointer-events: none; opacity: .05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+/* ---- logo ---- */
+#logo { position: absolute; inset: 0; display: grid; place-items: center; }
+#logo svg { width: 900px; height: 280px; overflow: visible; }
+
+/* ---- the camera: everything the viewer "films" lives in #world ---- */
+#world { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; transform-origin: 0 0; }
+#win { position: absolute; left: 60px; top: 34px; width: 1160px; height: 652px; border-radius: 14px; overflow: hidden;
+  background: var(--obs-bg); color: var(--obs-text); font-size: 12px; font-family: var(--font); font-stretch: 100%;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.09), 0 50px 120px rgba(0,0,0,.65), 0 14px 40px rgba(0,0,0,.45); transform-origin: 50% 50%; }
+
+.titlebar { position: absolute; left: 0; top: 0; right: 0; height: 28px; background: #15161b; display: flex; align-items: center; padding-left: 14px; border-bottom: 1px solid #0c0d10; }
+.titlebar .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+.titlebar .r { background: #ff5f57; } .titlebar .y { background: #febc2e; } .titlebar .g { background: #28c840; }
+.titlebar span { position: absolute; left: 0; right: 0; text-align: center; color: var(--obs-dim); font-size: 11.5px; pointer-events: none; }
+.menubar { position: absolute; left: 0; top: 28px; right: 0; height: 26px; background: #1a1c22; display: flex; align-items: center; padding-left: 4px; }
+.mi { padding: 0 9px; height: 22px; line-height: 22px; font-size: 12.5px; color: var(--obs-text); border-radius: 3px; }
+.mi.on { background: var(--obs-sel); }
+#dropdown { position: absolute; width: 150px; background: #2a2d37; border-radius: 6px; padding: 5px 0; z-index: 30; box-shadow: 0 14px 34px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.07); transform-origin: 20px 0; opacity: 0; }
+.di { height: 26px; line-height: 26px; padding-left: 28px; font-size: 12.5px; position: relative; }
+.di.hov { background: var(--obs-sel); }
+.di .tick { position: absolute; left: 9px; top: 0; font-size: 11px; }
+
+/* preview */
+#preview { position: absolute; left: 0; top: 54px; width: 820px; height: 438px; background: #13151a; }
+#canvas { position: absolute; left: 27px; top: 4px; width: 765px; height: 430px; background: #000; overflow: hidden; }
+#stagebg { position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 25%, #2a2f45 0%, #14161f 55%, #0b0c10 100%); }
+#stagebg::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 48px), repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 48px); }
+
+.tile { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; will-change: transform; }
+.tile .lift { position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 18px 38px rgba(0,0,0,.7), 0 4px 10px rgba(0,0,0,.5); opacity: 0; }
+.tile .face { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; container-type: size; background: #222; }
+.tile .tag { position: absolute; left: 6px; top: 6px; font: 600 8.5px/1 var(--mono); letter-spacing: .08em; color: #fff; background: rgba(0,0,0,.55); padding: 3px 5px; border-radius: 3px; opacity: 0; }
+.sel { position: absolute; inset: -2px; border: 2px solid #ff3b3b; pointer-events: none; }
+.sel i { position: absolute; width: 8px; height: 8px; background: #ff3b3b; }
+.sel i:nth-child(1){left:-5px;top:-5px} .sel i:nth-child(2){right:-5px;top:-5px} .sel i:nth-child(3){left:-5px;bottom:-5px} .sel i:nth-child(4){right:-5px;bottom:-5px}
+.sel i:nth-child(5){left:calc(50% - 4px);top:-5px} .sel i:nth-child(6){left:calc(50% - 4px);bottom:-5px} .sel i:nth-child(7){left:-5px;top:calc(50% - 4px)} .sel i:nth-child(8){right:-5px;top:calc(50% - 4px)}
+
+/* camera art */
+.cam .face { background: radial-gradient(ellipse at 70% 20%, #7a5b45 0%, #3b2d26 45%, #1e1815 100%); }
+.cam .win { position: absolute; left: -8cqw; top: -6cqh; width: 40cqw; height: 70cqh; background: linear-gradient(160deg, rgba(255,235,200,.55), rgba(255,235,200,.05)); filter: blur(2px); transform: skewX(-8deg); }
+.cam .body { position: absolute; left: 50%; bottom: -34cqmin; width: 92cqmin; height: 76cqmin; margin-left: -46cqmin; background: linear-gradient(180deg, #2a2e3a, #171922); border-radius: 50% 50% 0 0; }
+.cam .collar { position: absolute; left: 50%; bottom: 27cqmin; width: 22cqmin; height: 26cqmin; margin-left: -11cqmin; background: #f1eadf; clip-path: polygon(0 0,100% 0,50% 100%); }
+.cam .neck { position: absolute; left: 50%; bottom: 36cqmin; width: 15cqmin; height: 16cqmin; margin-left: -7.5cqmin; background: #b98462; border-radius: 3cqmin; }
+.cam .head { position: absolute; left: 50%; bottom: 44cqmin; width: 36cqmin; height: 42cqmin; margin-left: -18cqmin; background: radial-gradient(circle at 50% 38%, #d6a07a, #b47c58); border-radius: 48% 48% 46% 46%; }
+.cam .hair { position: absolute; left: 50%; bottom: 74cqmin; width: 39cqmin; height: 18cqmin; margin-left: -19.5cqmin; background: #231710; border-radius: 50% 50% 30% 30%; }
+/* slides art */
+.slides .face { background: linear-gradient(135deg, #17358f 0%, #2358d6 60%, #2E8BFF 130%); }
+.slides .eyebrow { position: absolute; left: 6cqw; top: 6cqw; font: 600 2.5cqw var(--mono); letter-spacing: .14em; color: rgba(255,255,255,.7); }
+.slides .big { position: absolute; left: 6cqw; top: 22cqh; font: 800 13cqw/1 var(--font); font-stretch: 108%; letter-spacing: -.03em; color: #fff; }
+.slides .sub { position: absolute; left: 6cqw; top: 52cqh; width: 76cqw; font: 500 4.6cqw/1.35 var(--font); color: rgba(255,255,255,.88); }
+.slides .rule { position: absolute; left: 6cqw; bottom: 8cqh; width: 18cqw; height: 1.2cqw; background: var(--amber); }
+/* chat art */
+.chat .face { background: #15161b; }
+.chat .head { position: absolute; left: 0; right: 0; top: 0; padding: 4cqmin 5cqmin; font: 700 3.6cqmin var(--mono); letter-spacing: .12em; color: var(--obs-dim); border-bottom: 1px solid #25272f; white-space: nowrap; }
+.chat .rows { position: absolute; left: 5cqmin; right: 5cqmin; top: 15cqmin; bottom: 0; display: flex; flex-direction: column; gap: 3.4cqmin; overflow: hidden; }
+.chat .row { display: flex; align-items: center; gap: 3cqmin; font: 500 4.6cqmin var(--font); color: #e5e7ec; white-space: nowrap; flex: none; }
+.chat .row i { width: 7cqmin; height: 7cqmin; border-radius: 50%; flex: none; }
+.chat .row b { font-weight: 700; color: #aab; }
+/* logo badge */
+.badge .face { background: var(--cream); display: grid; place-items: center; }
+.badge .face span { font: 800 22cqh/1 var(--font); font-stretch: 108%; color: var(--ink); letter-spacing: -.02em; }
+.badge .face i { position: absolute; left: 0; top: 0; bottom: 0; width: 14cqw; background: linear-gradient(180deg, var(--blue) 0 25%, var(--green) 25% 50%, var(--amber) 50% 75%, var(--red) 75%); }
+
+/* frame graphic (pushback) */
+#frame { position: absolute; inset: 0; opacity: 0; }
+#frame svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#detect { position: absolute; inset: 0; pointer-events: none; }
+#detect svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#scan { position: absolute; left: 0; right: 0; height: 90px; margin-top: -88px; background: linear-gradient(180deg, rgba(46,139,255,0), rgba(46,139,255,.28)); border-bottom: 2px solid #5aa6ff; box-shadow: 0 6px 24px rgba(46,139,255,.8); opacity: 0; }
+#dtag { position: absolute; font: 600 9.5px/1 var(--mono); letter-spacing: .08em; color: #fff; background: var(--blue); padding: 5px 7px; border-radius: 4px; opacity: 0; white-space: nowrap; }
+
+/* lower third (Laycue Titles) */
+#lt { position: absolute; left: 4.5%; bottom: 10%; width: 41%; opacity: 0; }
+#lt .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--amber); transform-origin: 50% 100%; }
+#lt .card { position: absolute; left: 6px; top: 0; right: 0; bottom: 0; background: var(--cream); overflow: hidden; box-shadow: 0 16px 34px rgba(0,0,0,.55); }
+#lt .txt { position: relative; padding: 11px 16px 11px 22px; }
+#lt .l1, #lt .l2 { overflow: hidden; }
+#lt .l1 span { display: block; font: 800 20px/1.1 var(--font); font-stretch: 106%; letter-spacing: -.02em; color: var(--ink); }
+#lt .l2 span { display: block; font: 600 10.5px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: rgba(17,17,16,.62); }
+
+/* ---- OBS docks ---- */
+.dock { position: absolute; background: var(--obs-bg); border: 1px solid #101116; overflow: hidden; }
+.dock .dt { height: 22px; line-height: 22px; padding-left: 8px; background: var(--obs-bar); font-weight: 700; font-size: 12px; color: var(--obs-text); position: relative; }
+.dock .dt::after { content: ""; position: absolute; right: 7px; top: 7px; width: 8px; height: 8px; border: 1.5px solid var(--obs-dim); border-radius: 1px; }
+.li { height: 21px; line-height: 21px; padding: 0 8px; font-size: 12px; border-radius: 3px; margin: 1px 4px; position: relative; }
+.li.sel { background: var(--obs-sel); }
+.li .eye, .li .lock { position: absolute; top: 5px; width: 13px; height: 11px; border: 1.8px solid #cfd3dc; border-radius: 50% / 60%; }
+.li .eye { right: 28px; } .li .eye::after { content: ""; position: absolute; left: 3px; top: 1.5px; width: 4px; height: 4px; background: #cfd3dc; border-radius: 50%; }
+.li .lock { right: 8px; width: 10px; height: 8px; border-radius: 2px; opacity: .55; top: 8px; }
+.li.flash::before { content: ""; position: absolute; inset: 0; background: var(--blue); opacity: var(--f, 0); border-radius: 3px; }
+.li span { position: relative; }
+.btn { background: var(--obs-btn); border-radius: 4px; text-align: center; height: 26px; line-height: 26px; font-size: 12px; margin: 5px 6px; }
+.btn.blue { background: var(--obs-sel); }
+.meter { position: relative; height: 9px; margin: 2px 8px 0; background: #11131a; border-radius: 1px; overflow: hidden; }
+.meter i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform-origin: 0 50%; background: linear-gradient(90deg, #3fb950 0 62%, #d6b520 62% 84%, #e0443e 84%); }
+.fader { height: 4px; margin: 7px 8px 0; background: #3a3e4b; border-radius: 2px; position: relative; }
+.fader::after { content: ""; position: absolute; left: 72%; top: -4px; width: 7px; height: 12px; background: #c9ceda; border-radius: 2px; }
+.lbl { font-size: 11.5px; padding: 6px 8px 0; display: flex; justify-content: space-between; color: var(--obs-text); }
+
+#status { position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: #191b21; border-top: 1px solid #101116; display: flex; justify-content: flex-end; align-items: center; gap: 0; font-size: 11.5px; color: #cfd3dc; }
+#status span { padding: 0 11px; border-left: 1px solid #101116; height: 22px; line-height: 22px; white-space: nowrap; }
+#status .net { display: flex; align-items: center; gap: 6px; color: var(--cream); font-family: var(--mono); font-size: 10px; letter-spacing: .02em; }
+#status .net i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+#status .live i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3fb950; margin-right: 6px; }
+
+/* ---- the Laycue dock ---- */
+#dkLaycue { background: var(--graphite); border-color: #000; }
+#dkLaycue .dt { background: #24262d; }
+.lay-body { padding: 10px 12px 12px; font-family: var(--font); }
+.lay-head { display: flex; align-items: center; gap: 10px; height: 34px; }
+.lay-head svg { width: 33px; height: 21px; flex: none; }
+.seg { flex: 1; height: 30px; background: #0e0e0d; border-radius: 9px; padding: 3px; display: flex; gap: 2px; }
+.seg b { flex: 1; text-align: center; font: 600 11.5px/24px var(--font); color: #a9a496; border-radius: 7px; }
+.seg b.on { background: #34322d; color: var(--cream); }
+.gear { width: 26px; height: 26px; border-radius: 50%; border: 2px dotted #a9a496; opacity: .8; flex: none; }
+.lay-status { display: flex; align-items: center; justify-content: space-between; height: 34px; margin-top: 4px; }
+#live { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 24px; padding: 0 10px 0 9px; border-radius: 12px; background: rgba(255,77,46,.14); border: 1px solid rgba(255,77,46,.6); font: 700 10.5px/1 var(--mono); letter-spacing: .12em; color: #ff8a73; }
+#live i { width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 10px var(--red); }
+#live u { position: absolute; left: -1px; top: -1px; right: -1px; bottom: -1px; border-radius: 13px; border: 2px solid var(--red); opacity: 0; }
+#chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 7px; border-radius: 12px; background: rgba(47,209,139,.13); border: 1px solid rgba(47,209,139,.55); font: 600 10.5px/1 var(--mono); color: #5fe3aa; letter-spacing: .03em; opacity: 0; transform-origin: 100% 50%; white-space: nowrap; }
+#chip i { width: 14px; height: 14px; border-radius: 50%; background: var(--green); position: relative; flex: none; }
+#chip i::after { content: ""; position: absolute; left: 4.5px; top: 2.5px; width: 3px; height: 6px; border: solid #0b2a1c; border-width: 0 1.8px 1.8px 0; transform: rotate(45deg); }
+.lay-label { font: 700 9.5px/1 var(--mono); letter-spacing: .16em; color: #8e8a7e; margin: 6px 0 7px; display: flex; justify-content: space-between; }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lc { position: relative; height: 72px; border-radius: 10px; background: #24231f; border: 1px solid #343229; padding: 8px 9px; transform-origin: 50% 50%; }
+.lc svg { width: 100%; height: 34px; display: block; }
+.lc .nm { font: 600 11.5px/1 var(--font); color: var(--cream); margin-top: 7px; white-space: nowrap; }
+.lc .pb { position: absolute; right: 8px; bottom: 9px; font: 700 7.5px/1 var(--mono); letter-spacing: .12em; color: var(--amber); border: 1px solid rgba(255,179,26,.5); padding: 3px 4px; border-radius: 3px; }
+.lc .ck { position: absolute; right: 8px; top: 8px; width: 14px; height: 14px; border-radius: 50%; background: var(--cream); opacity: 0; }
+.lc .ck::after { content: ""; position: absolute; left: 4.5px; top: 2px; width: 3px; height: 6.5px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.gl { display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px; margin-top: 9px; }
+.gb { height: 40px; border-radius: 10px; background: #24231f; border: 1px solid #343229; text-align: center; font: 700 12.5px/1 var(--font); color: var(--cream); padding-top: 9px; }
+.gb small { display: block; font: 500 9.5px/1 var(--font); color: #8e8a7e; margin-top: 4px; }
+.gb.go { color: var(--cream); }
+
+/* ---- the Titles dock ---- */
+#dkTitles { background: var(--graphite); border-color: #000; }
+#dkTitles .dt { background: #24262d; }
+.tit-body { padding: 10px 12px; }
+.tit-head { display: flex; justify-content: space-between; align-items: center; height: 24px; }
+.tit-head h4 { font: 800 15px/1 var(--font); font-stretch: 108%; letter-spacing: -.01em; }
+.tstat { display: flex; align-items: center; gap: 7px; font: 700 10px/1 var(--mono); letter-spacing: .12em; color: #8e8a7e; }
+.tstat i { width: 8px; height: 8px; border-radius: 50%; background: #5b584f; }
+.fld { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.fld label { width: 52px; font: 600 10px/1 var(--mono); letter-spacing: .08em; color: #8e8a7e; }
+.fld div { flex: 1; height: 28px; line-height: 28px; padding: 0 10px; border-radius: 8px; background: #0e0e0d; border: 1px solid #2f2d27; font: 600 12px/28px var(--font); color: var(--cream); }
+.rowb { display: flex; justify-content: space-between; align-items: center; height: 28px; margin-top: 6px; padding: 0 10px; border-radius: 8px; background: #24231f; border: 1px solid #343229; font: 600 11.5px/1 var(--font); }
+.rowb span { color: #8e8a7e; font-weight: 500; }
+.tbtns { display: grid; grid-template-columns: 2.2fr 1fr; gap: 8px; margin-top: 9px; }
+#showBtn { height: 38px; border-radius: 10px; background: var(--cream); color: var(--ink); font: 700 13px/38px var(--font); text-align: center; transform-origin: 50% 50%; position: relative; }
+.qb { height: 38px; border-radius: 10px; background: #24231f; border: 1px solid #343229; font: 600 12px/36px var(--font); text-align: center; color: var(--cream); }
+
+/* ---- cursor, clicks ---- */
+#cursor { position: absolute; left: 0; top: 0; width: 28px; height: 28px; margin: -3px 0 0 -3px; z-index: 50; opacity: 0; transform-origin: 3px 3px; filter: drop-shadow(0 3px 5px rgba(0,0,0,.5)); }
+.ripple { position: absolute; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; border: 2.5px solid var(--cream); opacity: 0; z-index: 45; pointer-events: none; }
+.ripple::after { content: ""; position: absolute; inset: 9px; border-radius: 50%; background: rgba(241,235,221,.35); }
+
+/* ---- captions ---- */
+#scrim { position: absolute; left: 0; right: 0; bottom: 0; height: 250px; background: linear-gradient(180deg, rgba(17,17,16,0) 0%, rgba(17,17,16,.72) 45%, rgba(17,17,16,.96) 100%); opacity: 0; pointer-events: none; }
+.cap { position: absolute; left: 0; right: 0; bottom: 38px; text-shadow: 0 2px 18px rgba(0,0,0,.6); text-align: center; opacity: 0; font: 650 43px/1.08 var(--font); font-stretch: 104%; letter-spacing: -.028em; color: var(--cream); padding: 0 80px; pointer-events: none; }
+.cap em { font-style: normal; color: rgba(241,235,221,.52); }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="fit">
+<div id="stage">
+  <div id="bg"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i></div>
+
+  <!-- the Laycue logo (the real mark: four sources become one output) -->
+  <div id="logo">
+    <svg id="logoSvg" viewBox="0 0 900 280" aria-label="Laycue">
+      <defs>
+        <clipPath id="markClip"><rect x="4" y="8" width="42" height="12"/><rect x="4" y="24" width="42" height="12"/><rect x="4" y="40" width="42" height="12"/><rect x="4" y="56" width="42" height="12"/><path d="M46,8 H100 A14,14 0 0 1 114,22 V54 A14,14 0 0 1 100,68 H46 Z"/></clipPath>
+        <clipPath id="wordClip"><rect id="wordClipRect" x="0" y="-60" width="900" height="400"/></clipPath>
+        <linearGradient id="shine" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="40" y2="0">
+          <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <g id="lockup">
+        <g clip-path="url(#wordClip)"><g id="word"><text id="wordText" x="0" y="0" fill="#F1EBDD" font-family="Archivo" font-weight="800" font-size="150" letter-spacing="-6.75" style="font-stretch:108%">laycue</text></g></g>
+        <g id="mark">
+          <rect id="bd0" x="4" y="8" width="42" height="12" fill="#2E8BFF"/>
+          <rect id="bd1" x="4" y="24" width="42" height="12" fill="#2FD18B"/>
+          <rect id="bd2" x="4" y="40" width="42" height="12" fill="#FFB31A"/>
+          <rect id="bd3" x="4" y="56" width="42" height="12" fill="#FF4D2E"/>
+          <g id="scr"><path d="M46,8 H100 A14,14 0 0 1 114,22 V54 A14,14 0 0 1 100,68 H46 Z" fill="#F1EBDD"/>
+            <rect id="ln0" x="46" y="20" width="36" height="4" fill="#111110"/><rect id="ln1" x="46" y="36" width="36" height="4" fill="#111110"/><rect id="ln2" x="46" y="52" width="36" height="4" fill="#111110"/></g>
+          <g clip-path="url(#markClip)"><rect id="shineRect" x="-60" y="0" width="40" height="80" fill="url(#shine)" transform="skewX(-18)"/></g>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div id="world">
+    <div id="win">
+      <div class="titlebar"><i class="dot r"></i><i class="dot y"></i><i class="dot g"></i><span>OBS 31.1.1 (64-bit, windows) - Profile: Church - Scenes: Sunday</span></div>
+      <div class="menubar"><span class="mi">File</span><span class="mi">Edit</span><span class="mi">View</span><span class="mi">Docks</span><span class="mi">Profile</span><span class="mi">Scene Collection</span><span class="mi">Tools</span><span class="mi" id="miLaycue">Laycue</span><span class="mi">Help</span></div>
+
+      <div id="preview"><div id="canvas">
+        <div id="stagebg"></div>
+        <div class="tile slides" id="t-slides"><div class="lift"></div><div class="face"><div class="eyebrow">GRACE COMMUNITY CHURCH</div><div class="big">John 3:16</div><div class="sub">For God so loved the world, that he gave his only Son.</div><div class="rule"></div></div><span class="tag">SLIDES</span><div class="sel"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="tile cam" id="t-camera"><div class="lift"></div><div class="face"><div class="win"></div><div class="body"></div><div class="collar"></div><div class="neck"></div><div class="head"></div><div class="hair"></div></div><span class="tag">CAMERA</span></div>
+        <div id="frame"><svg id="frameSvg" viewBox="0 0 765 430" preserveAspectRatio="none">
+          <defs><linearGradient id="fg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#26241f"/><stop offset="1" stop-color="#121211"/></linearGradient></defs>
+          <path fill="url(#fg)" fill-rule="evenodd" d="M0 0H765V430H0Z M57 43H517V379H57Z"/>
+          <rect x="47.5" y="43.5" width="469" height="336" fill="none" stroke="rgba(241,235,221,.35)" stroke-width="1.5" rx="0" opacity="0"/>
+          <text x="48" y="28" fill="#F1EBDD" font-family="Archivo" font-weight="800" font-size="13" letter-spacing="1.4" style="font-stretch:108%">SUNDAY SERVICE</text>
+          <text x="338" y="28" fill="#8e8a7e" font-family="JetBrains Mono" font-size="9" letter-spacing="1.4">GRACE COMMUNITY CHURCH</text>
+          <rect x="530" y="43" width="198" height="336" fill="none" stroke="rgba(241,235,221,.14)"/>
+          <text x="48" y="408" fill="#8e8a7e" font-family="JetBrains Mono" font-size="9" letter-spacing="1.4">SUN 9:00 AM  ·  JOIN US LIVE</text>
+          <rect x="530" y="396" width="198" height="2" fill="#FFB31A"/>
+        </svg></div>
+        <div class="tile chat" id="t-chat"><div class="lift"></div><div class="face"><div class="head">LIVE CHAT</div><div class="rows">
+          <div class="row"><i style="background:#2E8BFF"></i><span><b>Ada</b> Amen!</span></div>
+          <div class="row"><i style="background:#2FD18B"></i><span><b>Tunde</b> Watching from Lagos</span></div>
+          <div class="row"><i style="background:#FFB31A"></i><span><b>Grace</b> Good morning, church</span></div>
+          <div class="row"><i style="background:#c28bff"></i><span><b>Mike</b> Praying with you</span></div>
+          <div class="row"><i style="background:#FF4D2E"></i><span><b>Sade</b> Beautiful worship</span></div>
+          <div class="row"><i style="background:#5fd0ff"></i><span><b>Joy</b> God is good</span></div>
+        </div></div></div>
+        <div class="tile badge" id="t-logo"><div class="lift"></div><div class="face"><i></i><span>GRACE TV</span></div></div>
+        <div id="detect"><svg viewBox="0 0 765 430" preserveAspectRatio="none" id="detSvg">
+          <g id="detOutline" fill="none" stroke="#2E8BFF" stroke-width="2" stroke-dasharray="7 5">
+            <rect id="detRect" x="57" y="43" width="460" height="336" rx="10"/></g>
+          <g id="detCorners" fill="none" stroke="#2E8BFF" stroke-width="3.5" stroke-linecap="round">
+            <path d="M57 63V53a10 10 0 0 1 10-10H77"/><path d="M497 43H507a10 10 0 0 1 10 10V63"/><path d="M517 359v10a10 10 0 0 1-10 10H497"/><path d="M77 379H67a10 10 0 0 1-10-10V359"/></g>
+        </svg><div id="scan"></div><div id="dtag">WINDOW FOUND  ·  1,180 × 640</div></div>
+        <div id="lt"><div class="bar"></div><div class="card"><div class="txt"><div class="l1"><span>Pastor David Okafor</span></div><div class="l2"><span>Senior Pastor</span></div></div></div></div>
+      </div></div>
+
+      <!-- OBS docks -->
+      <div class="dock" id="dkScenes" style="left:0;top:492px;width:150px;height:138px"><div class="dt">Scenes</div>
+        <div class="li sel" style="margin-top:4px"><span>Sunday Worship</span></div><div class="li"><span>Announcements</span></div><div class="li"><span>Scripture</span></div><div class="li"><span>Offering</span></div><div class="li"><span>Countdown</span></div></div>
+      <div class="dock" id="dkSources" style="left:150px;top:492px;width:190px;height:138px"><div class="dt">Sources</div>
+        <div class="li flash" id="r-title" style="margin-top:4px"><span>Laycue Title</span><i class="eye"></i><i class="lock"></i></div>
+        <div class="li flash" id="r-logo"><span>Logo</span><i class="eye"></i><i class="lock"></i></div>
+        <div class="li flash" id="r-chat"><span>Chat</span><i class="eye"></i><i class="lock"></i></div>
+        <div class="li flash" id="r-camera"><span>Camera</span><i class="eye"></i><i class="lock"></i></div>
+        <div class="li flash" id="r-slides"><span>Slides</span><i class="eye"></i><i class="lock"></i></div></div>
+      <div class="dock" id="dkMixer" style="left:340px;top:492px;width:210px;height:138px"><div class="dt">Audio Mixer</div>
+        <div class="lbl"><span>Mic/Aux</span><span id="db1">-12.4 dB</span></div><div class="meter"><i id="m1"></i></div><div class="fader"></div>
+        <div class="lbl" style="margin-top:8px"><span>Desktop Audio</span><span id="db2">-18.0 dB</span></div><div class="meter"><i id="m2"></i></div><div class="fader"></div></div>
+      <div class="dock" id="dkTrans" style="left:550px;top:492px;width:130px;height:138px"><div class="dt">Scene Transitions</div>
+        <div class="btn" style="margin-top:8px;text-align:left;padding-left:9px">Fade</div><div class="lbl" style="padding-top:2px"><span>Duration</span><span>300 ms</span></div></div>
+      <div class="dock" id="dkCtrl" style="left:680px;top:492px;width:140px;height:138px"><div class="dt">Controls</div>
+        <div class="btn" style="margin-top:4px;margin-bottom:0;height:23px;line-height:23px">Stop Streaming</div><div class="btn" style="margin-top:3px;margin-bottom:0;height:23px;line-height:23px">Start Recording</div><div class="btn blue" style="margin-top:3px;margin-bottom:0;height:23px;line-height:23px">Studio Mode</div><div class="btn" style="margin-top:3px;margin-bottom:0;height:23px;line-height:23px">Settings</div></div>
+
+      <!-- the Laycue dock (Scenes plugin) -->
+      <div class="dock" id="dkLaycue" style="left:820px;top:54px;width:340px;height:336px"><div class="dt">Laycue</div>
+        <div class="lay-body">
+          <div class="lay-head">
+            <svg viewBox="0 0 120 76"><rect x="4" y="8" width="42" height="12" fill="#2E8BFF"/><rect x="4" y="24" width="42" height="12" fill="#2FD18B"/><rect x="4" y="40" width="42" height="12" fill="#FFB31A"/><rect x="4" y="56" width="42" height="12" fill="#FF4D2E"/><path d="M46,8 H100 A14,14 0 0 1 114,22 V54 A14,14 0 0 1 100,68 H46 Z" fill="#F1EBDD"/><rect x="46" y="20" width="36" height="4" fill="#111110"/><rect x="46" y="36" width="36" height="4" fill="#111110"/><rect x="46" y="52" width="36" height="4" fill="#111110"/></svg>
+            <div class="seg"><b>Shots</b><b class="on">Layouts</b><b>Overlays</b></div><div class="gear"></div></div>
+          <div class="lay-status"><span id="live"><u id="liveRing"></u><i></i>LIVE · Worship</span><span id="chip"><i></i><em id="chipTxt" style="font-style:normal">Fitted</em></span></div>
+          <div class="lay-label"><span>LAYOUT</span><span>TAP TO FIT</span></div>
+          <div class="cards">
+            <div class="lc" id="card0"><svg viewBox="0 0 100 36"><rect x="1" y="1" width="62" height="34" rx="3" fill="#F1EBDD" opacity=".28"/><rect x="66" y="1" width="33" height="16" rx="3" fill="#F1EBDD" opacity=".7"/><rect x="66" y="19" width="33" height="16" rx="3" fill="#F1EBDD" opacity=".28"/></svg><div class="nm">Cam + Slides + Chat</div><i class="ck"></i></div>
+            <div class="lc" id="card1"><svg viewBox="0 0 100 36"><rect x="1" y="1" width="48" height="34" rx="3" fill="#F1EBDD" opacity=".7"/><rect x="52" y="1" width="47" height="21" rx="3" fill="#F1EBDD" opacity=".28"/><rect x="52" y="25" width="47" height="10" rx="3" fill="#F1EBDD" opacity=".28"/></svg><div class="nm">Split</div><i class="ck"></i></div>
+            <div class="lc" id="card2"><svg viewBox="0 0 100 36"><rect x="1" y="1" width="98" height="34" rx="3" fill="none" stroke="#F1EBDD" opacity=".4"/><rect x="8" y="6" width="58" height="24" rx="3" fill="#F1EBDD" opacity=".7"/><rect x="71" y="6" width="22" height="24" rx="2" fill="#F1EBDD" opacity=".28"/></svg><div class="nm">Frame · Church</div><span class="pb">PUSHBACK</span><i class="ck"></i></div>
+            <div class="lc" id="card3"><svg viewBox="0 0 100 36"><rect x="1" y="1" width="98" height="34" rx="3" fill="#F1EBDD" opacity=".28"/><rect x="62" y="14" width="35" height="20" rx="3" fill="#F1EBDD" opacity=".7"/></svg><div class="nm">Speaker</div><i class="ck"></i></div>
+          </div>
+          <div class="gl"><div class="gb">Cut<small>Instant</small></div><div class="gb go">Go Live<small>Fade · 0.3 s</small></div></div>
+        </div></div>
+
+      <!-- the Titles dock -->
+      <div class="dock" id="dkTitles" style="left:820px;top:394px;width:340px;height:236px"><div class="dt">Laycue Titles</div>
+        <div class="tit-body">
+          <div class="tit-head"><h4>Titles</h4><span class="tstat"><i id="tdot"></i><b id="tstat" style="font-weight:700">NOT SHOWING</b></span></div>
+          <div class="fld"><label>NAME</label><div>Pastor David Okafor</div></div>
+          <div class="fld"><label>ROLE</label><div>Senior Pastor</div></div>
+          <div class="rowb">Template<span>Clean Bar</span></div>
+          <div class="tbtns"><div id="showBtn">Show on air</div><div class="qb">+ Queue</div></div>
+        </div></div>
+
+      <div id="status"><span class="net"><i></i>NETWORK 6.2 Mbps · STABLE</span><span class="live"><i></i>LIVE: <b id="tc" style="font-weight:400">00:12:41</b></span><span>CPU: 4.1%</span><span>30.00 / 30.00 FPS</span><span>kb/s: <b id="kbps" style="font-weight:400">6,214</b></span></div>
+
+      <div id="dropdown"><div class="di">Clock</div><div class="di">Network</div><div class="di" id="diScenes">Scenes</div><div class="di" id="diTitles"><span class="tick">✓</span>Titles</div></div>
+    </div>
+    <div class="ripple" id="rp0"></div><div class="ripple" id="rp1"></div><div class="ripple" id="rp2"></div><div class="ripple" id="rp3"></div><div class="ripple" id="rp4"></div><div class="ripple" id="rp5"></div>
+    <svg id="cursor" viewBox="0 0 28 28"><path d="M3 2.5v19.2l4.9-4.3 3.3 7.4 3.2-1.4-3.2-7.3 6.8-.3z" fill="#fff" stroke="#111" stroke-width="1.7" stroke-linejoin="round"/></svg>
+  </div>
+
+  <div id="scrim"></div>
+  <div id="grain"></div>
+  <div class="cap" id="c0">Your sources, <em>everywhere.</em></div>
+  <div class="cap" id="c1">One click. <em>A clean layout.</em></div>
+  <div class="cap" id="c2">Switch layouts. <em>Nothing overlaps.</em></div>
+  <div class="cap" id="c3">Drop in a frame. <em>It finds the window.</em></div>
+  <div class="cap" id="c4">Titles on air. <em>One tap.</em></div>
+</div>
+</div>
+
+<script>
+(() => {
+"use strict";
+/* ------------------------------------------------------------------------------------------------
+   One pure function, seek(t), draws the whole frame for any time t in the loop. The live player just
+   calls it with the clock; the exporter calls it frame by frame. That is why the loop is exact.
+   ------------------------------------------------------------------------------------------------ */
+const $ = s => document.querySelector(s);
+const css = getComputedStyle(document.documentElement);
+const N = n => parseFloat(css.getPropertyValue(n));
+const B = { loop: N('--loop'), logoOut: N('--t-logo-out'), win: N('--t-window'), menu: N('--t-menu'), l1: N('--t-layout1'), l2: N('--t-layout2'),
+  fit: N('--t-fit'), title: N('--t-title'), outro: N('--t-outro'), logoIn: N('--t-logo-in'), move: N('--move'), stg: N('--stagger') };
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (t, a, d) => clamp((t - a) / d);
+
+/* easing: cubic-bezier solver + a gentle spring (4% overshoot, lands exactly on 1) */
+function bez(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const X = s => ((ax * s + bx) * s + cx) * s, Y = s => ((ay * s + by) * s + cy) * s, dX = s => (3 * ax * s + 2 * bx) * s + cx;
+  return x => { if (x <= 0) return 0; if (x >= 1) return 1; let s = x;
+    for (let i = 0; i < 6; i++) { const e = X(s) - x; if (Math.abs(e) < 1e-5) break; const d = dX(s); if (Math.abs(d) < 1e-6) break; s -= e / d; }
+    let lo = 0, hi = 1; for (let i = 0; i < 24 && Math.abs(X(s) - x) > 1e-5; i++) { if (X(s) < x) lo = s; else hi = s; s = (lo + hi) / 2; }
+    return Y(s); };
+}
+const easeOut = bez(.16, 1, .3, 1), easeIO = bez(.65, 0, .35, 1), camEase = bez(.5, 0, .12, 1), moveEase = bez(.4, 0, .15, 1), easeIn = bez(.6, 0, .9, .5);
+const spring = p => { if (p <= 0) return 0; if (p >= 1) return 1; const r = q => 1 - Math.exp(-8 * q) * Math.cos(8.4 * q); return r(p) - (r(1) - 1) * p - 0 * p; };
+
+/* ---- measure the real layout once, so the cursor and camera aim at the real buttons ---- */
+const win = $('#win');
+const loc = el => { let x = 0, y = 0, e = el; while (e && e !== win) { x += e.offsetLeft; y += e.offsetTop; e = e.offsetParent; } return { x, y, w: el.offsetWidth, h: el.offsetHeight }; };
+const ctr = r => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
+const WX = 60, WY = 34, WW = 1160, WH = 652;
+
+const el = {}; ['world','win','logoSvg','lockup','word','wordText','wordClipRect','mark','bd0','bd1','bd2','bd3','scr','ln0','ln1','ln2','shineRect','logo','bg',
+  'dropdown','miLaycue','diScenes','diTitles','dkLaycue','live','liveRing','chip','chipTxt','card0','card1','card2','card3','showBtn','tdot','tstat','lt',
+  'frame','detect','detRect','detOutline','detCorners','scan','dtag','t-slides','t-camera','t-chat','t-logo','cursor','scrim','m1','m2','db1','db2','tc','kbps','canvas',
+  'r-title','r-logo','r-chat','r-camera','r-slides','dkTitles'].forEach(id => el[id] = document.getElementById(id));
+const rp = [0,1,2,3,4,5].map(i => document.getElementById('rp' + i));
+const caps = [0,1,2,3,4].map(i => document.getElementById('c' + i));
+
+let P = {}; // measured targets, in window coordinates
+function measure() {
+  const m = loc(el.miLaycue), d = loc(el.dropdown);
+  P.menu = ctr(m); P.menuItem = m;
+  P.dropX = m.x; P.dropY = m.y + m.h + 2;
+  el.dropdown.style.left = P.dropX + 'px'; el.dropdown.style.top = P.dropY + 'px';
+  const ds = loc(el.diScenes); P.scenes = { x: P.dropX + ds.x + 40, y: P.dropY + ds.y + ds.h / 2 }; P.sceneRow = { x: P.dropX, y: P.dropY + ds.y, w: ds.w, h: ds.h };
+  for (let i = 0; i < 4; i++) { const r = loc(el['card' + i]); P['card' + i] = ctr(r); P['cardR' + i] = r; }
+  const sb = loc(el.showBtn); P.show = ctr(sb); P.showR = sb;
+  P.dockL = ctr(loc(el.dkLaycue)); P.dockT = ctr(loc(el.dkTitles));
+}
+
+/* ---- the canvas: where each source sits in each layout (fractions of the canvas) ---- */
+const CW = 765, CH = 430;
+const S = {
+  messy: { slides: { x: .06, y: .09, w: .56, h: .60, r: 3.5 }, camera: { x: .50, y: .24, w: .36, h: .50, r: -6 }, chat: { x: .69, y: .57, w: .28, h: .36, r: 5 }, logo: { x: .03, y: .76, w: .15, h: .10, r: -5 } },
+  l1:    { slides: { x: .015, y: .03, w: .665, h: .94, r: 0 }, camera: { x: .695, y: .03, w: .29, h: .455, r: 0 }, chat: { x: .695, y: .515, w: .29, h: .455, r: 0 }, logo: { x: .03, y: .06, w: .13, h: .075, r: 0 } },
+  l2:    { slides: { x: .50, y: .05, w: .475, h: .54, r: 0 }, camera: { x: .025, y: .05, w: .46, h: .90, r: 0 }, chat: { x: .50, y: .63, w: .475, h: .32, r: 0 }, logo: { x: .04, y: .08, w: .13, h: .075, r: 0 } },
+  fr:    { chat: { x: .704, y: .10, w: .256, h: .78, r: 0 }, logo: { x: .80, y: .018, w: .16, h: .065, r: 0 } },
+  fit:   { camera: { x: 57 / 765, y: 43 / 430, w: 460 / 765, h: 336 / 430, r: 0, rad: 10 } }
+};
+const radius = { slides: 6, camera: 6, chat: 6, logo: 4 };
+const withO = (s, o, sc) => Object.assign({}, s, { o, s: sc });
+const hide = s => withO(s, 0, .96);
+function tileKeys() {
+  const m = B.move, d = B.stg, L1 = B.l1 + .5, L2 = B.l2 + .5, F = B.fit + .5;
+  return {
+    slides: [{ t: L1, to: S.l1.slides }, { t: L2, to: S.l2.slides }, { t: F, to: hide(S.l2.slides), dur: .5 }],
+    camera: [{ t: L1 + d, to: S.l1.camera }, { t: L2 + d, to: S.l2.camera }, { t: B.fit + 1.8, to: S.fit.camera, dur: .85 }],
+    chat:   [{ t: L1 + 2 * d, to: S.l1.chat }, { t: L2 + 2 * d, to: S.l2.chat }, { t: F + .12, to: S.fr.chat }],
+    logo:   [{ t: L1 + 3 * d, to: S.l1.logo }, { t: L2 + 3 * d, to: S.l2.logo }, { t: F + .2, to: S.fr.logo }]
+  };
+}
+const KEYS = tileKeys();
+const norm = (s, name) => Object.assign({ o: 1, s: 1, rad: radius[name] }, s);
+function tileAt(name, t) {
+  let from = norm(S.messy[name], name), lift = 0;
+  for (const k of KEYS[name]) {
+    const to = norm(k.to, name), dur = k.dur || B.move;
+    if (t < k.t) break;
+    const p = prog(t, k.t, dur);
+    if (p < 1) { const e = spring(p); const o = {}; for (const key in to) o[key] = lerp(from[key], to[key], key === 'o' ? easeOut(p) : e); lift = Math.sin(Math.PI * p); return { st: o, lift }; }
+    from = to;
+  }
+  return { st: from, lift: 0 };
+}
+
+/* ---- camera keys: where the shot is looking, in window coordinates ---- */
+let CAM = [];
+function buildCam() {
+  const c = P, mid = { x: 590, y: 255 }, canv = { x: 410, y: 270 }, dockX = c.dockL.x;
+  const K = [], shot = (arrive, leave, x, y, z) => { K.push({ t: arrive, x, y, z }); if (leave > arrive) K.push({ t: leave, x, y, z }); };
+  const M = B.menu, L1 = B.l1, L2 = B.l2, F = B.fit, Ti = B.title;
+  shot(0, B.win + .6, WW / 2, WH / 2, 1);                                     // the whole window
+  shot(M + .8, M + 1.09, c.menu.x + 70, c.menu.y + 55, 2.1);                  // into the menu, hold through the click
+  shot(M + 1.62, M + 1.92, c.menu.x + 70, c.menu.y + 80, 2.1);                // down to "Scenes"
+  shot(M + 2.45, L1 - .05, 440, 262, 1.3);                                    // the messy canvas
+  shot(L1 + .2, L1 + .57, dockX, c.card0.y + 40, 1.75);                       // click: Cam + Slides + Chat
+  shot(L1 + 1.5, L2 - .45, mid.x, mid.y, 1.15);                               // pull back and watch it snap
+  shot(L2 + .2, L2 + .57, dockX, c.card1.y + 40, 1.7);                        // click: Split
+  shot(L2 + 1.2, F - .15, mid.x, mid.y, 1.15);
+  shot(F + .2, F + .57, dockX, c.card2.y + 30, 1.7);                          // click: Frame
+  shot(F + 1.15, F + 1.9, canv.x, canv.y, 1.5);                               // the scan and the fit
+  shot(F + 2.3, Ti, 500, 255, 1.22);
+  shot(Ti + .45, Ti + .82, dockX, c.show.y - 30, 1.8);                        // click: Show on air
+  shot(Ti + 1.75, B.outro, 640, 300, 1.1);                                    // the finished picture
+  shot(B.outro + .5, B.loop, WW / 2, WH / 2, 1);
+  CAM = [{ t: 0, x: WW / 2, y: WH / 2, z: 1 }].concat(K.filter(k => k.t > 0));
+}
+function camAt(t) {
+  let a = CAM[0], b = CAM[0];
+  for (let i = 0; i < CAM.length - 1; i++) { if (t >= CAM[i].t && t <= CAM[i + 1].t) { a = CAM[i]; b = CAM[i + 1]; break; } if (t > CAM[i + 1].t) { a = b = CAM[i + 1]; } }
+  const e = b.t === a.t ? 1 : camEase(prog(t, a.t, b.t - a.t));
+  const z = Math.exp(lerp(Math.log(a.z), Math.log(b.z), e));
+  return { x: lerp(a.x, b.x, e), y: lerp(a.y, b.y, e) + 34 * (z - 1), z }; // nudge up so the action clears the caption
+}
+
+/* ---- the cursor: curved paths, ease in and out, a click = press + ripple ---- */
+let MOVES = [], CLICKS = [];
+function buildCursor() {
+  const c = P, T = B;
+  const start = { x: 1040, y: 560 };
+  const m = (a, b, from, to, bend) => ({ a, b, from, to, bend });
+  const sc = { x: c.scenes.x, y: c.scenes.y };
+  MOVES = [
+    m(T.menu - .45, T.menu + .8, start, { x: c.menu.x + 3, y: c.menu.y + 3 }, -.22),
+    m(T.menu + 1.15, T.menu + 1.6, { x: c.menu.x + 3, y: c.menu.y + 3 }, sc, .1),
+    m(T.menu + 2.0, T.l1 + .3, sc, { x: c.card0.x + 20, y: c.card0.y + 8 }, -.2),
+    m(T.l2 - .6, T.l2 + .3, { x: c.card0.x + 20, y: c.card0.y + 8 }, { x: c.card1.x + 20, y: c.card1.y + 8 }, .2),
+    m(T.l2 + 1.3, T.fit + .3, { x: c.card1.x + 20, y: c.card1.y + 8 }, { x: c.card2.x + 20, y: c.card2.y + 8 }, -.2),
+    m(T.fit + 1.95, T.title + .55, { x: c.card2.x + 20, y: c.card2.y + 8 }, { x: c.show.x + 10, y: c.show.y }, .18),
+    m(T.title + 1.5, T.outro - .05, { x: c.show.x + 10, y: c.show.y }, { x: c.show.x + 90, y: c.show.y + 150 }, .25)
+  ];
+  CLICKS = [T.menu + .95, T.menu + 1.78, T.l1 + .45, T.l2 + .45, T.fit + .45, T.title + .7];
+}
+function cursorAt(t) {
+  let pos = MOVES[0].from;
+  for (const mv of MOVES) {
+    if (t < mv.a) break;
+    if (t >= mv.b) { pos = mv.to; continue; }
+    const e = moveEase(prog(t, mv.a, mv.b - mv.a)), dx = mv.to.x - mv.from.x, dy = mv.to.y - mv.from.y;
+    const cx = (mv.from.x + mv.to.x) / 2 - dy * mv.bend, cy = (mv.from.y + mv.to.y) / 2 + dx * mv.bend, u = 1 - e;
+    return { x: u * u * mv.from.x + 2 * u * e * cx + e * e * mv.to.x, y: u * u * mv.from.y + 2 * u * e * cy + e * e * mv.to.y };
+  }
+  return pos;
+}
+
+/* ---- logo ---- */
+let wordW = 380, markW = 114 * 2.4, GAP = 46, SC = 2.4;
+function layoutLogo() {
+  try { wordW = el.wordText.getComputedTextLength(); } catch (e) {}
+  el.wordText.setAttribute('transform', 'translate(0 0)');
+}
+function drawLogo(t) {
+  // phases: rest -> retract wordmark & leave -> hidden -> build -> rest
+  const rest = 1;
+  let e = 1, markO = 1, markS = 1, bands = [1, 1, 1, 1], scr = 1, lines = 1, shine = -1;
+  if (t >= B.logoOut && t < B.logoIn) {
+    e = 1 - easeIO(prog(t, B.logoOut, .6));
+    const g = prog(t, B.logoOut + .5, .75);
+    markO = 1 - easeIO(g); markS = 1 + .5 * easeIn(g);
+  } else if (t >= B.logoIn) {
+    const u = t - B.logoIn;
+    for (let i = 0; i < 4; i++) bands[i] = spring(prog(u, i * .08, .6));
+    scr = easeOut(prog(u, .36, .45)); lines = easeOut(prog(u, .62, .3));
+    e = easeIO(prog(u, .55, .45)); markO = clamp(prog(u, 0, .12) * 3, 0, 1); markS = lerp(.9, 1, easeOut(prog(u, 0, .9)));
+    if (prog(u, 0, 1) >= 1) { markS = 1; }
+  } else {
+    shine = prog(t, .32, .75);
+  }
+  const ext = e * (wordW + GAP);
+  const cx = 450 - (markW + ext) / 2;
+  el.lockup.setAttribute('transform', `translate(${cx} ${140 - 76 * SC / 2}) `);
+  el.mark.setAttribute('transform', `scale(${SC})`);
+  el.logoSvg.style.opacity = markO; // whole lockup
+  el.logo.style.transform = `scale(${markS})`;
+  // wordmark slides out from behind the screen
+  const wx = markW + GAP - (1 - e) * (wordW + GAP) * 0.98;
+  el.word.setAttribute('transform', `translate(${wx} ${76 * SC / 2 + 46})`);
+  el.wordClipRect.setAttribute('x', markW - 6); // only the part to the right of the mark shows
+  el.wordText.style.opacity = clamp(e * 2.2, 0, 1);
+  for (let i = 0; i < 4; i++) { const b = el['bd' + i]; b.style.opacity = clamp(bands[i] * 3, 0, 1); b.setAttribute('transform', `translate(${-(1 - bands[i]) * 90} 0)`); }
+  el.scr.style.opacity = scr; el.scr.setAttribute('transform', `translate(${(1 - scr) * 14} 0)`);
+  for (let i = 0; i < 3; i++) { const l = el['ln' + i]; l.setAttribute('width', 36 * clamp(lines * 1.4 - i * .2, 0, 1)); }
+  // shine: a soft diagonal sweep across the mark, once, at the start of the loop
+  el.shineRect.style.opacity = shine >= 0 && shine < 1 ? 1 : 0;
+  if (shine >= 0 && shine < 1) el.shineRect.setAttribute('x', lerp(-60, 170, easeIO(shine)));
+}
+
+/* ---- captions ---- */
+const CAPS = () => [[B.menu + 1.9, B.l1 - .1], [B.l1 + .75, B.l2 - .2], [B.l2 + .55, B.fit - .1], [B.fit + .55, B.title - .1], [B.title + 1.1, B.outro - .15]];
+function drawCaps(t) {
+  let sc = 0;
+  CAPS().forEach(([a, b], i) => {
+    const inn = easeOut(prog(t, a, .7)), out = easeIn(prog(t, b, .4)), o = inn * (1 - out);
+    caps[i].style.opacity = o; caps[i].style.transform = `translateY(${(1 - inn) * 22 - out * 10}px)`;
+    sc = Math.max(sc, o);
+  });
+  el.scrim.style.opacity = sc * .95;
+}
+
+/* ---- the colour fade used by the detection outline ---- */
+const mix = (a, b, t) => a.map((v, i) => Math.round(lerp(v, b[i], t)));
+
+/* ---- master draw ---- */
+function seek(t) {
+  t = ((t % B.loop) + B.loop) % B.loop;
+  const W = B;
+
+  // backdrop drifts a little (period divides the loop, so it matches at both ends)
+  const ph = 2 * Math.PI * t / W.loop;
+  el.bg.style.transform = `translate(${Math.sin(ph) * 14}px, ${Math.cos(ph) * 10}px)`;
+
+  drawLogo(t);
+
+  /* window enter / exit */
+  const inP = prog(t, W.win, 1.0), outP = prog(t, W.outro, .8);
+  const wo = easeOut(prog(t, W.win, .5)) * (1 - easeIn(prog(t, W.outro + .1, .6)));
+  const ws = lerp(.93, 1, easeOut(inP)) * lerp(1, .95, easeIn(outP));
+  const wy = lerp(34, 0, easeOut(inP)) + lerp(0, 18, easeIn(outP));
+  el.win.style.opacity = wo;
+  el.win.style.transform = `translateY(${wy}px) scale(${ws})`;
+  el.win.style.visibility = wo <= 0.001 ? 'hidden' : 'visible';
+
+  /* camera */
+  const cam = camAt(t);
+  const fx = WX + cam.x, fy = WY + cam.y;
+  el.world.style.transform = `translate(${640 - fx * cam.z}px, ${360 - fy * cam.z}px) scale(${cam.z})`;
+
+  /* menu */
+  const click1 = CLICKS[0], click2 = CLICKS[1];
+  const open = prog(t, click1, .3), close = prog(t, click2 + .06, .22);
+  const dd = easeOut(open) * (1 - close);
+  el.dropdown.style.opacity = dd;
+  el.dropdown.style.transform = `scale(${lerp(.94, 1, easeOut(open))}) translateY(${(1 - easeOut(open)) * -6}px)`;
+  el.miLaycue.className = 'mi' + (t >= click1 && t < click2 + .3 ? ' on' : '');
+  const cp = cursorAt(t);
+  const overScenes = cp.x > P.sceneRow.x && cp.x < P.sceneRow.x + P.sceneRow.w && cp.y > P.sceneRow.y && cp.y < P.sceneRow.y + P.sceneRow.h;
+  el.diScenes.className = 'di' + (overScenes && t < click2 + .3 ? ' hov' : '');
+
+  /* docks: Laycue slides in after the click on "Scenes" */
+  const dockIn = easeOut(prog(t, click2 + .2, .8));
+  el.dkLaycue.style.opacity = dockIn;
+  el.dkLaycue.style.transform = `translateX(${(1 - dockIn) * 36}px)`;
+
+  /* tiles */
+  const names = ['slides', 'camera', 'chat', 'logo'], msg = 1 - prog(t, W.l1 + .3, .3), tags = prog(t, W.l1 + .4, .4);
+  const active = {};
+  names.forEach((n, i) => {
+    const { st, lift } = tileAt(n, t), tile = el['t-' + n];
+    const drift = msg * Math.sin(ph * 5 + i * 1.7) * .5;
+    const w = st.w * CW, h = st.h * CH;
+    tile.style.width = w + 'px'; tile.style.height = h + 'px'; tile.style.borderRadius = st.rad + 'px';
+    tile.style.transform = `translate(${st.x * CW}px, ${st.y * CH + drift * 2}px) rotate(${st.r + drift}deg) scale(${st.s * (1 + .02 * lift)})`;
+    tile.style.opacity = st.o;
+    tile.style.zIndex = { slides: 1, camera: 2, chat: 5, logo: 6 }[n];
+    tile.querySelector('.lift').style.opacity = lift * .95;
+    const tag = tile.querySelector('.tag'); if (tag) tag.style.opacity = tags * st.o * (n === 'camera' && t > W.fit + 1.5 ? 1 - prog(t, W.fit + 1.5, .3) : 1);
+    active[n] = lift;
+  });
+  $('#t-slides .sel').style.opacity = msg;
+  // OBS source rows flash while their tile moves
+  [['slides', 'r-slides'], ['camera', 'r-camera'], ['chat', 'r-chat'], ['logo', 'r-logo']].forEach(([n, r]) => el[r].style.setProperty('--f', (active[n] * .45).toFixed(3)));
+
+  /* the frame graphic + window detection */
+  const fo = easeOut(prog(t, W.fit + .5, .6));
+  el.frame.style.opacity = fo; el.frame.style.transform = `scale(${lerp(1.045, 1, fo)})`; el.frame.style.zIndex = 3;
+  const sp = prog(t, W.fit + .95, .85), scanY = easeIO(sp) * 1.04;
+  const detIn = prog(t, W.fit + .9, .15), detOut = 1 - easeIn(prog(t, W.fit + 2.75, .5));
+  el.scan.style.zIndex = 8; el.detect.style.zIndex = 8;
+  el.scan.style.opacity = sp > 0 && sp < 1 ? 1 : 0;
+  el.scan.style.transform = `translateY(${scanY * CH}px)`;
+  const reveal = clamp((scanY * CH - 43) / 336);
+  const rv = `inset(0 0 ${(1 - clamp((scanY * CH) / CH)) * 100}% 0)`;
+  el.detOutline.parentNode.style.clipPath = rv; el.detOutline.parentNode.style.webkitClipPath = rv;
+  el.detect.style.opacity = detIn * detOut;
+  const done = easeOut(prog(t, W.fit + 1.8, .6)), col = mix([46, 139, 255], [47, 209, 139], done);
+  const rgb = `rgb(${col[0]},${col[1]},${col[2]})`;
+  el.detOutline.setAttribute('stroke', rgb); el.detCorners.setAttribute('stroke', rgb);
+  el.detOutline.style.opacity = 1 - done * .6;
+  const tagIn = easeOut(prog(t, W.fit + 1.15, .3));
+  el.dtag.style.opacity = tagIn * (1 - easeIn(prog(t, W.fit + 2.1, .3)));
+  el.dtag.style.left = '67px'; el.dtag.style.top = '53px';
+  el.dtag.style.background = done > .5 ? '#2FD18B' : '#2E8BFF'; el.dtag.style.color = done > .5 ? '#06281a' : '#fff';
+  el.dtag.textContent = done > .5 ? 'FITTED  ·  FILLS THE WINDOW' : 'WINDOW FOUND  ·  1,180 × 640';
+
+  /* Laycue dock: selection, hover, press, chip, LIVE pulses */
+  const selT = [W.l1 + .45, W.l2 + .45, W.fit + .45];
+  for (let i = 0; i < 4; i++) {
+    const card = el['card' + i], r = P['cardR' + i];
+    const inside = cp.x > r.x - 6 && cp.x < r.x + r.w + 6 && cp.y > r.y - 6 && cp.y < r.y + r.h + 6 && dockIn > .9;
+    const clickT = i < 3 ? selT[i] : 1e9;
+    const press = i < 3 ? Math.max(0, 1 - Math.abs(t - clickT - .04) / .12) : 0;
+    const nextSel = i < 2 ? selT[i + 1] : (i === 2 ? 1e9 : 1e9);
+    const sel = i < 3 ? easeOut(prog(t, clickT, .25)) * (1 - easeOut(prog(t, nextSel, .25))) : 0;
+    card.style.transform = `scale(${1 - .035 * press})`;
+    card.style.background = `rgb(${Math.round(36 + (inside ? 8 : 0) + sel * 14)},${Math.round(35 + (inside ? 8 : 0) + sel * 14)},${Math.round(31 + (inside ? 8 : 0) + sel * 12)})`;
+    card.style.borderColor = sel > .02 ? `rgba(241,235,221,${.25 + sel * .6})` : (inside ? '#5a574c' : '#343229');
+    card.querySelector('.ck').style.opacity = sel;
+  }
+  // "fitted" chip: pops after each click
+  const pops = [[W.l1 + 1.2, 'Fitted · 3 sources'], [W.l2 + 1.15, 'Fitted · Split'], [W.fit + 2.45, 'Fitted · Window']];
+  let chipTxt = '', chipBump = 0, chipO = 0;
+  pops.forEach(([pt, txt]) => { if (t >= pt - 0.0001) { chipTxt = txt; const p = prog(t, pt, .6); chipBump = spring(p); chipO = 1; if (p < 1) chipBump = spring(p); else chipBump = 1; } });
+  const lastPop = pops.filter(([pt]) => t >= pt).pop();
+  if (lastPop) { const p = prog(t, lastPop[0], .6); el.chip.style.transform = `scale(${lerp(.6, 1, spring(p))})`; el.chip.style.opacity = clamp(p * 4) ; el.chipTxt.textContent = lastPop[1]; }
+  else el.chip.style.opacity = 0;
+  // LIVE ring pulses
+  const liveT = [W.l1 + 1.25, W.fit + 2.5, W.title + 1.5];
+  let ring = 0; liveT.forEach(pt => { const p = prog(t, pt, 1.0); if (p > 0 && p < 1) ring = Math.max(ring, p); });
+  const ringOn = ring > 0;
+  el.liveRing.style.opacity = ringOn ? (1 - ring) * .9 : 0;
+  el.liveRing.style.transform = ringOn ? `scale(${1 + ring * .55}, ${1 + ring * .9})` : 'none';
+  el.live.style.transform = ringOn ? `scale(${1 + Math.sin(Math.PI * Math.min(1, ring * 3)) * .06})` : 'none';
+
+  /* Titles */
+  const tclick = CLICKS[5], tp = easeOut(prog(t, tclick, .3)), press = Math.max(0, 1 - Math.abs(t - tclick - .04) / .12);
+  el.showBtn.style.transform = `scale(${1 - .04 * press})`;
+  el.showBtn.textContent = t >= tclick + .08 ? 'Hide title' : 'Show on air';
+  el.showBtn.style.background = t >= tclick + .08 ? '#2c2a27' : '#F1EBDD'; el.showBtn.style.color = t >= tclick + .08 ? '#F1EBDD' : '#111110';
+  el.showBtn.style.boxShadow = t >= tclick + .08 ? 'inset 0 0 0 1px #4a473e' : 'none';
+  el.tdot.style.background = tp > .4 ? '#FF4D2E' : '#5b584f'; el.tdot.style.boxShadow = tp > .4 ? '0 0 8px #FF4D2E' : 'none';
+  el.tstat.textContent = tp > .4 ? 'ON AIR' : 'NOT SHOWING'; el.tstat.style.color = tp > .4 ? '#ff8a73' : '#8e8a7e';
+  // the lower third
+  const ls = tclick + .12, lt = el.lt;
+  const bar = easeOut(prog(t, ls, .4)), card = easeOut(prog(t, ls + .12, .65)), l1 = easeOut(prog(t, ls + .38, .5)), l2 = easeOut(prog(t, ls + .46, .5));
+  lt.style.opacity = bar > 0 ? 1 : 0; lt.style.zIndex = 9;
+  lt.style.height = '64px';
+  lt.querySelector('.bar').style.transform = `scaleY(${bar})`;
+  lt.querySelector('.card').style.clipPath = `inset(0 ${(1 - card) * 100}% 0 0)`;
+  lt.querySelector('.l1 span').style.transform = `translateY(${(1 - l1) * 110}%)`;
+  lt.querySelector('.l2 span').style.transform = `translateY(${(1 - l2) * 110}%)`;
+  el['r-title'].style.setProperty('--f', (Math.max(0, 1 - Math.abs(t - ls - .3) / .6) * .5).toFixed(3));
+
+  /* little signs of life: meters, timecode, bitrate */
+  const lvl = (a, b) => clamp(.42 + .22 * Math.sin(t * a) + .16 * Math.sin(t * b + 1.3) + .08 * Math.sin(t * 23.7), .05, .98);
+  const v1 = lvl(3.1, 7.7), v2 = lvl(2.3, 5.9);
+  el.m1.style.transform = `scaleX(${v1})`; el.m2.style.transform = `scaleX(${v2 * .8})`;
+  el.db1.textContent = (-30 * (1 - v1) - 2).toFixed(1) + ' dB'; el.db2.textContent = (-34 * (1 - v2 * .8) - 3).toFixed(1) + ' dB';
+  const sec = 761 + Math.floor(t); el.tc.textContent = '00:' + String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+  el.kbps.textContent = (6150 + Math.round(60 * Math.sin(t * 2.1) + 25 * Math.sin(t * 5.3))).toLocaleString('en-US');
+
+  /* cursor + ripples */
+  const co = easeOut(prog(t, W.menu - .45, .3)) * (1 - easeIn(prog(t, W.outro - .45, .35)));
+  const clickPress = Math.max(0, ...CLICKS.map(c => 1 - Math.abs(t - c - .03) / .13));
+  const inv = 1 / Math.pow(cam.z, .5);
+  el.cursor.style.opacity = co;
+  el.cursor.style.transform = `translate(${WX + cp.x}px, ${WY + cp.y}px) scale(${inv * (1 - .16 * clickPress)})`;
+  CLICKS.forEach((c, i) => {
+    const p = prog(t, c, .65), pos = cursorAt(c), r = rp[i];
+    r.style.opacity = p > 0 && p < 1 ? (1 - p) * .85 * co : 0;
+    r.style.transform = `translate(${WX + pos.x}px, ${WY + pos.y}px) scale(${(.35 + easeOut(p) * 1.35)})`;
+  });
+
+  drawCaps(t);
+}
+
+/* ---- boot ---- */
+const params = new URLSearchParams(location.search);
+const exportMode = params.has('export');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function fitStage() { const s = Math.min(innerWidth / 1280, innerHeight / 720); $('#fit').style.transform = exportMode ? 'none' : `scale(${s})`; }
+addEventListener('resize', fitStage);
+
+function init() {
+  document.documentElement.classList.add('js');
+  fitStage();
+  // measure with everything at rest
+  el.win.style.transform = 'none'; el.dropdown.style.opacity = 1;
+  layoutLogo(); measure(); buildCam(); buildCursor();
+  window.seek = seek; window.LOOP = B.loop;
+  const frozen = params.get('t');
+  if (frozen !== null) { seek(parseFloat(frozen)); }
+  else if (reduce) { seek(B.title + 2.0); }  // a still frame: the finished composition
+  else if (!exportMode) { const t0 = performance.now(); const tick = now => { seek(((now - t0) / 1000) % B.loop); requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
+  else seek(0);
+  window.__ready = true;
+}
+(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => requestAnimationFrame(init));
+})();
+</script>
+</body>
+</html>
