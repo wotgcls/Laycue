@@ -125,8 +125,10 @@ int main(int argc, char **argv)
 				const RenderedTitle r = renderTitle(fonts, req);
 				QPainter p(&pic);
 				p.drawImage(r.x, r.y, r.image);
-				const QStringList box = qEnvironmentVariable("LAYCUE_PREVIEW_CROP", "40,0,760,300").split(',');
-				pic.copy(box[0].toInt(), box[1].toInt(), box[2].toInt(), box[3].toInt()).save(QString("%1/phase-%2-%3.png").arg(dir, argv[a]).arg(n));
+				const QStringList box =
+					qEnvironmentVariable("LAYCUE_PREVIEW_CROP", "40,0,760,300").split(',');
+				pic.copy(box[0].toInt(), box[1].toInt(), box[2].toInt(), box[3].toInt())
+					.save(QString("%1/phase-%2-%3.png").arg(dir, argv[a]).arg(n));
 			}
 		}
 		return 0;
