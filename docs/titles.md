@@ -15,12 +15,19 @@ a plugin rather than an HTML pack.
   so the title never feels slow to clear.
 - Fonts are bundled (OFL licensed) so a title looks the same on every machine.
 
-## The 58 templates
+## The 59 templates
 Seven categories: **People** (name bars), **Worship** (series titles, song lyrics, quotes), **Announce**, **News** (tabbed
 headline bars), **Live** (an on-air badge and bar with a pulsing light), **Social** (YouTube, Instagram, TikTok, Facebook,
-Mixlr and a generic handle, each with the platform's icon, see `ICONS.md`) and **Tickers**. Scripture templates were
+Mixlr and a generic handle, each with the platform's icon, see `ICONS.md`; plus **Subscribe + Bell**, below) and **Tickers**. Scripture templates were
 removed: the pack is for names and status, not verses.
 They are data (`TitleTemplate`), not code per template, which keeps custom templates simple.
+
+## Subscribe + Bell
+A channel card (avatar, name, a line under it) with four buttons: Subscribe, a bell, Like and Share. While it is on air a
+cursor clicks them one after another, every 10 seconds: Subscribe turns grey and reads Subscribed, the bell fills, swings and
+says "Notifications on" with a red dot, the thumb pops with a +1, the share arrow nudges forward. Everything goes back to
+how it started before the next round. Fields: channel name, message under it, button word (default "Subscribe"). It
+draws everything itself (no image files) and makes no sound.
 
 ## Guest Minister and Giving
 Two cards in the style of broadcast graphics with a logo, tabs above and below the bar and several columns.

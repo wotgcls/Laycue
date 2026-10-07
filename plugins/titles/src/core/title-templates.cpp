@@ -567,6 +567,17 @@ std::vector<TitleTemplate> buildAll()
 	}
 
 	// ---- Social: where to find you (each carries the platform's own icon) ----
+	// Subscribe, bell, like and share: a cursor clicks each one in turn (it repeats while the title is up).
+	{
+		auto t = make("social-subscribe", Category::Social,
+			      {withAlpha(kInk, 238), kBlue, kCream, withAlpha(kCream, 190)}, F::BarlowCondensedSemiBold,
+			      F::BarlowRegular, M::Slide, M::Slide);
+		t.usesTag = true;
+		t.cornerRadius = 18;
+		t.holdSeconds = 20.0;
+		t.pulseSeconds = 10.0; // one full round of clicks
+		all.push_back(t);
+	}
 	// Line 1 is the handle, line 2 the call to action ("Subscribe"), the tag the platform's name.
 	for (const char *id :
 	     {"social-youtube", "social-instagram", "social-tiktok", "social-facebook", "social-mixlr"}) {

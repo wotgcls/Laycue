@@ -129,10 +129,10 @@ TEST_CASE("titles: the ticker wraps and says how many copies fill the view")
 	CHECK(ticker.offset() >= 0.0);
 }
 
-TEST_CASE("titles: there are 58 built-in templates with unique ids and sensible values")
+TEST_CASE("titles: there are 59 built-in templates with unique ids and sensible values")
 {
 	const auto &all = builtInTemplates();
-	CHECK_EQ(int(all.size()), 58);
+	CHECK_EQ(int(all.size()), 59);
 	std::set<std::string> ids;
 	for (const auto &t : all) {
 		ids.insert(t.id);
@@ -142,7 +142,7 @@ TEST_CASE("titles: there are 58 built-in templates with unique ids and sensible 
 		if (t.tickerSpeed > 0.0)
 			CHECK(t.category == Category::Ticker);
 	}
-	CHECK_EQ(int(ids.size()), 58);
+	CHECK_EQ(int(ids.size()), 59);
 	CHECK(findTemplate("nope") == nullptr);
 }
 
@@ -168,7 +168,7 @@ TEST_CASE("titles: every category has templates, the Live and Social ones are wh
 	CHECK(crawl != nullptr);
 	if (crawl)
 		CHECK(!supportsPlacement(*crawl));
-	CHECK_EQ(perCategory[Category::Social], 6); // the generic handle and the five platforms
+	CHECK_EQ(perCategory[Category::Social], 7); // the generic handle and the five platforms
 	for (const char *id :
 	     {"social-youtube", "social-instagram", "social-tiktok", "social-facebook", "social-mixlr"}) {
 		const TitleTemplate *t = findTemplate(id);

@@ -16,6 +16,7 @@
 #include <QTextStream>
 
 #include <QElapsedTimer>
+#include <algorithm>
 #include <cstdio>
 #include <map>
 
@@ -108,19 +109,24 @@ int main(int argc, char **argv)
 			const TitleTemplate *tpl = findTemplate(argv[a]);
 			if (!tpl || tpl->pulseSeconds <= 0.0)
 				continue;
-			for (int n = 0; n < 8; ++n) {
+			const int steps = std::max(2, qEnvironmentVariable("LAYCUE_PREVIEW_PHASES", "8").toInt());
+			for (int n = 0; n < steps; ++n) {
 				RenderRequest req;
 				req.tpl = *tpl;
+				req.text.line1 = qEnvironmentVariable("LAYCUE_PREVIEW_L1");
+				req.text.line2 = qEnvironmentVariable("LAYCUE_PREVIEW_L2");
+				req.text.tag = qEnvironmentVariable("LAYCUE_PREVIEW_TAG");
 				req.text.logoPath = qEnvironmentVariable("LAYCUE_PREVIEW_LOGO");
 				req.text.logoCut = qEnvironmentVariable("LAYCUE_PREVIEW_CUT").toInt();
 				req.text.logoStacked = qEnvironmentVariable("LAYCUE_PREVIEW_STACKED") == "1";
 				req.text.logoMarkSecond = qEnvironmentVariable("LAYCUE_PREVIEW_MARK2") == "1";
-				req.frame = {1.0, 0.0, tpl->pulseSeconds * 100.0 * (n + 0.5) / 8.0};
+				req.frame = {1.0, 0.0, tpl->pulseSeconds * 100.0 * (n + 0.5) / steps};
 				QImage pic = samplePicture(1920, 1080, 0);
 				const RenderedTitle r = renderTitle(fonts, req);
 				QPainter p(&pic);
 				p.drawImage(r.x, r.y, r.image);
-				pic.copy(40, 0, 760, 300).save(QString("%1/phase-%2-%3.png").arg(dir, argv[a]).arg(n));
+				const QStringList box = qEnvironmentVariable("LAYCUE_PREVIEW_CROP", "40,0,760,300").split(',');
+				pic.copy(box[0].toInt(), box[1].toInt(), box[2].toInt(), box[3].toInt()).save(QString("%1/phase-%2-%3.png").arg(dir, argv[a]).arg(n));
 			}
 		}
 		return 0;

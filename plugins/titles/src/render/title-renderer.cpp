@@ -989,6 +989,326 @@ void socialCard(Ctx &c, Platform platform)
 	c.p.restore();
 }
 
+// ---- Social call to action: subscribe, bell, like, share ------------------------------------------------
+
+// Small icons in a 24 x 24 box, drawn by hand from simple shapes.
+QPainterPath bellPath()
+{
+	QPainterPath p;
+	p.moveTo(4.5, 17.5);
+	p.lineTo(6.5, 15.5);
+	p.lineTo(6.5, 10.5);
+	p.cubicTo(6.5, 7.2, 8.7, 5.2, 12.0, 5.2);
+	p.cubicTo(15.3, 5.2, 17.5, 7.2, 17.5, 10.5);
+	p.lineTo(17.5, 15.5);
+	p.lineTo(19.5, 17.5);
+	p.closeSubpath();
+	p.addEllipse(QPointF(12.0, 4.4), 1.3, 1.3);
+	p.addEllipse(QPointF(12.0, 20.0), 2.2, 1.7);
+	return p;
+}
+
+QPainterPath thumbPath()
+{
+	QPainterPath p;
+	p.addRoundedRect(QRectF(3.2, 10.4, 4.2, 10.2), 1.0, 1.0);
+	p.moveTo(9.0, 10.6);
+	p.lineTo(12.0, 4.4);
+	p.cubicTo(13.4, 3.4, 15.0, 4.6, 14.6, 6.2);
+	p.lineTo(13.7, 9.3);
+	p.lineTo(18.4, 9.3);
+	p.cubicTo(19.9, 9.3, 21.0, 10.7, 20.6, 12.1);
+	p.lineTo(19.2, 18.7);
+	p.cubicTo(18.9, 19.8, 18.0, 20.6, 16.9, 20.6);
+	p.lineTo(9.0, 20.6);
+	p.closeSubpath();
+	return p;
+}
+
+QPainterPath sharePath()
+{
+	QPainterPath p;
+	p.moveTo(14.0, 4.6);
+	p.lineTo(20.8, 10.8);
+	p.lineTo(14.0, 17.0);
+	p.lineTo(14.0, 13.3);
+	p.cubicTo(9.6, 13.3, 6.4, 14.8, 4.0, 19.2);
+	p.cubicTo(4.6, 13.2, 8.2, 9.2, 14.0, 8.4);
+	p.closeSubpath();
+	return p;
+}
+
+void fillIcon(QPainter &p, const QPainterPath &path, const QRectF &box, const QColor &colour)
+{
+	p.save();
+	p.translate(box.topLeft());
+	p.scale(box.width() / 24.0, box.height() / 24.0);
+	p.setPen(Qt::NoPen);
+	p.setBrush(colour);
+	p.drawPath(path);
+	p.restore();
+}
+
+double between(double ph, double from, double length)
+{
+	return std::clamp((ph - from) / length, 0.0, 1.0);
+}
+
+// The mouse pointer: white with a dark edge, its tip at the origin.
+void drawPointer(QPainter &p, QPointF tip, double scale, double opacity)
+{
+	if (opacity <= 0.0)
+		return;
+	QPainterPath arrow;
+	arrow.moveTo(0, 0);
+	arrow.lineTo(0, 24);
+	arrow.lineTo(6.0, 18.6);
+	arrow.lineTo(9.8, 27.4);
+	arrow.lineTo(13.6, 25.8);
+	arrow.lineTo(9.9, 17.3);
+	arrow.lineTo(17.8, 17.3);
+	arrow.closeSubpath();
+	p.save();
+	p.setOpacity(p.opacity() * opacity);
+	p.translate(tip);
+	p.scale(scale, scale);
+	p.setPen(QPen(QColor(17, 17, 16), 2.4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+	p.setBrush(QColor(255, 255, 255));
+	p.drawPath(arrow);
+	p.restore();
+}
+
+// 30. Subscribe + Bell: a channel card whose buttons get clicked by a cursor, one after another: Subscribe turns
+// to Subscribed, the bell rings and says notifications are on, the like thumb pops, the share arrow nudges.
+// The round of clicks repeats every `pulseSeconds` while the title is up.
+void socialSubscribe(Ctx &c)
+{
+	const double h = 100, pad = 14, avatar = h - 2 * pad, circle = 54, gap = 14;
+	const QString channel = c.x.line1;
+	const QString message = c.x.line2;
+	const QString word = (c.has(c.x.tag) ? c.x.tag.trimmed() : QStringLiteral("Subscribe")).toUpper();
+	const QString doneWord = word.startsWith(QLatin1String("SUBSCRIBE")) ? QStringLiteral("SUBSCRIBED") : word;
+	const QFont fname = fitFont(c, c.t.display, 40, 26, channel, 520);
+	const QFont fmsg = c.font(c.t.body, 20);
+	const QFont fbtn = c.font(c.t.display, 26);
+	const QFont fchip = c.font(c.t.display, 20);
+	const double textW = std::max(textWidth(fname, channel), c.has(message) ? textWidth(fmsg, message) : 0.0);
+	const double btnW = std::max(textWidth(fbtn, word), textWidth(fbtn, doneWord)) + (word.size() + 2) * 2.0 + 64;
+	const double w = pad + avatar + 22 + textW + 34 + btnW + 3 * (gap + circle) + pad;
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.55);
+	const double ph = pulsePhase(c);
+	const double alive = c.out > 0.0 ? 0.0 : 1.0;
+
+	// Where everything sits.
+	const double bx = kLeft + pad + avatar + 22 + textW + 34;
+	const QRectF btn(bx, y + (h - 54) / 2.0, btnW, 54);
+	const QRectF bellBox(btn.right() + gap, y + (h - circle) / 2.0, circle, circle);
+	const QRectF likeBox(bellBox.right() + gap, bellBox.top(), circle, circle);
+	const QRectF shareBox(likeBox.right() + gap, bellBox.top(), circle, circle);
+
+	// The clicks, as positions in the round (0..1), and the cursor's stops between them.
+	const double clickSub = 0.18, clickBell = 0.40, clickLike = 0.64, clickShare = 0.84;
+	const double reset = 1.0 - between(ph, 0.95, 0.04); // everything goes back to how it started
+	const auto since = [&](double t0, double len) {
+		return alive * between(ph, t0, len);
+	};
+	const auto pressAt = [&](double t0) {
+		return alive * std::max(0.0, 1.0 - std::abs(ph - t0 - 0.012) / 0.03);
+	};
+
+	fillPanel(c, QRectF(kLeft, y, w * e, h), c.t.cornerRadius);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y, w * e + 1, h));
+	fillRect(c.p, QRectF(kLeft, y, w, h), c.panel, c.t.cornerRadius);
+
+	// The channel: a round avatar with its first letter, the name, the message.
+	const double pop = c.partBack(0.08, 0.45);
+	const QRectF av(kLeft + pad, y + pad, avatar, avatar);
+	c.p.save();
+	c.p.translate(av.center());
+	c.p.scale(std::max(pop, 0.001), std::max(pop, 0.001));
+	c.p.translate(-av.center());
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(c.accent);
+	c.p.drawEllipse(av);
+	QString initial;
+	for (const QChar ch : channel) {
+		if (ch.isLetterOrNumber()) {
+			initial = QString(ch.toUpper());
+			break;
+		}
+	}
+	drawText(c.p, av, initial, c.font(c.t.display, 38), QColor(255, 255, 255), Qt::AlignCenter);
+	c.p.restore();
+	const double tx = kLeft + pad + avatar + 22;
+	const double e1 = c.part(0.25, 0.5), e2 = c.part(0.34, 0.5);
+	if (c.has(message)) {
+		drawText(c.p, QRectF(tx + 20 * (1 - e1), y + 12, textW + 40, 44), channel, fname, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 20 * (1 - e2), y + 56, textW + 40, 30), message, fmsg, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
+	} else {
+		drawText(c.p, QRectF(tx + 20 * (1 - e1), y, textW + 40, h), channel, fname, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+	}
+
+	// The buttons pop in one after another.
+	const double b0 = c.partBack(0.40, 0.35), b1 = c.partBack(0.46, 0.35), b2 = c.partBack(0.52, 0.35),
+		     b3 = c.partBack(0.58, 0.35);
+	const auto popped = [&](const QRectF &r, double amount, double extra, auto draw) {
+		c.p.save();
+		c.p.translate(r.center());
+		const double s = std::max(amount, 0.001) * extra;
+		c.p.scale(s, s);
+		c.p.translate(-r.center());
+		draw();
+		c.p.restore();
+	};
+
+	// Subscribe: red, then grey with "Subscribed" once clicked.
+	const double done = between(ph, clickSub + 0.012, 0.03) * reset * alive;
+	popped(btn, b0, 1.0 - 0.06 * pressAt(clickSub), [&]() {
+		const QColor red(0xFF, 0x00, 0x00), grey(255, 255, 255, 46);
+		QColor fill(int(red.red() + (grey.red() - red.red()) * done),
+			    int(red.green() + (grey.green() - red.green()) * done),
+			    int(red.blue() + (grey.blue() - red.blue()) * done),
+			    int(red.alpha() + (grey.alpha() - red.alpha()) * done));
+		fillRect(c.p, btn, fill, 27);
+		if (done > 0.5) {
+			// A check mark before the word.
+			const double tw = textWidth(fbtn, doneWord) + doneWord.size() * 2.0;
+			const double cx = btn.center().x() - tw / 2.0 - 4;
+			c.p.save();
+			c.p.setPen(QPen(c.text, 3.4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+			c.p.drawPolyline(QPolygonF({QPointF(cx - 22, btn.center().y() + 1),
+						    QPointF(cx - 15, btn.center().y() + 8),
+						    QPointF(cx - 3, btn.center().y() - 7)}));
+			c.p.restore();
+			drawText(c.p, btn.adjusted(26, 0, 0, 0), doneWord, fbtn, c.text, Qt::AlignCenter, 1.0, 2.0);
+		} else {
+			drawText(c.p, btn, word, fbtn, QColor(255, 255, 255), Qt::AlignCenter, 1.0, 2.0);
+		}
+	});
+
+	// The round buttons.
+	const auto disc = [&](const QRectF &r, const QColor &fill) {
+		c.p.setPen(Qt::NoPen);
+		c.p.setBrush(fill);
+		c.p.drawEllipse(r);
+	};
+
+	// Bell: after its click it fills, swings a few times, and a red dot lands on it.
+	const double bellOn = between(ph, clickBell + 0.012, 0.03) * reset * alive;
+	const double ringU = since(clickBell + 0.012, 0.12);
+	const double swing = (ringU > 0.0 && ringU < 1.0)
+				     ? 26.0 * (1.0 - ringU) * (1.0 - ringU) * std::sin(ringU * 3.0 * 2.0 * kPi)
+				     : 0.0;
+	popped(bellBox, b1, 1.0 - 0.06 * pressAt(clickBell), [&]() {
+		disc(bellBox, bellOn > 0.5 ? c.accent : QColor(255, 255, 255, 36));
+		c.p.save();
+		c.p.translate(bellBox.center().x(), bellBox.top() + circle * 0.28); // swings from the top
+		c.p.rotate(swing);
+		c.p.translate(-bellBox.center().x(), -(bellBox.top() + circle * 0.28));
+		fillIcon(c.p, bellPath(), bellBox.adjusted(10, 10, -10, -10),
+			 bellOn > 0.5 ? QColor(255, 255, 255) : c.text);
+		c.p.restore();
+	});
+	const double dot = easeOutBack(since(clickBell + 0.045, 0.05)) * reset;
+	if (dot > 0.01) {
+		const QPointF at(bellBox.right() - 8, bellBox.top() + 8);
+		c.p.save();
+		c.p.translate(at);
+		c.p.scale(dot, dot);
+		c.p.setPen(QPen(QColor(17, 17, 16), 3.0));
+		c.p.setBrush(QColor(0xFF, 0x30, 0x30));
+		c.p.drawEllipse(QPointF(0, 0), 10.5, 10.5);
+		c.p.restore();
+		drawText(c.p, QRectF(at.x() - 10, at.y() - 10, 20, 20), QStringLiteral("1"), c.font(c.t.display, 16),
+			 QColor(255, 255, 255), Qt::AlignCenter, std::clamp(dot, 0.0, 1.0));
+	}
+	// Like: the thumb turns to the accent colour and pops; "+1" floats up.
+	const double likeOn = between(ph, clickLike + 0.012, 0.03) * reset * alive;
+	const double likePop = std::sin(since(clickLike + 0.01, 0.07) * kPi);
+	popped(likeBox, b2, 1.0 - 0.06 * pressAt(clickLike) + 0.22 * likePop * alive, [&]() {
+		disc(likeBox, likeOn > 0.5 ? c.accent : QColor(255, 255, 255, 36));
+		fillIcon(c.p, thumbPath(), likeBox.adjusted(11, 11, -11, -11),
+			 likeOn > 0.5 ? QColor(255, 255, 255) : c.text);
+	});
+	const double plus = since(clickLike + 0.015, 0.12);
+	if (plus > 0.0 && plus < 1.0) {
+		drawText(c.p, QRectF(likeBox.left(), likeBox.top() - 40 - 26 * plus, circle, 34), QStringLiteral("+1"),
+			 c.font(c.t.display, 28), c.accent, Qt::AlignCenter, std::sin(plus * kPi) * reset);
+	}
+
+	// Share: the arrow nudges forward and a ring spreads.
+	const double shareU = since(clickShare + 0.012, 0.08);
+	const double nudge = std::sin(shareU * kPi) * 7.0;
+	popped(shareBox, b3, 1.0 - 0.06 * pressAt(clickShare), [&]() {
+		disc(shareBox, QColor(255, 255, 255, 36 + int(60 * std::sin(shareU * kPi))));
+		fillIcon(c.p, sharePath(), shareBox.adjusted(11, 11, -11, -11).translated(nudge, 0), c.text);
+	});
+
+	// Rings where a click lands.
+	const auto ring = [&](double t0, QPointF at) {
+		const double u = since(t0, 0.07);
+		if (u <= 0.0 || u >= 1.0)
+			return;
+		c.p.save();
+		c.p.setBrush(Qt::NoBrush);
+		c.p.setPen(QPen(QColor(255, 255, 255, int(150 * (1.0 - u))), 3.0));
+		c.p.drawEllipse(at, 12 + 34 * u, 12 + 34 * u);
+		c.p.restore();
+	};
+	ring(clickSub, btn.center() + QPointF(btnW * 0.15, 6));
+	ring(clickBell, bellBox.center() + QPointF(6, 8));
+	ring(clickLike, likeBox.center() + QPointF(6, 8));
+	ring(clickShare, shareBox.center() + QPointF(6, 8));
+	c.p.restore();
+
+	// "Notifications on" rises from the bell, then goes.
+	const double chipIn = easeOutCubic(since(clickBell + 0.02, 0.04));
+	const double chipOut = between(ph, clickBell + 0.15, 0.04);
+	const double chipA = chipIn * (1.0 - chipOut);
+	if (chipA > 0.01 && e >= 0.98) {
+		const QString note = QStringLiteral("NOTIFICATIONS ON");
+		const double nw = textWidth(fchip, note) + note.size() * 1.5 + 36;
+		const QRectF chip(bellBox.center().x() - nw / 2.0, bellBox.top() - 52 - 8 * chipIn, nw, 38);
+		c.p.save();
+		c.p.setOpacity(c.p.opacity() * chipA);
+		fillRect(c.p, chip, QColor(241, 235, 221), 19);
+		drawText(c.p, chip, note, fchip, QColor(17, 17, 16), Qt::AlignCenter, 1.0, 1.5);
+		c.p.restore();
+	}
+
+	// The cursor, drawn last so it can pass over everything. Its tip is where it clicks.
+	if (e >= 0.98 && alive > 0.0) {
+		const QPointF start(kLeft + w + 30, y + h + 70), end(kLeft + w + 30, y + h + 70);
+		const QPointF pSub = btn.center() + QPointF(btnW * 0.15, 6), pBell = bellBox.center() + QPointF(6, 8),
+			      pLike = likeBox.center() + QPointF(6, 8), pShare = shareBox.center() + QPointF(6, 8);
+		struct Stop {
+			double from, to;
+			QPointF a, b;
+		};
+		const Stop legs[] = {{0.05, 0.16, start, pSub},
+				     {0.28, 0.38, pSub, pBell},
+				     {0.52, 0.62, pBell, pLike},
+				     {0.72, 0.82, pLike, pShare},
+				     {0.88, 0.96, pShare, end}};
+		QPointF at = start;
+		for (const Stop &leg : legs) {
+			if (ph >= leg.from) {
+				const double u = easeInOutCubic(between(ph, leg.from, leg.to - leg.from));
+				at = leg.a + (leg.b - leg.a) * u;
+			}
+		}
+		const double fade = between(ph, 0.03, 0.04) * (1.0 - between(ph, 0.94, 0.04));
+		const double press =
+			std::max({pressAt(clickSub), pressAt(clickBell), pressAt(clickLike), pressAt(clickShare)});
+		drawPointer(c.p, at, 1.0 - 0.14 * press, fade);
+	}
+}
+
 // ---- News: tabbed headline bars -------------------------------------------------------------------------
 
 QColor darker(const QColor &c, int percent)
@@ -2282,11 +2602,48 @@ void logoLockup(Ctx &c)
 	c.p.drawImage(dstW.translated(dir * travel * s), img, srcW);
 	c.p.restore();
 
+	// While the mark is alone, a soft band of light crosses it and it gives one small pop, then the wordmark
+	// comes back out from behind it.
+	const double sweepU = (ph >= 0.52 && ph < 0.72) ? (ph - 0.52) / 0.20 : -1.0;
+	const double pop = sweepU >= 0.0 ? std::sin(sweepU * kPi) : 0.0;
+	const double pixelScale = c.p.transform().m11();
+
 	// The mark stays, with a very small swell as the wordmark tucks in or comes out.
 	c.p.translate(dstM.center());
-	c.p.scale(1.0 + 0.05 * bump, 1.0 + 0.05 * bump);
+	const double swell = 1.0 + 0.05 * bump + 0.045 * pop;
+	c.p.scale(swell, swell);
 	c.p.translate(-dstM.center());
-	c.p.drawImage(dstM, img, srcM);
+	if (sweepU < 0.0) {
+		c.p.drawImage(dstM, img, srcM);
+	} else {
+		QImage layer(std::max(1, int(std::ceil(dstM.width() * pixelScale))),
+			     std::max(1, int(std::ceil(dstM.height() * pixelScale))),
+			     QImage::Format_ARGB32_Premultiplied);
+		layer.fill(Qt::transparent);
+		QPainter q(&layer);
+		q.setRenderHint(QPainter::SmoothPixmapTransform, true);
+		q.drawImage(QRectF(0, 0, layer.width(), layer.height()), img, srcM);
+		q.setCompositionMode(QPainter::CompositionMode_SourceAtop); // light only lands on the mark itself
+		const double lw = layer.width(), lh = layer.height();
+		const double bw = lw * 0.6;
+		const double x = -bw + (lw + 2 * bw) * easeInOut(sweepU);
+		QLinearGradient g(x, 0, x + bw, 0);
+		// Silver edges around a bright core, so it shows on dark, coloured and white marks alike.
+		g.setColorAt(0.0, QColor(150, 158, 170, 0));
+		g.setColorAt(0.3, QColor(125, 133, 148, 200));
+		g.setColorAt(0.5, QColor(255, 255, 255, 235));
+		g.setColorAt(0.7, QColor(125, 133, 148, 200));
+		g.setColorAt(1.0, QColor(150, 158, 170, 0));
+		q.setPen(Qt::NoPen);
+		q.setBrush(g);
+		QPolygonF band;
+		band << QPointF(x + bw * 0.25, 0) << QPointF(x + bw * 1.25, 0) << QPointF(x + bw * 0.75, lh)
+		     << QPointF(x - bw * 0.25, lh);
+		q.drawPolygon(band);
+		q.end();
+		c.p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+		c.p.drawImage(dstM, layer);
+	}
 	c.p.restore();
 }
 
@@ -2629,6 +2986,7 @@ const std::vector<StyleInfo> &styles()
 		 [](Ctx &c) {
 			 socialCard(c, Platform::Facebook);
 		 }},
+		{"social-subscribe", socialSubscribe},
 		{"social-mixlr",
 		 [](Ctx &c) {
 			 socialCard(c, Platform::Mixlr);
