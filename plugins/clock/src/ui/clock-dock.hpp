@@ -71,7 +71,8 @@ private:
 	laycue::ui::RowButton *optionsRow_ = nullptr;
 	QWidget *optionsBox_ = nullptr;
 	QLabel *entryHint_ = nullptr;
-	QLabel *nowLabel_ = nullptr; // "Now 4:18 PM · starts in 42 min", only in the at-a-time mode
+	QLabel *sceneLabel_ = nullptr; // which scene the clock is in, and whether it shows on Program
+	QLabel *nowLabel_ = nullptr;   // "Now 4:18 PM · starts in 42 min", only in the at-a-time mode
 	QLabel *toastLabel_ = nullptr;
 };
 

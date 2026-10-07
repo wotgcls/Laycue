@@ -8,6 +8,7 @@
 #include "obs/pushback-scene.hpp"
 #include "obs/scene-reader.hpp"
 #include "obs/switcher.hpp"
+#include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
 #include "ui/labels.hpp"
 #include "ui/pages/add-pushback-page.hpp"
@@ -76,26 +77,6 @@ QImage toImage(const Picture &picture)
 	QImage image(picture.pixels.data(), int(picture.width), int(picture.height), int(picture.width * 4),
 		     QImage::Format_RGBX8888);
 	return image.copy(); // own the pixels
-}
-
-// The brand mark for the header, picked for the OBS theme (cream screen on dark, ink on light).
-QLabel *makeMark(QWidget *parent)
-{
-	auto *mark = new QLabel(parent);
-	const bool darkTheme = parent->palette().color(QPalette::Window).lightness() < 128;
-	char *path = obs_module_file(darkTheme ? "brand/laycue-mark-on-dark.png" : "brand/laycue-mark-on-light.png");
-	if (!path)
-		return mark;
-	QPixmap image(QString::fromUtf8(path));
-	bfree(path);
-	if (image.isNull())
-		return mark;
-	const qreal ratio = qGuiApp ? qGuiApp->devicePixelRatio() : 1.0;
-	QPixmap scaled = image.scaledToHeight(qRound(19 * ratio), Qt::SmoothTransformation);
-	scaled.setDevicePixelRatio(ratio);
-	mark->setPixmap(scaled);
-	mark->setAccessibleName(QStringLiteral("Laycue"));
-	return mark;
 }
 
 QLabel *makeLabel(QWidget *parent, const QFont &font, const QColor &colorValue, const QString &value = QString())
@@ -243,7 +224,7 @@ QWidget *LaycueDock::buildHome()
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 0, size::shadowMargin, 0);
 	header->setSpacing(size::gap - 2);
-	header->addWidget(makeMark(home));
+	header->addWidget(ui::brandMark(home));
 	tabs_ = new Segmented(home);
 	tabs_->setItems({text("Laycue.Tab.Shots"), text("Laycue.Tab.Pushbacks"), text("Laycue.Tab.Overlays")});
 	tabs_->setAccessibleName(text("Laycue.Tab.Accessible"));

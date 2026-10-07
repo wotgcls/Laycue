@@ -3,7 +3,9 @@
 #include "core/clock-core.hpp"
 #include "render/clock-renderer.hpp"
 #include "store/clock-io.hpp"
+#include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
+#include "ui/presence-text.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/style.hpp"
 #include "ui/text.hpp"
@@ -212,12 +214,18 @@ void ClockDock::rebuild()
 	// Header.
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 2, size::shadowMargin, 2);
+	header->setSpacing(size::gapSmall);
+	header->addWidget(brandMark(page_));
 	header->addWidget(innerLabel(page_, lt("Laycue.Clock.Heading"), 17, 700, color::cream));
 	header->addStretch(1);
 	statusLabel_ = innerLabel(page_, QString(), 12, 600, color::textSecondary);
 	statusLabel_->setWordWrap(false);
 	header->addWidget(statusLabel_);
 	pageLayout_->addLayout(header);
+	sceneLabel_ = innerLabel(page_, QString(), 12, 500, color::textTertiary);
+	sceneLabel_->setWordWrap(true);
+	sceneLabel_->setContentsMargins(size::shadowMargin, 0, size::shadowMargin, 0);
+	pageLayout_->addWidget(sceneLabel_);
 
 	const bool haveLayer = status_.found;
 	auto *stage = new Surface(2, page_);
@@ -697,6 +705,12 @@ void ClockDock::poll()
 		if (status_.found != hadLayer && !building_) {
 			rebuild(); // show the controls (or the empty state) that fit
 			return;
+		}
+		if (sceneLabel_) {
+			bool live = false;
+			sceneLabel_->setText(status_.found ? presenceText(presenceOf(target_), live) : QString());
+			sceneLabel_->setStyleSheet(
+				labelStyle(live ? color::next : color::textTertiary, sceneLabel_->font()));
 		}
 		if (nowLabel_) {
 			const QTime now = QTime::currentTime();

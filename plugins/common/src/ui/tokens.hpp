@@ -9,17 +9,17 @@
 namespace laycue::ui {
 
 namespace color {
-inline const QColor ink{0x11, 0x11, 0x10};           // panel base
-inline const QColor graphite{0x1C, 0x1B, 0x19};      // raised surfaces (cards)
-inline const QColor stage{0x22, 0x21, 0x1F};         // the most raised surface: Live, Up next and the main buttons
-inline const QColor recess{0x0B, 0x0B, 0x0A};        // sunken tracks (tab bar, switches off)
-inline const QColor control{0x2C, 0x2A, 0x27};       // selected segment, quiet buttons
-inline const QColor graphiteHover{0x23, 0x21, 0x1E}; // card under the mouse
-inline const QColor line{0x2C, 0x2A, 0x27};          // dividers, quiet outlines
-inline const QColor lineStrong{0x3A, 0x37, 0x32};    // secondary button outline
+inline const QColor ink{0x15, 0x17, 0x1A};           // panel base
+inline const QColor graphite{0x1E, 0x20, 0x24};      // raised surfaces (cards)
+inline const QColor stage{0x28, 0x2B, 0x30};         // the most raised surface: Live, Up next and the main buttons
+inline const QColor recess{0x0E, 0x0F, 0x11};        // sunken tracks (tab bar, switches off)
+inline const QColor control{0x30, 0x34, 0x3A};       // selected segment, quiet buttons
+inline const QColor graphiteHover{0x25, 0x28, 0x2D}; // card under the mouse
+inline const QColor line{0x30, 0x34, 0x3A};          // dividers, quiet outlines
+inline const QColor lineStrong{0x42, 0x46, 0x4D};    // secondary button outline
 inline const QColor cream{0xF1, 0xEB, 0xDD};         // text, output, primary actions
-inline const QColor textSecondary{0xB5, 0xB0, 0xA5};
-inline const QColor textTertiary{0x8A, 0x85, 0x7B};
+inline const QColor textSecondary{0xB4, 0xB8, 0xBF};
+inline const QColor textTertiary{0x86, 0x8B, 0x94};
 inline const QColor textDisabled{0x6F, 0x6A, 0x61};
 inline const QColor live{0xFF, 0x4D, 0x2E}; // Tally Red: on air, only
 inline const QColor livePressed{0xE6, 0x43, 0x28};

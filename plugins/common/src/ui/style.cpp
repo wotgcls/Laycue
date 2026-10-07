@@ -12,8 +12,9 @@ QString panelStyleSheet()
 	QString css = QStringLiteral(R"(
 #LaycueContent { background: @ink; }
 #LaycueContent QScrollArea, #LaycueContent QScrollArea > QWidget > QWidget { background: transparent; border: none; }
-#LaycueContent QScrollBar:vertical { background: transparent; width: 8px; margin: 0; }
-#LaycueContent QScrollBar::handle:vertical { background: @control; border-radius: 4px; min-height: 24px; }
+#LaycueContent QScrollBar:vertical { background: transparent; width: 6px; margin: 0; }
+#LaycueContent QScrollBar::handle:vertical { background: transparent; border-radius: 3px; min-height: 24px; }
+#LaycueContent QScrollBar:vertical:hover::handle:vertical { background: @control; } /* the bar only shows when you reach for it */
 #LaycueContent QScrollBar::add-line, #LaycueContent QScrollBar::sub-line { height: 0; }
 #LaycueContent QLabel { background: transparent; }
 #LaycueContent QPushButton { margin: 0; } /* OBS's own theme adds margins to push buttons */

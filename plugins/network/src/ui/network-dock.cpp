@@ -2,6 +2,7 @@
 
 #include "obs/stream-stats.hpp"
 #include "store/settings-io.hpp"
+#include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
 #include "ui/live-chart.hpp"
 #include "ui/pages/helpers.hpp"
@@ -285,6 +286,8 @@ void NetworkDock::buildUi()
 
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 2, size::shadowMargin, 2);
+	header->setSpacing(size::gapSmall);
+	header->addWidget(brandMark(home_));
 	header->addWidget(makeLabel(home_, lt("Laycue.Network.Heading"), 17, 700, color::cream));
 	header->addStretch(1);
 	pill_ = new HealthPill(home_);

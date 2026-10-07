@@ -12,11 +12,17 @@ target_sources(
     src/hotkey-set.hpp
     src/net/http.cpp
     src/net/http.hpp
+    src/obs/scene-presence.cpp
+    src/obs/scene-presence.hpp
+    src/ui/brand-mark.cpp
+    src/ui/brand-mark.hpp
     src/ui/controls.cpp
     src/ui/controls.hpp
     src/ui/laycue-menu.cpp
     src/ui/laycue-menu.hpp
     src/ui/pages/helpers.hpp
+    src/ui/presence-text.cpp
+    src/ui/presence-text.hpp
     src/ui/pages/page-frame.cpp
     src/ui/pages/page-frame.hpp
     src/ui/style.cpp

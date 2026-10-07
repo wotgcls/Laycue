@@ -3,7 +3,9 @@
 #include "obs/title-source.hpp"
 #include "render/font-set.hpp"
 #include "store/library-io.hpp"
+#include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
+#include "ui/presence-text.hpp"
 #include "ui/customize-page.hpp"
 #include "ui/logo-parts-dialog.hpp"
 #include "ui/pages/helpers.hpp"
@@ -198,6 +200,7 @@ void TitlesDock::buildUi()
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 2, size::shadowMargin, 2);
 	header->setSpacing(size::gapSmall);
+	header->addWidget(brandMark(home_));
 	header->addWidget(makeLabel(home_, lt("Laycue.Titles.Heading"), 17, 700, color::cream));
 	header->addStretch(1);
 	statusDot_ = new StatusDot(home_);
@@ -245,6 +248,9 @@ QWidget *TitlesDock::buildStage()
 	layerRow_->setOpen(true);
 	connect(layerRow_, &RowButton::clicked, this, &TitlesDock::pickLayer);
 	v->addWidget(layerRow_);
+	sceneLabel_ = makeLabel(stage, QString(), 11, 500, color::textTertiary);
+	sceneLabel_->setWordWrap(true);
+	v->addWidget(sceneLabel_);
 
 	preview_ = new TitlePreview(stage);
 	preview_->setAccessibleName(lt("Laycue.Titles.PreviewAccessible"));
@@ -1034,6 +1040,11 @@ void TitlesDock::pollStatus()
 
 void TitlesDock::updateStatus()
 {
+	if (sceneLabel_) {
+		bool live = false;
+		sceneLabel_->setText(sources_.empty() ? QString() : presenceText(presenceOf(target()), live));
+		sceneLabel_->setStyleSheet(labelStyle(live ? color::next : color::textTertiary, sceneLabel_->font()));
+	}
 	static_cast<StatusDot *>(statusDot_)->setOn(status_.live());
 	if (!status_.found) {
 		statusLabel_->setText(sources_.empty() ? lt("Laycue.Titles.StatusNoLayer")

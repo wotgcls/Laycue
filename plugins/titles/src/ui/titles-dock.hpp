@@ -171,6 +171,7 @@ private:
 	laycue::ui::Segmented *alignSeg_ = nullptr;
 	QLabel *sizeValue_ = nullptr;
 	QLabel *statusLabel_ = nullptr;
+	QLabel *sceneLabel_ = nullptr; // which scene the layer is in, and whether it shows on Program
 	QWidget *statusDot_ = nullptr;
 	TitlePreview *preview_ = nullptr;
 	QLabel *label1_ = nullptr;
