@@ -15,7 +15,7 @@ a plugin rather than an HTML pack.
   so the title never feels slow to clear.
 - Fonts are bundled (OFL licensed) so a title looks the same on every machine.
 
-## The 59 templates
+## The 66 templates
 Seven categories: **People** (name bars), **Worship** (series titles, song lyrics, quotes), **Announce**, **News** (tabbed
 headline bars), **Live** (an on-air badge and bar with a pulsing light), **Social** (YouTube, Instagram, TikTok, Facebook,
 Mixlr and a generic handle, each with the platform's icon, see `ICONS.md`; plus **Subscribe + Bell**, below) and **Tickers**. Scripture templates were
@@ -102,3 +102,10 @@ Nothing appears on air by itself. Show and hide are explicit; "hide by itself" i
 - The **⋯** menu on a row: Edit (then press **Save row**), Move up, Move down, Remove.
 - The **Run order** row at the top: **Save as…** keeps the list under a name such as "Sunday 9am". **Load** brings a saved one back. Also: Delete, Back to the top, Clear the list.
 - Up to 50 titles in a list and 30 saved run orders.
+
+## Tickers, layer names and saving a service
+
+- **Tickers:** press Enter while typing the ticker text to start a new item. Items run one after another with a small accent diamond between them.
+- **Layer names:** when you press Show on air, a layer that still has its automatic name is renamed after the content, for example `ttl. Pastor David Ok…`. Layers you named yourself are never renamed.
+- **Save this service…** sits on the Queue tab. It saves the run order under a name you choose, and you can load it again later.
+- **New templates:** Coming Up, Event Date, Prayer Request, Welcome, Celebrate, Question and Hashtag Bar.

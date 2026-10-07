@@ -107,6 +107,16 @@ const Overrides *findCustom(const Library &lib, const std::string &name);
 // `baseId` is set to the built-in template the result draws like.
 TitleTemplate resolveStyle(const Library &lib, const std::string &styleId, std::string *baseId = nullptr);
 
+// The name a title layer gets from what it shows, so the Sources panel says which is which: "ttl. Pastor David…"
+// (cut short with an ellipsis). Empty if there is nothing to name it by.
+std::string layerNameFor(const TitleContent &content);
+// Layers Laycue named itself ("ttl. ..." or the plain default name) may be renamed again; a name the operator chose
+// is left alone. `defaultName` is the plain name a new layer starts with.
+bool isAutoLayerName(const std::string &name, const std::string &defaultName);
+// A layer was renamed: everything that remembered its old name (the panel's target, saved layers, queue rows,
+// saved services) follows.
+void renameLayerRefs(Library &lib, const std::string &from, const std::string &to);
+
 // Saves the template and text now in the panel under the layer `name`.
 void rememberLayer(Library &lib, const std::string &name);
 // Brings back what `name` held. A layer the panel has not held yet keeps what is in the panel now.

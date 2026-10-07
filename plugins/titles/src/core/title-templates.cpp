@@ -445,6 +445,76 @@ std::vector<TitleTemplate> buildAll()
 	}
 
 	// ---- Announce: events, alerts, social ----
+	// More cards for a service: what is next, an event, a prayer, a welcome, a celebration, a question, a hashtag.
+	{
+		auto t = make("coming-up", Category::Announce,
+			      {withAlpha(kInk, 240), kAmber, kCream, withAlpha(kCream, 200)}, F::BarlowCondensedBold,
+			      F::BarlowRegular, M::Slide, M::Slide);
+		t.usesTag = true;
+		t.usesInk = true;
+		t.holdSeconds = 8.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("event-date", Category::Announce,
+			      {withAlpha(kInk, 238), kAmber, kCream, withAlpha(kCream, 190)}, F::BarlowCondensedBold,
+			      F::BarlowRegular, M::Slide, M::Slide);
+		t.usesTag = true;
+		t.usesInk = true;
+		t.cornerRadius = 18;
+		t.holdSeconds = 10.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("prayer-request", Category::Worship,
+			      {withAlpha(kInk, 232), kAmber, kCream, withAlpha(kCream, 200)}, F::Baskerville,
+			      F::BarlowRegular, M::Rise, M::Fade);
+		t.usesTag = true;
+		t.usesInk = true;
+		t.longText = true;
+		t.cornerRadius = 22;
+		t.holdSeconds = 12.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("welcome", Category::Announce,
+			      {withAlpha(kInk, 0), kAmber, kWhite, withAlpha(kWhite, 225)}, F::BarlowCondensedBold,
+			      F::BarlowRegular, M::Rise, M::Fade);
+		t.holdSeconds = 7.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("celebrate", Category::Announce,
+			      {withAlpha(kCream, 246), kBlue, kInk, withAlpha(kInk, 170)}, F::OutfitBold,
+			      F::OutfitRegular, M::Pop, M::Fade);
+		t.usesTag = true;
+		t.usesInk = true;
+		t.palette.ink = kWhite;
+		t.cornerRadius = 20;
+		t.holdSeconds = 9.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("question", Category::Live, {withAlpha(kCream, 246), kBlue, kInk, withAlpha(kInk, 170)},
+			      F::OutfitSemiBold, F::OutfitRegular, M::Rise, M::Fade);
+		t.usesTag = true;
+		t.usesInk = true;
+		t.palette.ink = kWhite;
+		t.longText = true;
+		t.holdSeconds = 12.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("hashtag", Category::Social,
+			      {withAlpha(kInk, 238), kGreen, kCream, withAlpha(kCream, 190)}, F::BarlowCondensedBold,
+			      F::BarlowCondensedMedium, M::Slide, M::Slide);
+		t.usesLine2 = false;
+		t.usesTag = true;
+		t.usesInk = true;
+		t.cornerRadius = 18;
+		t.holdSeconds = 10.0;
+		all.push_back(t);
+	}
 	{
 		auto t = make("announcement", Category::Announce,
 			      {withAlpha(kTeal, 245), kAmber, kWhite, withAlpha(kWhite, 220)}, F::BarlowCondensedBold,

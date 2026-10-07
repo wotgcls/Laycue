@@ -22,6 +22,7 @@ add_executable(
   test-geometry.cpp
   test-exclusivity.cpp
   test-config.cpp
+  test-locale.cpp
   test-layouts.cpp
   test-titles.cpp
   test-network.cpp
@@ -56,6 +57,8 @@ target_include_directories(
   laycue-tests
   PRIVATE "${LAYCUE_SRC}" "${TITLES_SRC}" "${NETWORK_SRC}" "${COMMON_SRC}" "${CLOCK_SRC}" "${CMAKE_CURRENT_SOURCE_DIR}"
 )
+
+target_compile_definitions(laycue-tests PRIVATE LAYCUE_PLUGINS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../plugins")
 
 add_executable(laycue-fixture-tests test-fixtures.cpp "${LAYCUE_SRC}/core/detect.cpp")
 target_include_directories(laycue-fixture-tests PRIVATE "${LAYCUE_SRC}")

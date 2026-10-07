@@ -107,7 +107,7 @@ int main(int argc, char **argv)
 		FontSet fonts(dataDir + "/fonts");
 		for (int a = 3; a < argc; ++a) {
 			const TitleTemplate *tpl = findTemplate(argv[a]);
-			if (!tpl || tpl->pulseSeconds <= 0.0)
+			if (!tpl || (tpl->pulseSeconds <= 0.0 && tpl->tickerSpeed <= 0.0))
 				continue;
 			const int steps = std::max(2, qEnvironmentVariable("LAYCUE_PREVIEW_PHASES", "8").toInt());
 			for (int n = 0; n < steps; ++n) {
@@ -120,7 +120,9 @@ int main(int argc, char **argv)
 				req.text.logoCut = qEnvironmentVariable("LAYCUE_PREVIEW_CUT").toInt();
 				req.text.logoStacked = qEnvironmentVariable("LAYCUE_PREVIEW_STACKED") == "1";
 				req.text.logoMarkSecond = qEnvironmentVariable("LAYCUE_PREVIEW_MARK2") == "1";
-				req.frame = {1.0, 0.0, tpl->pulseSeconds * 100.0 * (n + 0.5) / steps};
+				req.frame = {1.0, 0.0,
+					     tpl->pulseSeconds > 0.0 ? tpl->pulseSeconds * 100.0 * (n + 0.5) / steps
+								     : 260.0 * n};
 				QImage pic = samplePicture(1920, 1080, 0);
 				const RenderedTitle r = renderTitle(fonts, req);
 				QPainter p(&pic);

@@ -93,6 +93,8 @@ private:
 	void pollStatus();
 	void addToThisScene();
 	void newLayerClicked();
+	void nameLayerAfterContent(const TitleContent &shown);
+	void saveServiceClicked();
 	void pickLayer();
 	void switchLayer(const std::string &name);
 	void refreshLayerRow();
@@ -184,6 +186,7 @@ private:
 	QVBoxLayout *rowsLayout_ = nullptr;
 	QLineEdit *edit1_ = nullptr;
 	QPlainTextEdit *long1_ = nullptr;
+	QPlainTextEdit *long4_ = nullptr; // the scrolling text of a desk ticker: Enter starts a new item
 	QLineEdit *edit2_ = nullptr;
 	QLineEdit *edit3_ = nullptr;
 	laycue::ui::ActionButton *primary_ = nullptr;

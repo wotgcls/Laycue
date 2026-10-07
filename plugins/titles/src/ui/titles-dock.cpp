@@ -111,7 +111,13 @@ QLabel *makeLabel(QWidget *parent, const QString &text, int px, int weight, cons
 std::string localised(const std::string &key)
 {
 	const char *text = obs_module_text(key.c_str());
-	return text && key != text ? std::string(text) : std::string();
+	if (!text || key == text)
+		return std::string();
+	// A sample text can hold several ticker items, written "\n" in the language file.
+	std::string out(text);
+	for (size_t at = out.find("\\n"); at != std::string::npos; at = out.find("\\n", at + 1))
+		out.replace(at, 2, "\n");
+	return out;
 }
 
 } // namespace
@@ -281,8 +287,15 @@ QWidget *TitlesDock::buildStage()
 	connect(edit3_, &QLineEdit::textEdited, this, &TitlesDock::fieldsEdited);
 
 	edit4_ = new QLineEdit(stage);
-	field(fieldRow4_, label4_, lt("Laycue.Titles.Note"), {edit4_});
+	long4_ = new QPlainTextEdit(stage);
+	long4_->setFixedHeight(64);
+	long4_->setTabChangesFocus(true);
+	field(fieldRow4_, label4_, lt("Laycue.Titles.Note"), {edit4_, long4_});
 	connect(edit4_, &QLineEdit::textEdited, this, &TitlesDock::fieldsEdited);
+	connect(long4_, &QPlainTextEdit::textChanged, this, [this]() {
+		if (!buildingFields_)
+			fieldsEdited();
+	});
 
 	// A logo picture.
 	logoBox_ = new QWidget(stage);
@@ -534,7 +547,7 @@ TitleContent TitlesDock::currentContent() const
 	c.line1 = toStd(t.longText ? long1_->toPlainText() : edit1_->text());
 	c.line2 = toStd(edit2_->text());
 	c.tag = toStd(edit3_->text());
-	c.note = toStd(edit4_->text());
+	c.note = toStd(t.usesNote && t.tickerSpeed > 0.0 ? long4_->toPlainText() : edit4_->text());
 	c.logo = library_.draft.logo; // chosen with the button
 	c.rows = library_.draft.rows; // edited in place
 	return c;
@@ -593,7 +606,14 @@ void TitlesDock::refreshFields()
 	edit3_->setVisible(t.usesTag);
 	label(label4_, 4, "Laycue.Titles.Note");
 	label4_->setVisible(t.usesNote);
-	edit4_->setVisible(t.usesNote);
+	const bool longNote = t.usesNote && t.tickerSpeed > 0.0; // a scrolling text: Enter starts a new item
+	edit4_->setVisible(t.usesNote && !longNote);
+	long4_->setVisible(longNote);
+	if (longNote) {
+		const QString note = fromStd(library_.draft.note);
+		if (long4_->toPlainText() != note)
+			long4_->setPlainText(note);
+	}
 	edit4_->setText(fromStd(library_.draft.note));
 	edit4_->setPlaceholderText(fromStd(localised(sampleKey(t, 4))));
 	logoBox_->setVisible(t.usesLogo);
@@ -805,6 +825,7 @@ bool TitlesDock::applyAndShow()
 	onAirContent_ = library_.draft;
 	onAirStyle_ = library_.selected;
 	onAirPlacement_ = placementFor(library_, library_.selected);
+	nameLayerAfterContent(library_.draft);
 	const TitleStatus st = statusOf(target());
 	if (st.live()) {
 		preview_->play();
@@ -841,6 +862,7 @@ void TitlesDock::primaryClicked()
 		applyToSource(target(), library_, library_.selected, library_.draft);
 		onAirContent_ = library_.draft;
 		onAirPlacement_ = placementFor(library_, library_.selected);
+		nameLayerAfterContent(library_.draft);
 		toast(lt("Laycue.Titles.Updated"));
 		updateButtons();
 		return;
@@ -1111,6 +1133,15 @@ void TitlesDock::rebuildQueue()
 	buttons->addWidget(playNext, 2);
 	queueLayout_->addLayout(buttons);
 
+	// Saving the list is in plain sight, not hidden in a menu: next week, load it and play.
+	auto *save = button(queueTab_,
+			    library_.serviceName.empty()
+				    ? lt("Laycue.Titles.ServiceSaveThis")
+				    : lt("Laycue.Titles.ServiceSaveHere").arg(fromStd(library_.serviceName)),
+			    "laycueSecondary");
+	connect(save, &QAbstractButton::clicked, this, &TitlesDock::saveServiceClicked);
+	queueLayout_->addWidget(save);
+
 	const int next = nextQueueIndex(library_);
 	for (size_t i = 0; i < library_.queue.size(); ++i) {
 		const QueueItem &item = library_.queue[i];
@@ -1202,6 +1233,31 @@ void TitlesDock::editRow(size_t index)
 		entry.second->setSelectedCard(entry.first == library_.selected);
 	updateButtons();
 	toast(lt("Laycue.Titles.RowEditing"));
+	scheduleSave();
+}
+
+// Saves the list: under its current name, or (a new list) after asking for a name.
+void TitlesDock::saveServiceClicked()
+{
+	std::string name = library_.serviceName;
+	if (name.empty()) {
+		bool ok = false;
+		const QString typed = QInputDialog::getText(this, lt("Laycue.Titles.ServiceSaveThis"),
+							    lt("Laycue.Titles.ServiceNamePrompt"), QLineEdit::Normal,
+							    QString(), &ok);
+		if (!ok)
+			return;
+		name = typed.trimmed().toStdString();
+		if (library_.services.count(name) &&
+		    QMessageBox::question(this, lt("Laycue.Titles.ServiceSaveThis"),
+					  lt("Laycue.Titles.ServiceReplaceAsk").arg(fromStd(name))) != QMessageBox::Yes)
+			return;
+	}
+	if (saveService(library_, name))
+		toast(lt("Laycue.Titles.ServiceSavedToast").arg(fromStd(library_.serviceName)));
+	else
+		toast(lt("Laycue.Titles.ServiceSaveFailed"));
+	rebuildQueue();
 	scheduleSave();
 }
 
@@ -1822,6 +1878,28 @@ void TitlesDock::switchLayer(const std::string &name)
 	for (auto &entry : cards_)
 		entry.second->setSelectedCard(entry.first == library_.selected);
 	pollStatus();
+	refreshLayerRow();
+	if (tab_ == Tab::Setup)
+		rebuildSetup();
+	scheduleSave();
+}
+
+// A layer Laycue made is named after what it shows ("ttl. Pastor David…"), so the Sources panel says which is which.
+// A name the operator chose is never touched.
+void TitlesDock::nameLayerAfterContent(const TitleContent &shown)
+{
+	const std::string name = target();
+	if (name.empty() || !isAutoLayerName(name, toStd(lt("Laycue.Titles.SourceName"))))
+		return;
+	const std::string wanted = layerNameFor(shown);
+	if (wanted.empty() || wanted == name)
+		return;
+	const std::string result = renameLayer(name, wanted);
+	if (result.empty() || result == name)
+		return;
+	renameLayerRefs(library_, name, result);
+	refreshSources();
+	rebuildQueue();
 	refreshLayerRow();
 	if (tab_ == Tab::Setup)
 		rebuildSetup();

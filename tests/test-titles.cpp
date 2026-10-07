@@ -129,10 +129,10 @@ TEST_CASE("titles: the ticker wraps and says how many copies fill the view")
 	CHECK(ticker.offset() >= 0.0);
 }
 
-TEST_CASE("titles: there are 59 built-in templates with unique ids and sensible values")
+TEST_CASE("titles: there are 66 built-in templates with unique ids and sensible values")
 {
 	const auto &all = builtInTemplates();
-	CHECK_EQ(int(all.size()), 59);
+	CHECK_EQ(int(all.size()), 66);
 	std::set<std::string> ids;
 	for (const auto &t : all) {
 		ids.insert(t.id);
@@ -142,7 +142,7 @@ TEST_CASE("titles: there are 59 built-in templates with unique ids and sensible 
 		if (t.tickerSpeed > 0.0)
 			CHECK(t.category == Category::Ticker);
 	}
-	CHECK_EQ(int(ids.size()), 59);
+	CHECK_EQ(int(ids.size()), 66);
 	CHECK(findTemplate("nope") == nullptr);
 }
 
@@ -168,7 +168,8 @@ TEST_CASE("titles: every category has templates, the Live and Social ones are wh
 	CHECK(crawl != nullptr);
 	if (crawl)
 		CHECK(!supportsPlacement(*crawl));
-	CHECK_EQ(perCategory[Category::Social], 7); // the generic handle and the five platforms
+	CHECK_EQ(perCategory[Category::Social],
+		 8); // the generic handle, the five platforms, Subscribe + Bell and Hashtag
 	for (const char *id :
 	     {"social-youtube", "social-instagram", "social-tiktok", "social-facebook", "social-mixlr"}) {
 		const TitleTemplate *t = findTemplate(id);
@@ -521,4 +522,60 @@ TEST_CASE("titles queue: saved services")
 	lib.queueCurrent = 99;
 	sanitize(lib);
 	CHECK_EQ(lib.queueCurrent, -1);
+}
+
+TEST_CASE("titles: the seven new cards exist and can be shown")
+{
+	for (const char *id : {"coming-up", "event-date", "prayer-request", "welcome", "celebrate", "question",
+			       "hashtag", "social-subscribe"}) {
+		const TitleTemplate *t = findTemplate(id);
+		CHECK(t != nullptr);
+		if (t) {
+			CHECK(t->usesLine1);
+			CHECK(t->holdSeconds > 0.0);
+		}
+	}
+	const TitleTemplate *question = findTemplate("question");
+	CHECK(question && question->longText); // a question can run to a few lines
+	const TitleTemplate *hash = findTemplate("hashtag");
+	CHECK(hash && !hash->usesLine2);
+}
+
+TEST_CASE("titles: layers are named after what they show, and the name is followed everywhere")
+{
+	TitleContent c;
+	c.line1 = "Pastor David Okafor";
+	CHECK_EQ(layerNameFor(c),
+		 std::string("ttl. Pastor David Okafo\xE2\x80\xA6")); // 18 characters, then an ellipsis
+	c.line1 = "Pastor Dave";
+	CHECK_EQ(layerNameFor(c), std::string("ttl. Pastor Dave"));
+	c.line1 = "  Welcome\n   home  ";
+	CHECK_EQ(layerNameFor(c), std::string("ttl. Welcome")); // the first line, tidy
+	c.line1 = "";
+	c.line2 = "Senior pastor";
+	CHECK_EQ(layerNameFor(c), std::string("ttl. Senior pastor"));
+	c.line2 = "";
+	c.tag = "";
+	CHECK(layerNameFor(c).empty());
+	c.line1 = "\xC3\x89glise Saint-\xC3\x89tienne de Paris"; // accented letters count as one character each
+	CHECK(layerNameFor(c).find("ttl. \xC3\x89glise") == 0);
+
+	CHECK(isAutoLayerName("ttl. Pastor", "Laycue Title"));
+	CHECK(isAutoLayerName("Laycue Title", "Laycue Title"));
+	CHECK(isAutoLayerName("Laycue Title 3", "Laycue Title"));
+	CHECK(!isAutoLayerName("Crawl", "Laycue Title")); // the operator's own name is left alone
+	CHECK(!isAutoLayerName("Laycue Title Final", "Laycue Title"));
+
+	Library lib;
+	lib.targetSource = "Laycue Title";
+	lib.layers["Laycue Title"] = LayerState{"clean-bar", c};
+	lib.queue.push_back({"clean-bar", c, "Laycue Title"});
+	lib.queue.push_back({"clean-bar", c, "Other"});
+	lib.services["Sunday"] = {QueueItem{"clean-bar", c, "Laycue Title"}};
+	renameLayerRefs(lib, "Laycue Title", "ttl. Pastor");
+	CHECK_EQ(lib.targetSource, std::string("ttl. Pastor"));
+	CHECK(lib.layers.count("ttl. Pastor") == 1 && lib.layers.count("Laycue Title") == 0);
+	CHECK_EQ(lib.queue[0].layer, std::string("ttl. Pastor"));
+	CHECK_EQ(lib.queue[1].layer, std::string("Other"));
+	CHECK_EQ(lib.services["Sunday"][0].layer, std::string("ttl. Pastor"));
 }

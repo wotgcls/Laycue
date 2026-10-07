@@ -30,7 +30,7 @@ reviews and church-streaming guides.
 - **OBS has:** text sources and a browser source. No lower-third system, no animation, no templates.
 - **Others:** browser-source based tools (HTML/CSS), web servers inside OBS (Smart Lower Thirds), a paid
   web app (StreamSlayers). All need a browser source or a web server.
-- **Laycue adds:** a *native* OBS source (no browser, no web server, no network), 59 designed templates
+- **Laycue adds:** a *native* OBS source (no browser, no web server, no network), 66 designed templates
   that look broadcast-grade, a custom template editor, scrolling tickers, live and social cards with
   auto-fit text, show/hide with animation from the dock or hotkeys, a queue ("next up"), and one click to add
   the title layer to every scene so it stays on air while cameras switch.

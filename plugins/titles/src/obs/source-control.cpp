@@ -203,6 +203,24 @@ std::string addNewLayerToCurrentScene(std::string &error)
 	return addToCurrentScene(candidate, error);
 }
 
+std::string renameLayer(const std::string &from, const std::string &wanted)
+{
+	OBSSourceAutoRelease source = openTitle(from);
+	if (!source || wanted.empty())
+		return std::string();
+	std::string candidate = wanted;
+	for (int n = 2;; ++n) {
+		OBSSourceAutoRelease other = obs_get_source_by_name(candidate.c_str());
+		if (!other || other.Get() == source.Get())
+			break;
+		candidate = wanted + " " + std::to_string(n);
+	}
+	if (candidate == from)
+		return from;
+	obs_source_set_name(source, candidate.c_str());
+	return candidate;
+}
+
 int addToAllScenes(const std::string &sourceName)
 {
 	OBSSourceAutoRelease source = openTitle(sourceName);

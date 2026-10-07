@@ -1671,20 +1671,69 @@ void giving(Ctx &c)
 }
 
 // The scrolling strip shared by both tickers.
+// A ticker's text is a list of items: pressing Enter while typing starts a new one. When there is more than one, a
+// small accent diamond sits between them, so it is clear that what follows is new.
+constexpr double kTickerGap = 180.0;     // one item on its own: the space before it repeats
+constexpr double kTickerItemGap = 120.0; // several items: the space between them, with the diamond in the middle
+
+QStringList tickerItems(const QString &raw)
+{
+	QStringList items;
+	for (const QString &line : raw.split(QLatin1Char('\n'))) {
+		const QString item = line.simplified();
+		if (!item.isEmpty())
+			items << item;
+	}
+	return items;
+}
+
+double tickerStripLength(const QFont &font, const QStringList &items)
+{
+	if (items.isEmpty())
+		return 0.0;
+	if (items.size() == 1)
+		return textWidth(font, items.first()) + kTickerGap;
+	double total = 0.0;
+	for (const QString &item : items)
+		total += textWidth(font, item) + kTickerItemGap;
+	return total;
+}
+
 void drawTickerTextOf(Ctx &c, const QString &raw, const QRectF &area, const QFont &font, const QColor &colour)
 {
-	if (!c.has(raw))
+	const QStringList items = tickerItems(raw);
+	if (items.isEmpty())
 		return;
-	const QString text = raw.simplified();
-	const double tw = textWidth(font, text);
-	const double gap = 180.0;
-	const double strip = tw + gap;
+	const bool marked = items.size() > 1;
+	const double strip = tickerStripLength(font, items);
+	const double gap = marked ? kTickerItemGap : kTickerGap;
+	const double mark = QFontMetricsF(font).height() * 0.17;
 	c.p.save();
 	c.p.setClipRect(area);
-	const double offset = std::fmod(c.tickerPx, strip);
-	for (double xPos = area.left() - offset; xPos < area.right(); xPos += strip)
-		drawText(c.p, QRectF(xPos, area.top(), tw + 4, area.height()), text, font, colour,
-			 Qt::AlignLeft | Qt::AlignVCenter);
+	double xPos = area.left() - std::fmod(c.tickerPx, strip);
+	while (xPos < area.right()) {
+		for (const QString &item : items) {
+			const double tw = textWidth(font, item);
+			if (xPos + tw >= area.left() - 4 && xPos <= area.right())
+				drawText(c.p, QRectF(xPos, area.top(), tw + 4, area.height()), item, font, colour,
+					 Qt::AlignLeft | Qt::AlignVCenter);
+			xPos += tw;
+			if (marked) {
+				const QPointF at(xPos + gap / 2.0, area.center().y());
+				QPolygonF diamond;
+				diamond << QPointF(at.x(), at.y() - mark) << QPointF(at.x() + mark, at.y())
+					<< QPointF(at.x(), at.y() + mark) << QPointF(at.x() - mark, at.y());
+				c.p.save();
+				c.p.setPen(Qt::NoPen);
+				c.p.setBrush(c.accent);
+				c.p.drawPolygon(diamond);
+				c.p.restore();
+			}
+			xPos += gap;
+			if (xPos >= area.right())
+				break;
+		}
+	}
 	c.p.restore();
 }
 
@@ -2647,6 +2696,293 @@ void logoLockup(Ctx &c)
 	c.p.restore();
 }
 
+// ---- More cards: coming up, event date, prayer, welcome, celebrate, question, hashtag ---------------------
+
+// 31. Coming Up: a tag block ("UP NEXT"), the title, and a time in a pill.
+void comingUp(Ctx &c)
+{
+	const double h = 104, padX = c.pad(34), tagPad = 28;
+	const QString tag = (c.has(c.x.tag) ? c.x.tag : QStringLiteral("Up next")).toUpper();
+	const QFont ft = c.font(c.t.display, 30);
+	const QFont f1 = fitFont(c, c.t.display, 54, 34, c.x.line1, 900);
+	const QFont f2 = c.font(c.t.display, 32);
+	const double tagW = textWidth(ft, tag) + tag.size() * 2.0 + 2 * tagPad;
+	const bool when = c.has(c.x.line2);
+	const QString time = c.x.line2.toUpper();
+	const double timeW = when ? textWidth(f2, time) + time.size() * 1.5 + 44 : 0.0;
+	const double w1 = textWidth(f1, c.x.line1);
+	const double w = tagW + padX + w1 + (when ? 30 + timeW : 0.0) + padX;
+	const double y = c.bottom() - h;
+	const double pw = w * c.part(0.0, 0.6);
+	fillPanel(c, QRectF(kLeft, y, pw, h));
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y, pw, h));
+	fillRect(c.p, QRectF(kLeft, y, tagW, h), c.accent);
+	drawText(c.p, QRectF(kLeft, y, tagW, h), tag, ft, c.ink, Qt::AlignCenter, c.part(0.2, 0.4), 2.0);
+	const double e1 = c.part(0.3, 0.5), e2 = c.part(0.42, 0.45);
+	const double tx = kLeft + tagW + padX;
+	drawText(c.p, QRectF(tx + 26 * (1 - e1), y, w1 + 20, h), c.x.line1, f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, e1);
+	if (when) {
+		const QRectF chip(tx + w1 + 30, y + (h - 54) / 2.0, timeW, 54);
+		fillRect(c.p, chip.translated(20 * (1 - e2), 0), withOpacity(c.accent, 0.22 * e2), 27);
+		drawText(c.p, chip.translated(20 * (1 - e2), 0), time, f2, c.accent, Qt::AlignCenter, e2, 1.5);
+	}
+	c.p.restore();
+}
+
+// 32. Event Date: a date tile (month over day) beside the event's name and details. The tag holds the date: "Oct 12".
+void eventDate(Ctx &c)
+{
+	const double h = 118, pad = 16, tile = h - 2 * pad, gap = 28, padR = 36;
+	const QStringList parts = c.x.tag.trimmed().toUpper().split(' ', Qt::SkipEmptyParts);
+	const QString month = parts.value(0, QStringLiteral("SUN"));
+	const QString day = parts.size() > 1 ? parts.mid(1).join(' ') : QString();
+	const QFont f1 = fitFont(c, c.t.display, 52, 32, c.x.line1, 900);
+	const QFont f2 = c.font(c.t.body, 28);
+	const double textW = std::max(textWidth(f1, c.x.line1), textWidth(f2, c.x.line2));
+	const double w = pad + tile + gap + textW + padR;
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.55);
+	fillPanel(c, QRectF(kLeft, y, w * e, h), c.t.cornerRadius);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y, w * e + 1, h));
+	fillRect(c.p, QRectF(kLeft, y, w, h), c.panel, c.t.cornerRadius);
+	const double pop = c.partBack(0.1, 0.45);
+	const QRectF box(kLeft + pad, y + pad, tile, tile);
+	c.p.save();
+	c.p.translate(box.center());
+	c.p.scale(std::max(pop, 0.001), std::max(pop, 0.001));
+	c.p.translate(-box.center());
+	fillRect(c.p, box, c.accent, 14);
+	if (day.isEmpty()) {
+		drawText(c.p, box, month, c.font(c.t.display, 40), c.ink, Qt::AlignCenter, 1.0, 1.0);
+	} else {
+		drawText(c.p, QRectF(box.left(), box.top() + 6, box.width(), 26), month, c.font(c.t.display, 24), c.ink,
+			 Qt::AlignCenter, 1.0, 2.0);
+		drawText(c.p, QRectF(box.left(), box.top() + 28, box.width(), box.height() - 30), day,
+			 c.font(c.t.display, 56), c.ink, Qt::AlignCenter);
+	}
+	c.p.restore();
+	const double tx = kLeft + pad + tile + gap;
+	const double e1 = c.part(0.25, 0.5), e2 = c.part(0.36, 0.5);
+	if (c.has(c.x.line2)) {
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y + 10, textW + 40, 62), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(tx + 24 * (1 - e2), y + 70, textW + 40, 36), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
+	} else {
+		drawText(c.p, QRectF(tx + 24 * (1 - e1), y, textW + 40, h), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+	}
+	c.p.restore();
+}
+
+// 33. Prayer Request: a soft card with a "Pray with us" label, the request in a few lines, and who it is for.
+void prayerRequest(Ctx &c)
+{
+	const double padX = c.pad(42), padY = 26;
+	const QString tag = (c.has(c.x.tag) ? c.x.tag : QStringLiteral("Pray with us")).toUpper();
+	const QFont ft = c.font(c.t.display, 26);
+	const QFont fa = c.font(c.t.body, 28);
+	const Wrapped q = fitWrapped(c, c.t.display, 46, 30, c.x.line1, 1000, 3, 1.28);
+	double textW = textWidth(ft, tag) + tag.size() * 2.0 + 44;
+	for (const QString &line : q.lines)
+		textW = std::max(textW, textWidth(q.font, line));
+	const bool who = c.has(c.x.line2);
+	if (who)
+		textW = std::max(textW, textWidth(fa, c.x.line2) + 40);
+	const double chipH = 40, attr = who ? 46 : 0;
+	const double h = padY + chipH + 16 + q.lines.size() * q.lineHeight + (who ? 8 + attr : 0) + padY;
+	const double w = std::max(560.0, 2 * padX + textW);
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.6);
+	fillPanel(c, QRectF(kLeft, y, w * e, h), c.t.cornerRadius);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y, w * e + 1, h));
+	fillRect(c.p, QRectF(kLeft, y, w, h), c.panel, c.t.cornerRadius);
+	const double e0 = c.part(0.2, 0.4);
+	const double chipW = textWidth(ft, tag) + tag.size() * 2.0 + 44;
+	fillRect(c.p, QRectF(kLeft + padX, y + padY, chipW, chipH), withOpacity(c.accent, e0), chipH / 2);
+	drawText(c.p, QRectF(kLeft + padX, y + padY, chipW, chipH), tag, ft, c.ink, Qt::AlignCenter, e0, 2.0);
+	const double top = y + padY + chipH + 16;
+	for (int i = 0; i < q.lines.size(); ++i) {
+		const double ei = c.part(0.3 + 0.07 * i, 0.5);
+		drawText(c.p, QRectF(kLeft + padX, top + i * q.lineHeight + 14 * (1 - ei), w, q.lineHeight), q.lines[i],
+			 q.font, c.text, Qt::AlignLeft | Qt::AlignVCenter, ei);
+	}
+	if (who) {
+		const double ew = c.part(0.55, 0.45);
+		drawText(c.p, QRectF(kLeft + padX, top + q.lines.size() * q.lineHeight + 8, w, attr), c.x.line2, fa,
+			 c.sub, Qt::AlignLeft | Qt::AlignVCenter, ew);
+	}
+	c.p.restore();
+}
+
+// 34. Welcome: big words straight on the picture (with a soft shadow), an accent rule growing under them.
+void welcome(Ctx &c)
+{
+	const QFont f1 = fitFont(c, c.t.display, 118, 56, c.x.line1, 1500);
+	const QFont f2 = fitFont(c, c.t.body, 44, 26, c.x.line2, 1500);
+	const bool two = c.has(c.x.line2);
+	const double h1 = 138, h2 = two ? 64 : 0;
+	const double top = c.bottom() - h1 - h2 - 36;
+	const double e1 = c.part(0.0, 0.55), er = c.part(0.18, 0.5), e2 = c.part(0.32, 0.5);
+	drawShadowText(c.p, QRectF(kLeft + 44 * (1 - e1), top, 1650, h1), c.x.line1, f1, c.text,
+		       Qt::AlignLeft | Qt::AlignVCenter, e1);
+	fillRect(c.p, QRectF(kLeft + 4, top + h1 + 6, 240 * er, 8), c.accent, 4);
+	if (two)
+		drawShadowText(c.p, QRectF(kLeft + 30 * (1 - e2), top + h1 + 26, 1650, h2), c.x.line2, f2, c.sub,
+			       Qt::AlignLeft | Qt::AlignVCenter, e2);
+}
+
+// 35. Celebrate: a light card for a birthday or an anniversary, with confetti that pops around it.
+void celebrate(Ctx &c)
+{
+	const double padX = c.pad(46);
+	const bool two = c.has(c.x.line2);
+	const double h = two ? 150 : 118;
+	const QString tag = (c.has(c.x.tag) ? c.x.tag : QStringLiteral("Happy birthday")).toUpper();
+	const QFont ft = c.font(c.t.display, 28);
+	const QFont f1 = fitFont(c, c.t.display, 60, 36, c.x.line1, 1000);
+	const QFont f2 = c.font(c.t.body, 30);
+	const double tabH = 46, tabW = textWidth(ft, tag) + tag.size() * 2.0 + 56;
+	const double w =
+		std::max({560.0, 2 * padX + textWidth(f1, c.x.line1), 2 * padX + textWidth(f2, c.x.line2), tabW + 40});
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.6);
+	fillPanel(c, QRectF(kLeft, y, w * e, h), c.t.cornerRadius);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y - tabH, w * e + 1, h + tabH));
+	fillRect(c.p, QRectF(kLeft, y, w, h), c.panel, c.t.cornerRadius);
+	const double et = c.part(0.2, 0.4);
+	fillRect(c.p, QRectF(kLeft, y - tabH + 8 * (1 - et), tabW, tabH), c.accent, 12);
+	drawText(c.p, QRectF(kLeft, y - tabH + 8 * (1 - et), tabW, tabH), tag, ft, c.ink, Qt::AlignCenter, et, 2.0);
+	const double e1 = c.part(0.3, 0.5), e2 = c.part(0.42, 0.5);
+	if (two) {
+		drawText(c.p, QRectF(kLeft + padX + 26 * (1 - e1), y + 12, w, 76), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+		drawText(c.p, QRectF(kLeft + padX + 26 * (1 - e2), y + 90, w, 42), c.x.line2, f2, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e2);
+	} else {
+		drawText(c.p, QRectF(kLeft + padX + 26 * (1 - e1), y, w, h), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+	}
+	c.p.restore();
+	// Confetti: the same pieces every time, so a title never flickers; they pop in one after another.
+	const QColor colours[4] = {QColor(0x2E, 0x8B, 0xFF), QColor(0x2F, 0xD1, 0x8B), QColor(0xFF, 0xB3, 0x1A),
+				   QColor(0xFF, 0x4D, 0x2E)};
+	unsigned seed = 7;
+	const auto next = [&seed]() {
+		seed = seed * 1103515245u + 12345u;
+		return double((seed >> 16) & 0x7FFF) / 32767.0;
+	};
+	for (int i = 0; i < 18; ++i) {
+		const double fx = next(), fy = next(), rot = next() * 90.0, size = 9 + next() * 8;
+		const double pop = c.partBack(0.25 + 0.02 * i, 0.4);
+		if (pop <= 0.01)
+			continue;
+		const QPointF at(kLeft - 24 + fx * (w + 48), y - tabH - 34 + fy * (h + tabH + 60));
+		if (QRectF(kLeft - 6, y - 6, w + 12, h + 12).contains(at))
+			continue; // confetti goes around the card, never over its words
+		c.p.save();
+		c.p.translate(at);
+		c.p.rotate(rot);
+		c.p.scale(pop, pop);
+		c.p.setPen(Qt::NoPen);
+		c.p.setBrush(colours[i % 4]);
+		if (i % 3 == 0)
+			c.p.drawEllipse(QPointF(0, 0), size / 2, size / 2);
+		else
+			c.p.drawRoundedRect(QRectF(-size / 2, -size / 4, size, size / 2), 2, 2);
+		c.p.restore();
+	}
+}
+
+// 36. Question: a speech bubble for a viewer's question, with who asked it underneath.
+void question(Ctx &c)
+{
+	const double padX = c.pad(42), padY = 24;
+	const QString tag = (c.has(c.x.tag) ? c.x.tag : QStringLiteral("Question")).toUpper();
+	const QFont ft = c.font(c.t.display, 26);
+	const QFont fa = c.font(c.t.body, 28);
+	const Wrapped q = fitWrapped(c, c.t.display, 46, 30, c.x.line1, 1000, 3, 1.28);
+	double textW = 0;
+	for (const QString &line : q.lines)
+		textW = std::max(textW, textWidth(q.font, line));
+	const bool who = c.has(c.x.line2);
+	const double chipH = 40, attr = who ? 44 : 0;
+	const double h = padY + chipH + 12 + q.lines.size() * q.lineHeight + (who ? 6 + attr : 0) + padY;
+	const double w = std::max(520.0, 2 * padX + textW);
+	const double y = c.bottom() - h - 22; // room for the bubble's tail
+	const double e = c.part(0.0, 0.6);
+	c.p.save();
+	c.p.translate(kLeft, y + h);
+	const double s = 0.9 + 0.1 * e;
+	c.p.scale(s, s);
+	c.p.translate(-kLeft, -(y + h));
+	c.p.setOpacity(c.p.opacity() * std::clamp(e * 1.4, 0.0, 1.0));
+	fillPanel(c, QRectF(kLeft, y, w, h), 26);
+	QPolygonF tail;
+	tail << QPointF(kLeft + 46, y + h - 2) << QPointF(kLeft + 92, y + h - 2) << QPointF(kLeft + 40, y + h + 24);
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(c.panel);
+	c.p.drawPolygon(tail);
+	const double chipW = textWidth(ft, tag) + tag.size() * 2.0 + 44;
+	fillRect(c.p, QRectF(kLeft + padX, y + padY, chipW, chipH), c.accent, chipH / 2);
+	drawText(c.p, QRectF(kLeft + padX, y + padY, chipW, chipH), tag, ft, c.ink, Qt::AlignCenter, 1.0, 2.0);
+	const double top = y + padY + chipH + 12;
+	for (int i = 0; i < q.lines.size(); ++i) {
+		const double ei = c.part(0.25 + 0.07 * i, 0.5);
+		drawText(c.p, QRectF(kLeft + padX, top + i * q.lineHeight + 12 * (1 - ei), w, q.lineHeight), q.lines[i],
+			 q.font, c.text, Qt::AlignLeft | Qt::AlignVCenter, ei);
+	}
+	if (who)
+		drawText(c.p, QRectF(kLeft + padX, top + q.lines.size() * q.lineHeight + 6, w, attr),
+			 QStringLiteral("— ") + c.x.line2, fa, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
+			 c.part(0.5, 0.45));
+	c.p.restore();
+}
+
+// 37. Hashtag: an accent square with a hash sign, then the tag in big letters, and a small line above it.
+void hashtagBar(Ctx &c)
+{
+	const double h = 100, padX = c.pad(34);
+	const QFont f1 = fitFont(c, c.t.display, 58, 34, c.x.line1, 900);
+	const QFont ftag = c.font(c.t.body, 22);
+	const bool above = c.has(c.x.tag);
+	const double w1 = textWidth(f1, c.x.line1);
+	const double w =
+		h + padX + std::max(w1, above ? textWidth(ftag, c.x.tag.toUpper()) + c.x.tag.size() * 3.0 : 0.0) + padX;
+	const double y = c.bottom() - h;
+	const double e = c.part(0.0, 0.55);
+	fillPanel(c, QRectF(kLeft, y, w * e, h), c.t.cornerRadius);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y, w * e + 1, h));
+	fillRect(c.p, QRectF(kLeft, y, w, h), c.panel, c.t.cornerRadius);
+	const double pop = c.partBack(0.08, 0.45);
+	const QRectF box(kLeft, y, h, h);
+	c.p.save();
+	c.p.translate(box.center());
+	c.p.scale(std::max(pop, 0.001), std::max(pop, 0.001));
+	c.p.translate(-box.center());
+	fillRect(c.p, box, c.accent, c.t.cornerRadius);
+	drawText(c.p, box, QStringLiteral("#"), c.font(c.t.display, 72), c.ink, Qt::AlignCenter);
+	c.p.restore();
+	const double e1 = c.part(0.25, 0.5);
+	const double tx = kLeft + h + padX;
+	if (above) {
+		drawText(c.p, QRectF(tx + 22 * (1 - e1), y + 10, w, 30), c.x.tag.toUpper(), ftag, c.sub,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1, 3.0);
+		drawText(c.p, QRectF(tx + 22 * (1 - e1), y + 36, w, 56), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+	} else {
+		drawText(c.p, QRectF(tx + 22 * (1 - e1), y, w, h), c.x.line1, f1, c.text,
+			 Qt::AlignLeft | Qt::AlignVCenter, e1);
+	}
+	c.p.restore();
+}
+
 // ---- Sermon notes -------------------------------------------------------------------------------------
 
 // Words between asterisks are drawn in the accent colour: "God is *faithful*".
@@ -2987,6 +3323,13 @@ const std::vector<StyleInfo> &styles()
 			 socialCard(c, Platform::Facebook);
 		 }},
 		{"social-subscribe", socialSubscribe},
+		{"coming-up", comingUp},
+		{"event-date", eventDate},
+		{"prayer-request", prayerRequest},
+		{"welcome", welcome},
+		{"celebrate", celebrate},
+		{"question", question},
+		{"hashtag", hashtagBar},
 		{"social-mixlr",
 		 [](Ctx &c) {
 			 socialCard(c, Platform::Mixlr);
@@ -3029,7 +3372,7 @@ double tickerStripWidth(const FontSet &fonts, const TitleTemplate &tpl, const Ti
 		return tpl.pulseSeconds > 0.0 ? 100.0 * tpl.pulseSeconds : 0.0; // a pulse repeats every strip
 	const double px = tpl.id == "headline-ticker" ? 40 : 42;
 	const QFont font = fonts.font(tpl.display, px);
-	return textWidth(font, text.line1.simplified()) + 180.0;
+	return tickerStripLength(font, tickerItems(tpl.id == "desk-crawl" ? text.note : text.line1));
 }
 
 namespace {

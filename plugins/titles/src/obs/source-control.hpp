@@ -37,6 +37,10 @@ std::string addToCurrentScene(const std::string &preferredName, std::string &err
 // Makes a brand-new title layer ("Laycue Title 2", ...) and puts it in the scene that is live now.
 std::string addNewLayerToCurrentScene(std::string &error);
 
+// Gives a title layer a new name (made unique if another source has it). Returns the name it now has, or "" if it
+// could not be renamed.
+std::string renameLayer(const std::string &from, const std::string &wanted);
+
 // Puts the source in every scene that doesn't have it yet. Returns how many scenes got it.
 int addToAllScenes(const std::string &sourceName);
 

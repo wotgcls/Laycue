@@ -325,6 +325,92 @@ double transitionScale(int step)
 
 namespace laycue::titles {
 
+namespace {
+// The first `count` characters (not bytes) of UTF-8 text; true if something was cut off.
+bool cutUtf8(std::string &text, size_t count)
+{
+	size_t chars = 0, i = 0;
+	while (i < text.size()) {
+		if ((static_cast<unsigned char>(text[i]) & 0xC0) != 0x80) {
+			if (chars == count) {
+				text.resize(i);
+				return true;
+			}
+			++chars;
+		}
+		++i;
+	}
+	return false;
+}
+} // namespace
+
+std::string layerNameFor(const TitleContent &content)
+{
+	std::string source = !content.line1.empty()   ? content.line1
+			     : !content.line2.empty() ? content.line2
+						      : content.tag;
+	// One line, single spaces. For a ticker, the first item.
+	const size_t newline = source.find('\n');
+	if (newline != std::string::npos)
+		source.resize(newline);
+	std::string text;
+	bool space = true;
+	for (const char ch : source) {
+		const bool blank = ch == ' ' || ch == '\t' || ch == '\r';
+		if (blank) {
+			if (!space)
+				text.push_back(' ');
+			space = true;
+		} else {
+			text.push_back(ch);
+			space = false;
+		}
+	}
+	while (!text.empty() && text.back() == ' ')
+		text.pop_back();
+	if (text.empty())
+		return std::string();
+	if (cutUtf8(text, 18))
+		text += "\xE2\x80\xA6"; // …
+	return "ttl. " + text;
+}
+
+bool isAutoLayerName(const std::string &name, const std::string &defaultName)
+{
+	if (name.rfind("ttl. ", 0) == 0 || name == defaultName)
+		return true;
+	// "<default> 2", "<default> 3"...
+	if (name.size() > defaultName.size() + 1 && name.compare(0, defaultName.size(), defaultName) == 0 &&
+	    name[defaultName.size()] == ' ') {
+		return std::all_of(name.begin() + static_cast<std::ptrdiff_t>(defaultName.size()) + 1, name.end(),
+				   [](unsigned char c) { return c >= '0' && c <= '9'; });
+	}
+	return false;
+}
+
+void renameLayerRefs(Library &lib, const std::string &from, const std::string &to)
+{
+	if (from.empty() || to.empty() || from == to)
+		return;
+	if (lib.targetSource == from)
+		lib.targetSource = to;
+	const auto found = lib.layers.find(from);
+	if (found != lib.layers.end()) {
+		lib.layers[to] = found->second;
+		lib.layers.erase(from);
+	}
+	for (QueueItem &q : lib.queue) {
+		if (q.layer == from)
+			q.layer = to;
+	}
+	for (auto &service : lib.services) {
+		for (QueueItem &q : service.second) {
+			if (q.layer == from)
+				q.layer = to;
+		}
+	}
+}
+
 void rememberLayer(Library &lib, const std::string &name)
 {
 	if (name.empty())
