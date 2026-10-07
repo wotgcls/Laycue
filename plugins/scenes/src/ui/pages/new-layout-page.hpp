@@ -25,7 +25,8 @@ class NewLayoutPage : public PageFrame {
 	Q_OBJECT
 
 public:
-	explicit NewLayoutPage(App &app, QWidget *parent = nullptr);
+	// `initialTemplate` is the shape already picked on the Layouts tab (-1: show the shapes to choose from).
+	explicit NewLayoutPage(App &app, int initialTemplate = -1, QWidget *parent = nullptr);
 
 signals:
 	// The layout was made; `sceneUuid` is its scene.
@@ -50,6 +51,7 @@ private:
 	QWidget *slotsHost_ = nullptr;
 	Segmented *fitSeg_ = nullptr;
 	QLineEdit *nameEdit_ = nullptr;
+	QLabel *shapeLabel_ = nullptr;
 	QAbstractButton *createButton_ = nullptr;
 	QLabel *errorLabel_ = nullptr;
 	bool nameEdited_ = false;

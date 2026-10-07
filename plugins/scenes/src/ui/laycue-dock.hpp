@@ -87,7 +87,7 @@ private:
 	void stepCamera(int direction);
 	void pushbackMenu(const std::string &pushbackId, const QPoint &globalPos);
 	void openAddPushback();
-	void openNewLayout();
+	void openNewLayout(int shape = -1);
 	void layoutMenu(const std::string &layoutId, const QPoint &globalPos);
 	void repairLayouts();
 	void updateGuide();
@@ -125,8 +125,7 @@ private:
 	QAbstractButton *lockPill_ = nullptr;
 	QAbstractButton *addPushbackButton_ = nullptr;
 	QAbstractButton *emptyAddButton_ = nullptr;
-	QAbstractButton *newLayoutButton_ = nullptr;
-	QAbstractButton *emptyNewLayoutButton_ = nullptr;
+	QWidget *shapesHost_ = nullptr; // the layout shapes, in plain sight on the Layouts tab
 	Tab tab_ = Tab::Shots;
 
 	// Stage

@@ -9,6 +9,7 @@
 #include "ui/controls.hpp"
 #include "ui/labels.hpp"
 #include "ui/pages/helpers.hpp"
+#include "ui/template-card.hpp"
 #include "ui/tokens.hpp"
 
 #include <QAbstractButton>
@@ -25,80 +26,13 @@ namespace laycue::ui {
 
 using namespace page;
 
-// One template drawn as a small picture of the screen with its parts.
-class TemplateCard : public QAbstractButton {
-public:
-	TemplateCard(const LayoutTemplate &layout, QWidget *parent) : QAbstractButton(parent), layout_(layout)
-	{
-		setCheckable(true);
-		setCursor(Qt::PointingHandCursor);
-		setFocusPolicy(Qt::TabFocus);
-		setFixedHeight(96);
-		setAccessibleName(lt(layout.nameKey));
-		setToolTip(lt(layout.hintKey));
-	}
-
-	QSize sizeHint() const override { return {110, 96}; }
-
-protected:
-	void enterEvent(QEnterEvent *) override
-	{
-		hovered_ = true;
-		update();
-	}
-	void leaveEvent(QEvent *) override
-	{
-		hovered_ = false;
-		update();
-	}
-	void paintEvent(QPaintEvent *) override
-	{
-		QPainter p(this);
-		p.setRenderHint(QPainter::Antialiasing);
-		const QRectF outer = QRectF(rect()).adjusted(1, 1, -1, -1);
-		p.setPen(Qt::NoPen);
-		p.setBrush(isChecked() ? color::stage : hovered_ ? color::graphiteHover : color::graphite);
-		p.drawRoundedRect(outer, size::radius, size::radius);
-		if (isChecked()) {
-			p.setBrush(Qt::NoBrush);
-			p.setPen(QPen(color::setup, 2));
-			p.drawRoundedRect(outer, size::radius, size::radius);
-		}
-
-		// The screen.
-		const double pad = 8;
-		const double h = outer.height() - 2 * pad - 20;
-		const double w = std::min(outer.width() - 2 * pad, h * 16 / 9);
-		const QRectF screen(outer.x() + (outer.width() - w) / 2, outer.y() + pad, w, w * 9 / 16);
-		p.setPen(Qt::NoPen);
-		p.setBrush(color::recess);
-		p.drawRoundedRect(screen, 4, 4);
-		const double inset = 2;
-		for (size_t i = 0; i < layout_.shapes.size(); ++i) {
-			const SlotShape &s = layout_.shapes[i];
-			const QRectF r(screen.x() + s.x * screen.width() + inset,
-				       screen.y() + s.y * screen.height() + inset, s.w * screen.width() - 2 * inset,
-				       s.h * screen.height() - 2 * inset);
-			// The first slot is the main one; later slots are quieter.
-			p.setBrush(i == 0 ? color::cream : color::textTertiary);
-			p.drawRoundedRect(r, 3, 3);
-		}
-
-		p.setPen(isChecked() ? color::cream : color::textSecondary);
-		p.setFont(uiFont(11, 600));
-		p.drawText(QRectF(outer.x() + 4, screen.bottom() + 3, outer.width() - 8, 22), Qt::AlignCenter,
-			   lt(layout_.nameKey));
-	}
-
-private:
-	const LayoutTemplate &layout_;
-	bool hovered_ = false;
-};
-
-NewLayoutPage::NewLayoutPage(App &app, QWidget *parent)
+NewLayoutPage::NewLayoutPage(App &app, int initialTemplate, QWidget *parent)
 	: PageFrame(lt("Laycue.Layouts.Title"), lt("Laycue.Layout.NewTitle"), parent),
 	  app_(app)
 {
+	const bool shapeChosen = initialTemplate >= 0 && initialTemplate < int(layoutTemplates().size());
+	if (shapeChosen)
+		template_ = initialTemplate;
 	// Everything a slot can show: sources with a picture, and the operator's own scenes.
 	for (const VideoSourceInfo &source : listVideoSources()) {
 		if (source.name.rfind("Laycue · ", 0) == 0)
@@ -117,10 +51,11 @@ NewLayoutPage::NewLayoutPage(App &app, QWidget *parent)
 		available_.push_back({scene.uuid, scene.name, lt("Laycue.Kind.Scene")});
 	}
 
-	body()->addWidget(label(this, lt("Laycue.Layout.Intro"), 12, 400, color::textSecondary));
-
-	// 1. The shape.
-	body()->addWidget(label(this, lt("Laycue.Layout.StepShape"), 13, 700, color::cream));
+	// 1. The shape. Opened from a shape on the Layouts tab, it is already chosen: one line says which, with a way to change it.
+	if (!shapeChosen) {
+		body()->addWidget(label(this, lt("Laycue.Layout.Intro"), 12, 400, color::textSecondary));
+		body()->addWidget(label(this, lt("Laycue.Layout.StepShape"), 13, 700, color::cream));
+	}
 	auto *shapes = new QWidget(this);
 	auto *grid = new QGridLayout(shapes);
 	grid->setContentsMargins(size::shadowMargin, 0, size::shadowMargin, 0);
@@ -135,10 +70,25 @@ NewLayoutPage::NewLayoutPage(App &app, QWidget *parent)
 	}
 	for (int column = 0; column < 3; ++column)
 		grid->setColumnStretch(column, 1);
+	if (shapeChosen) {
+		auto *line = new QWidget(this);
+		auto *lineLayout = new QHBoxLayout(line);
+		lineLayout->setContentsMargins(0, 0, 0, 0);
+		lineLayout->setSpacing(size::gapSmall);
+		shapeLabel_ = label(line, QString(), 13, 700, color::cream);
+		lineLayout->addWidget(shapeLabel_, 1);
+		auto *change = button(line, lt("Laycue.Layout.ChangeShape"), "laycueLink");
+		connect(change, &QAbstractButton::clicked, this,
+			[shapes]() { shapes->setVisible(!shapes->isVisible()); });
+		lineLayout->addWidget(change);
+		body()->addWidget(line);
+		shapes->hide();
+	}
 	body()->addWidget(shapes);
 
 	// 2. What goes where.
-	body()->addWidget(label(this, lt("Laycue.Layout.StepSources"), 13, 700, color::cream));
+	body()->addWidget(label(this, lt(shapeChosen ? "Laycue.Layout.StepSourcesFirst" : "Laycue.Layout.StepSources"),
+				13, 700, color::cream));
 	slotsHost_ = new QWidget(this);
 	auto *slotsLayout = new QVBoxLayout(slotsHost_);
 	slotsLayout->setContentsMargins(size::shadowMargin, 0, size::shadowMargin, 0);
@@ -190,6 +140,8 @@ void NewLayoutPage::selectTemplate(int index)
 	if (index < 0 || index >= int(all.size()))
 		return;
 	template_ = index;
+	if (shapeLabel_)
+		shapeLabel_->setText(lt("Laycue.Layout.ShapeIs").arg(lt(all[index].nameKey)));
 	for (size_t i = 0; i < cards_.size(); ++i)
 		cards_[i]->setChecked(int(i) == index);
 	chosen_.resize(all[index].shapes.size()); // keeps what was chosen for the slots that still exist

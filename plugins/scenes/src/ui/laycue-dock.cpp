@@ -13,6 +13,7 @@
 #include "ui/pages/add-pushback-page.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/pages/new-layout-page.hpp"
+#include "ui/template-card.hpp"
 #include "ui/pages/overlay-setup-page.hpp"
 #include "ui/pages/settings-page.hpp"
 #include "ui/style.hpp"
@@ -375,14 +376,37 @@ QWidget *LaycueDock::buildHome()
 	layoutsLayout->setContentsMargins(0, 0, 0, 0);
 	layoutsLayout->setSpacing(size::gapSmall + 2);
 
+	// The shapes a layout can have, in plain sight: tapping one starts that layout.
+	shapesHost_ = new QWidget(pushbacksTab_);
+	auto *shapesLayout = new QVBoxLayout(shapesHost_);
+	shapesLayout->setContentsMargins(0, 0, 0, 0);
+	shapesLayout->setSpacing(size::gapSmall);
+	shapesLayout->addWidget(makeLabel(shapesHost_, uiFont(11, 700), color::textTertiary,
+					  text("Laycue.Layouts.SectionShapes").toUpper()));
+	auto *shapesHint =
+		makeLabel(shapesHost_, uiFont(11, 400), color::textTertiary, text("Laycue.Layouts.SectionShapesHint"));
+	shapesHint->setWordWrap(true);
+	shapesLayout->addWidget(shapesHint);
+	auto *shapeGridHost = new QWidget(shapesHost_);
+	auto *shapeGrid = new QGridLayout(shapeGridHost);
+	shapeGrid->setContentsMargins(0, 2, 0, 2);
+	shapeGrid->setHorizontalSpacing(size::gapSmall);
+	shapeGrid->setVerticalSpacing(size::gapSmall);
+	const auto &shapes = layoutTemplates();
+	for (size_t i = 0; i < shapes.size(); ++i) {
+		auto *card = new ui::TemplateCard(shapes[i], shapeGridHost);
+		connect(card, &QAbstractButton::clicked, this, [this, i]() { openNewLayout(int(i)); });
+		shapeGrid->addWidget(card, int(i / 3), int(i % 3));
+	}
+	for (int column = 0; column < 3; ++column)
+		shapeGrid->setColumnStretch(column, 1);
+	shapesLayout->addWidget(shapeGridHost);
+	layoutsLayout->addWidget(shapesHost_);
+
 	pushbacksHeaderHost_ = new QWidget(pushbacksTab_);
 	auto *makeRow = new QHBoxLayout(pushbacksHeaderHost_);
 	makeRow->setContentsMargins(0, 0, 0, 0);
 	makeRow->setSpacing(size::gapSmall);
-	newLayoutButton_ =
-		new ActionButton(text("Laycue.Layouts.New"), ActionButton::Kind::Primary, pushbacksHeaderHost_);
-	connect(newLayoutButton_, &QAbstractButton::clicked, this, &LaycueDock::openNewLayout);
-	makeRow->addWidget(newLayoutButton_);
 	addPushbackButton_ =
 		new ActionButton(text("Laycue.Pushbacks.Add"), ActionButton::Kind::Secondary, pushbacksHeaderHost_);
 	connect(addPushbackButton_, &QAbstractButton::clicked, this, &LaycueDock::openAddPushback);
@@ -430,8 +454,6 @@ QWidget *LaycueDock::buildHome()
 		*buttonOut = button;
 		emptyLayout->addWidget(card);
 	};
-	choice("Laycue.Layouts.EmptyTitle", "Laycue.Layouts.EmptyBody", "Laycue.Layouts.New",
-	       ActionButton::Kind::Primary, &LaycueDock::openNewLayout, &emptyNewLayoutButton_);
 	choice("Laycue.Pushbacks.EmptyTitle", "Laycue.Pushbacks.EmptyBody", "Laycue.Pushbacks.AddFirst",
 	       ActionButton::Kind::Secondary, &LaycueDock::openAddPushback, &emptyAddButton_);
 	layoutsLayout->addWidget(pbEmpty_);
@@ -1014,11 +1036,10 @@ void LaycueDock::updateLayoutsTab()
 	lockPill_->setVisible(locked);
 	const bool anyLayouts = !config.layouts.empty();
 	const bool anyPushbacks = !config.pushbacks.empty();
-	const bool none = !anyLayouts && !anyPushbacks;
-	pbEmpty_->setVisible(none);
-	emptyNewLayoutButton_->setVisible(!locked);
+	shapesHost_->setVisible(!locked);
+	pbEmpty_->setVisible(!anyPushbacks && !locked);
 	emptyAddButton_->setVisible(!locked);
-	pushbacksHeaderHost_->setVisible(!none && !locked);
+	pushbacksHeaderHost_->setVisible(anyPushbacks && !locked);
 	lyLabel_->setVisible(anyLayouts);
 	lyGridHost_->setVisible(anyLayouts);
 	pbLabel_->setVisible(anyPushbacks);
@@ -1122,9 +1143,9 @@ void LaycueDock::openAddPushback()
 	openPage(page);
 }
 
-void LaycueDock::openNewLayout()
+void LaycueDock::openNewLayout(int shape)
 {
-	auto *page = new ui::NewLayoutPage(app_);
+	auto *page = new ui::NewLayoutPage(app_, shape);
 	connect(page, &ui::PageFrame::backRequested, this, [this]() {
 		closePage();
 		showTab(Tab::Pushbacks);
