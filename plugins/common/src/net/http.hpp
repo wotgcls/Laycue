@@ -32,7 +32,7 @@ public:
 		QByteArray all;
 		all.swap(buffer_);
 		return all;
-	}                         // what arrived since the last call
+	} // what arrived since the last call
 	virtual void abort() = 0; // stops it; no signals are sent for an abort you asked for
 
 signals:
