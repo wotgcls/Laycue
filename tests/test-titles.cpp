@@ -129,10 +129,10 @@ TEST_CASE("titles: the ticker wraps and says how many copies fill the view")
 	CHECK(ticker.offset() >= 0.0);
 }
 
-TEST_CASE("titles: there are 66 built-in templates with unique ids and sensible values")
+TEST_CASE("titles: there are 68 built-in templates with unique ids and sensible values")
 {
 	const auto &all = builtInTemplates();
-	CHECK_EQ(int(all.size()), 66);
+	CHECK_EQ(int(all.size()), 68);
 	std::set<std::string> ids;
 	for (const auto &t : all) {
 		ids.insert(t.id);
