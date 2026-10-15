@@ -13,10 +13,12 @@
 #include <QPolygonF>
 #include <QStringList>
 #include <QTime>
+#include <QTransform>
 
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <vector>
 
 namespace laycue::titles {
 
@@ -2563,6 +2565,172 @@ void logoWater(Ctx &c)
 	logoFx(c, LogoFx::Water);
 }
 
+// ---- Glass Cube and Glass Disc: the logo floats inside a transparent solid that turns ---------------------
+
+// A tiny 3D view: turns a point in the solid's space (y up, z toward the viewer) into a point on the picture,
+// looking slightly down on it with a touch of perspective.
+struct GlassView {
+	QPointF mid;
+	double tilt = 0.30;
+	double dist = 420.0;
+	QPointF at(double x, double y, double z, double *depth = nullptr) const
+	{
+		if (depth)
+			*depth = z;
+		const double p = dist / (dist - z);
+		return QPointF(mid.x() + x * p, mid.y() - y * std::cos(tilt) * p + z * std::sin(tilt) * p);
+	}
+};
+
+// One pane of glass: a faint cool tint, a diagonal sheen that slides as the solid turns, and a bright edge.
+void glassPane(Ctx &c, const QPolygonF &poly, double facing, double turn, double strength)
+{
+	const QRectF bb = poly.boundingRect();
+	QLinearGradient g(bb.topLeft(), bb.bottomRight());
+	const double band = 0.5 + 0.42 * std::sin(turn);
+	g.setColorAt(0.0, QColor(215, 232, 248, int(70 * strength)));
+	g.setColorAt(std::clamp(band - 0.12, 0.01, 0.98), QColor(190, 215, 238, int(24 * strength)));
+	g.setColorAt(std::clamp(band, 0.02, 0.99), QColor(255, 255, 255, int(120 * strength * facing)));
+	g.setColorAt(std::clamp(band + 0.12, 0.03, 0.995), QColor(190, 215, 238, int(24 * strength)));
+	g.setColorAt(1.0, QColor(170, 200, 228, int(60 * strength)));
+	c.p.setBrush(g);
+	c.p.setPen(
+		QPen(QColor(255, 255, 255, int(70 + 130 * facing)), 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+	c.p.drawPolygon(poly);
+}
+
+// The logo as a flat card standing in the middle of the solid, turned with it (so from behind it reads mirrored).
+void glassLogo(Ctx &c, const GlassView &v, const QImage &layer, const QRectF &box, double turn, double half)
+{
+	if (std::abs(std::cos(turn)) < 0.03)
+		return; // edge-on: nothing to see
+	QPolygonF to;
+	for (const QPointF &q : {QPointF(-1, 1), QPointF(1, 1), QPointF(1, -1), QPointF(-1, -1)})
+		to << v.at(q.x() * half * std::cos(turn), q.y() * half, -q.x() * half * std::sin(turn));
+	QTransform t;
+	const QPolygonF from(QRectF(0, 0, box.width(), box.height()));
+	if (!QTransform::quadToQuad(QPolygonF({from[0], from[1], from[2], from[3]}), to, t))
+		return;
+	c.p.save();
+	c.p.setTransform(t, true);
+	c.p.drawImage(QRectF(0, 0, box.width(), box.height()), layer);
+	c.p.restore();
+}
+
+// How far round the solid is, 0..2pi: one smooth turn early in each repeat, then it rests facing the viewer.
+double glassTurn(const Ctx &c)
+{
+	const double ph = logoPhase(c);
+	return ph < 0.75 ? easeInOut(ph / 0.75) * 2.0 * kPi : 0.0;
+}
+
+// Logo Glass Cube: a transparent cube with the logo inside it, turning on its vertical axis.
+void logoGlassCube(Ctx &c)
+{
+	const QImage logo = logoImage(c.x.logoPath);
+	const QRectF box = logoBox(c);
+	const QImage layer = logoLayer(c, logo, box);
+	const double turn = glassTurn(c);
+	const GlassView v{box.center()};
+	const double a = 46.0, R = a * std::sqrt(2.0);
+	struct Face {
+		double facing; // cos of the angle between the face's normal and the viewer
+		QPolygonF poly;
+		double psi;
+	};
+	std::vector<Face> faces;
+	for (int k = 0; k < 4; ++k) {
+		const double p0 = turn + kPi / 4 + k * kPi / 2, p1 = p0 + kPi / 2;
+		QPolygonF poly;
+		poly << v.at(R * std::sin(p0), a, R * std::cos(p0)) << v.at(R * std::sin(p1), a, R * std::cos(p1))
+		     << v.at(R * std::sin(p1), -a, R * std::cos(p1)) << v.at(R * std::sin(p0), -a, R * std::cos(p0));
+		const double psi = turn + kPi / 2 + k * kPi / 2;
+		faces.push_back({std::cos(psi), poly, psi});
+	}
+	std::sort(faces.begin(), faces.end(), [](const Face &x, const Face &y) { return x.facing < y.facing; });
+	QPolygonF top, bottom;
+	for (int k = 0; k < 4; ++k) {
+		const double p = turn + kPi / 4 + k * kPi / 2;
+		top << v.at(R * std::sin(p), a, R * std::cos(p));
+		bottom << v.at(R * std::sin(p), -a, R * std::cos(p));
+	}
+	c.p.save();
+	c.p.setRenderHint(QPainter::Antialiasing, true);
+	c.p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+	c.p.setOpacity(c.p.opacity() * c.part(0.0, 0.6));
+	softShadow(c, QPointF(box.center().x(), box.bottom() + 14), box.width() * 0.8, 85);
+	glassPane(c, bottom, 0.2, turn, 0.8);
+	for (const Face &f : faces)
+		if (f.facing < 0)
+			glassPane(c, f.poly, 0.15, f.psi, 0.8);
+	glassLogo(c, v, layer, box, turn, a * 0.78);
+	for (const Face &f : faces)
+		if (f.facing >= 0)
+			glassPane(c, f.poly, f.facing, f.psi, 1.0);
+	glassPane(c, top, 0.7, turn, 1.0);
+	c.p.restore();
+}
+
+// Logo Glass Disc: a round, thick glass coin with the logo inside it, turning on its vertical axis.
+void logoGlassDisc(Ctx &c)
+{
+	const QImage logo = logoImage(c.x.logoPath);
+	const QRectF box = logoBox(c);
+	const QImage layer = logoLayer(c, logo, box);
+	const double turn = glassTurn(c);
+	const GlassView v{box.center()};
+	const double r = 58.0, t = 15.0;
+	constexpr int kSteps = 56;
+	const double nx = std::sin(turn), nz = std::cos(turn); // the disc's normal; (cos, -sin) runs along its face
+	auto rim = [&](double side, double al) {
+		const double ux = std::cos(turn) * std::cos(al), uz = -std::sin(turn) * std::cos(al);
+		return v.at(side * t * nx + r * ux, r * std::sin(al), side * t * nz + r * uz);
+	};
+	QPolygonF front, back;
+	const double s = nz >= 0 ? 1.0 : -1.0; // which face is nearer the viewer
+	for (int i = 0; i < kSteps; ++i) {
+		const double al = 2.0 * kPi * i / kSteps;
+		front << rim(s, al);
+		back << rim(-s, al);
+	}
+	c.p.save();
+	c.p.setRenderHint(QPainter::Antialiasing, true);
+	c.p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+	c.p.setOpacity(c.p.opacity() * c.part(0.0, 0.6));
+	softShadow(c, QPointF(box.center().x(), box.bottom() + 14), box.width() * 0.8, 85);
+	glassPane(c, back, 0.15, turn + 1.0, 0.8);
+	// The rim, a ring of narrow strips; the far ones first so the near ones sit on top.
+	struct Strip {
+		double z;
+		QPolygonF poly;
+		double lit;
+	};
+	std::vector<Strip> strips;
+	for (int i = 0; i < kSteps; ++i) {
+		const double a0 = 2.0 * kPi * i / kSteps, a1 = 2.0 * kPi * (i + 1) / kSteps, am = (a0 + a1) / 2;
+		QPolygonF poly;
+		poly << v.at(t * nx + r * std::cos(turn) * std::cos(a0), r * std::sin(a0),
+			     t * nz - r * std::sin(turn) * std::cos(a0))
+		     << v.at(t * nx + r * std::cos(turn) * std::cos(a1), r * std::sin(a1),
+			     t * nz - r * std::sin(turn) * std::cos(a1))
+		     << v.at(-t * nx + r * std::cos(turn) * std::cos(a1), r * std::sin(a1),
+			     -t * nz - r * std::sin(turn) * std::cos(a1))
+		     << v.at(-t * nx + r * std::cos(turn) * std::cos(a0), r * std::sin(a0),
+			     -t * nz - r * std::sin(turn) * std::cos(a0));
+		const double outward = -std::sin(turn) * std::cos(am); // the strip's push toward the viewer
+		strips.push_back({outward, poly, std::max(0.0, outward + 0.4 * std::sin(am))});
+	}
+	std::sort(strips.begin(), strips.end(), [](const Strip &x, const Strip &y) { return x.z < y.z; });
+	c.p.setPen(Qt::NoPen);
+	for (const Strip &st : strips) {
+		c.p.setBrush(QColor(200, 222, 244, int(26 + 70 * std::min(1.0, st.lit))));
+		c.p.drawPolygon(st.poly);
+	}
+	glassLogo(c, v, layer, box, turn, r * 0.7);
+	glassPane(c, front, std::abs(nz), turn, 1.0);
+	c.p.restore();
+}
+
 // ---- Logo + wordmark ------------------------------------------------------------------------------------
 
 // A stand-in lockup (a round mark and a word) for when no logo picture has been chosen yet.
@@ -3294,6 +3462,8 @@ const std::vector<StyleInfo> &styles()
 		{"logo-reveal", logoReveal},
 		{"logo-orbit", logoOrbit},
 		{"logo-water", logoWater},
+		{"logo-glass-cube", logoGlassCube},
+		{"logo-glass-disc", logoGlassDisc},
 		{"logo-lockup", logoLockup},
 		{"notes-card", notesCard},
 		{"notes-points", notesPoints},

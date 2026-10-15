@@ -15,7 +15,7 @@ a plugin rather than an HTML pack.
   so the title never feels slow to clear.
 - Fonts are bundled (OFL licensed) so a title looks the same on every machine.
 
-## The 66 templates
+## The 68 templates
 Seven categories: **People** (name bars), **Worship** (series titles, song lyrics, quotes), **Announce**, **News** (tabbed
 headline bars), **Live** (an on-air badge and bar with a pulsing light), **Social** (YouTube, Instagram, TikTok, Facebook,
 Mixlr and a generic handle, each with the platform's icon, see `ICONS.md`; plus **Subscribe + Bell**, below) and **Tickers**. Scripture templates were
@@ -70,9 +70,9 @@ edges, so the margin is the same whatever the words are. Changing it while a tit
 
 ## Logo animations
 
-Nine templates in the Live category animate a logo picture on a repeat: Silver Sweep (silver edges and a bright core, so it
-shows on white logos too), Spin, Glow Pulse, Float, Flip, Ripple, Hop, Wipe Reveal, Orbit and Water Shimmer (the logo
-ripples slightly like water). **Logo + Wordmark Slide** works with a logo that has two parts: choose the picture, press
+Eleven templates in the Live category animate a logo picture on a repeat: Silver Sweep (silver edges and a bright core, so it
+shows on white logos too), Spin, Glow Pulse, Float, Flip, Ripple, Hop, Wipe Reveal, Orbit, Water Shimmer, Glass Cube and Glass Disc (the logo
+ripples slightly like water), **Glass Cube** and **Glass Disc** (the logo floats inside a transparent cube or round glass coin that turns once every few seconds, then rests facing you). **Logo + Wordmark Slide** works with a logo that has two parts: choose the picture, press
 *Set logo parts...*, drag the line to where the mark ends and the wordmark begins (side by side or stacked, mark first or
 second). The wordmark then slides away behind the mark and slides back out. Until the parts are set, the logo stays still.
 

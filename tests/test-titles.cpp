@@ -142,7 +142,7 @@ TEST_CASE("titles: there are 66 built-in templates with unique ids and sensible 
 		if (t.tickerSpeed > 0.0)
 			CHECK(t.category == Category::Ticker);
 	}
-	CHECK_EQ(int(ids.size()), 66);
+	CHECK_EQ(int(ids.size()), 68);
 	CHECK(findTemplate("nope") == nullptr);
 }
 
@@ -156,7 +156,7 @@ TEST_CASE("titles: every category has templates, the Live and Social ones are wh
 		CHECK(perCategory[c] >= 2);
 	CHECK_EQ(perCategory[Category::Notes], 4);
 	for (const char *id : {"logo-sweep", "logo-spin", "logo-pulse", "logo-float", "logo-flip", "logo-ripple",
-			       "logo-hop", "logo-reveal", "logo-orbit", "logo-water"}) {
+			       "logo-hop", "logo-reveal", "logo-orbit", "logo-water", "logo-glass-cube", "logo-glass-disc"}) {
 		const TitleTemplate *t = findTemplate(id);
 		CHECK(t != nullptr);
 		if (t) {

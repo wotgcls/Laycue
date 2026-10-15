@@ -368,6 +368,28 @@ std::vector<TitleTemplate> buildAll()
 		all.push_back(t);
 	}
 	{
+		auto t = make("logo-glass-cube", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
+			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 6.0;
+		all.push_back(t);
+	}
+	{
+		auto t = make("logo-glass-disc", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
+			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
+		t.palette.ink = kWhite;
+		t.anchorTop = true;
+		t.usesLine1 = false;
+		t.usesLine2 = false;
+		t.usesLogo = true;
+		t.pulseSeconds = 6.0;
+		all.push_back(t);
+	}
+	{
 		auto t = make("logo-lockup", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
 			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
 		t.palette.ink = kWhite;
