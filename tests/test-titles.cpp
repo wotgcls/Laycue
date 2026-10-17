@@ -580,3 +580,21 @@ TEST_CASE("titles: layers are named after what they show, and the name is follow
 	CHECK_EQ(lib.queue[1].layer, std::string("Other"));
 	CHECK_EQ(lib.services["Sunday"][0].layer, std::string("ttl. Pastor"));
 }
+
+TEST_CASE("titles: a bank point shows alone, numbered by its place in the bank")
+{
+	TitleContent draft;
+	draft.line1 = "Faith Under Pressure";
+	draft.tag = "Sermon notes";
+	draft.rows = {{"1", "one"}, {"2", "two"}, {"3", "three"}};
+	const std::vector<std::string> points = {"God is present", "Trust is a decision", "Pressure reveals belief"};
+
+	const TitleContent second = contentForPoint(draft, points, 1);
+	CHECK_EQ(second.rows.size(), size_t(1)); // never stacked
+	CHECK_EQ(second.rows[0].label, std::string("2"));
+	CHECK_EQ(second.rows[0].value, std::string("Trust is a decision"));
+	CHECK_EQ(second.line1, std::string("Faith Under Pressure")); // the heading stays
+	CHECK_EQ(second.tag, std::string("Sermon notes"));
+
+	CHECK(contentForPoint(draft, points, 9) == draft); // outside the bank: unchanged
+}

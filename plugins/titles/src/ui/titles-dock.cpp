@@ -1607,7 +1607,23 @@ void TitlesDock::draftChanged()
 void TitlesDock::rebuildRows()
 {
 	page::clear(rowsLayout_);
+	pointsEdit_ = nullptr;
 	const TitleTemplate t = resolveStyle(library_, library_.selected);
+	if (t.category == Category::Notes) {
+		auto *mode = new Segmented(rowsBox_);
+		mode->setItems({lt("Laycue.Titles.PointsOne"), lt("Laycue.Titles.PointsStack")});
+		mode->setCurrent(library_.pointsOneAtATime ? 0 : 1);
+		connect(mode, &Segmented::changed, this, [this](int index) {
+			library_.pointsOneAtATime = index == 0;
+			rebuildRows();
+			scheduleSave();
+		});
+		rowsLayout_->addWidget(mode);
+		if (library_.pointsOneAtATime) {
+			rebuildPointsBank(t);
+			return;
+		}
+	}
 	// A template can word the rows itself ("POINTS", "Marker", "The point"); otherwise they are accounts.
 	const auto own = [&](const char *suffix, const char *fallback) {
 		const std::string key = nameKey(t) + "." + suffix;
@@ -1666,6 +1682,92 @@ void TitlesDock::rebuildRows()
 		});
 		rowsLayout_->addWidget(add, 0, Qt::AlignLeft);
 	}
+}
+
+void TitlesDock::rebuildPointsBank(const TitleTemplate &)
+{
+	rowsLayout_->addWidget(makeLabel(rowsBox_, lt("Laycue.Titles.PointsBank").arg(int(library_.points.size())), 11,
+					 600, color::textTertiary));
+	auto *addLine = new QWidget(rowsBox_);
+	auto *addLayout = new QHBoxLayout(addLine);
+	addLayout->setContentsMargins(0, 0, 0, 0);
+	addLayout->setSpacing(size::gapSmall);
+	auto *edit = new QLineEdit(addLine);
+	edit->setPlaceholderText(lt("Laycue.Titles.PointsHint"));
+	edit->setAccessibleName(lt("Laycue.Titles.PointsHint"));
+	pointsEdit_ = edit;
+	auto *keep = button(addLine, lt("Laycue.Titles.PointKeep"), "laycueSecondary");
+	const auto keepPoint = [this, edit]() {
+		const QString text = edit->text().trimmed();
+		if (text.isEmpty() || library_.points.size() >= kMaxPoints)
+			return;
+		library_.points.push_back(toStd(text));
+		rebuildRows(); // the box is rebuilt, so the new point appears and the field is empty again
+		if (pointsEdit_)
+			pointsEdit_->setFocus(); // so the next point can be typed straight away
+		scheduleSave();
+	};
+	connect(edit, &QLineEdit::returnPressed, this, keepPoint);
+	connect(keep, &QAbstractButton::clicked, this, keepPoint);
+	addLayout->addWidget(edit, 1);
+	addLayout->addWidget(keep);
+	rowsLayout_->addWidget(addLine);
+
+	if (library_.points.empty()) {
+		auto *hint = makeLabel(rowsBox_, lt("Laycue.Titles.PointsEmpty"), 11, 400, color::textTertiary);
+		hint->setWordWrap(true);
+		rowsLayout_->addWidget(hint);
+		return;
+	}
+	for (size_t i = 0; i < library_.points.size(); ++i) {
+		auto *line = new QWidget(rowsBox_);
+		auto *h = new QHBoxLayout(line);
+		h->setContentsMargins(0, 0, 0, 0);
+		h->setSpacing(size::gapSmall);
+		auto *show = new RowButton(line);
+		const bool shown = int(i) == pointShown_;
+		show->setTitle(QStringLiteral("%1  %2").arg(int(i) + 1).arg(fromStd(library_.points[i])));
+		show->setValue(shown ? lt("Laycue.Titles.PointShown") : lt("Laycue.Titles.PointShow"));
+		connect(show, &RowButton::clicked, this, [this, i]() { playPoint(i); });
+		h->addWidget(show, 1);
+		auto *remove = button(line, QStringLiteral("\u2715"), "laycueSecondary");
+		remove->setAccessibleName(lt("Laycue.Titles.PointRemove"));
+		connect(remove, &QAbstractButton::clicked, this, [this, i]() {
+			if (i >= library_.points.size())
+				return;
+			library_.points.erase(library_.points.begin() + std::ptrdiff_t(i));
+			if (pointShown_ == int(i))
+				pointShown_ = -1;
+			else if (pointShown_ > int(i))
+				--pointShown_;
+			rebuildRows();
+			scheduleSave();
+		});
+		h->addWidget(remove);
+		rowsLayout_->addWidget(line);
+	}
+}
+
+void TitlesDock::playPoint(size_t index)
+{
+	if (index >= library_.points.size())
+		return;
+	// Only this point goes on screen; the sermon title and heading stay as they are in the boxes.
+	library_.draft = contentForPoint(library_.draft, library_.points, index);
+	pointShown_ = int(index);
+	refreshFields();
+	updatePreview();
+	status_ = statusOf(target());
+	if (status_.onAir()) {
+		// The point on air leaves first, then the next one arrives, so they never stack.
+		hideFromAir(target());
+		preview_->stop();
+		pendingPlay_ = true;
+		pendingTimer_.start();
+	} else {
+		applyAndShow();
+	}
+	scheduleSave();
 }
 
 void TitlesDock::chooseLogo()

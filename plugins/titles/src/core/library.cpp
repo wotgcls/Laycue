@@ -5,6 +5,16 @@
 
 namespace laycue::titles {
 
+TitleContent contentForPoint(const TitleContent &draft, const std::vector<std::string> &points, size_t index)
+{
+	TitleContent out = draft;
+	if (index >= points.size())
+		return out;
+	out.rows.clear();
+	out.rows.push_back({std::to_string(index + 1), points[index]});
+	return out;
+}
+
 namespace {
 
 constexpr size_t kMaxText = 600;

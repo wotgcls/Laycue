@@ -109,3 +109,12 @@ Nothing appears on air by itself. Show and hide are explicit; "hide by itself" i
 - **Layer names:** when you press Show on air, a layer that still has its automatic name is renamed after the content, for example `ttl. Pastor David Ok…`. Layers you named yourself are never renamed.
 - **Save this service…** sits on the Queue tab. It saves the run order under a name you choose, and you can load it again later.
 - **New templates:** Coming Up, Event Date, Prayer Request, Welcome, Celebrate, Question and Hashtag Bar.
+
+## Points bank (Notes templates)
+
+Pick a Notes template (Sermon Notes, Numbered Points, Point Columns) and the panel shows a **points bank** instead of a stack of rows.
+
+- Type a point and press **Enter** (or **Keep**). Keep as many as you like, up to 200. They are saved with the scene collection.
+- Tap a point to put **only that point** on screen, in any order. The sermon title and heading stay as they are in the boxes. Tapping another point makes the one on screen leave first, so points never pile up.
+- The row on screen says **On screen**. The **✕** removes a point from the bank.
+- Prefer the old behaviour (several points on one card)? Switch **One at a time** to **Stack them**.

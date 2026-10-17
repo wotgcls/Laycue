@@ -183,6 +183,10 @@ private:
 	QWidget *partsBox_ = nullptr; // set which part of the logo is the mark and which the wordmark
 	QLabel *partsLabel_ = nullptr;
 	QLabel *logoName_ = nullptr;
+	QLineEdit *pointsEdit_ = nullptr; // the "type a point" box, kept so typing carries on after each Enter
+	int pointShown_ = -1;             // the bank point on screen (or last shown), -1 = none
+	void playPoint(size_t index);
+	void rebuildPointsBank(const TitleTemplate &t);
 	QWidget *rowsBox_ = nullptr; // the accounts: label and number pairs, as many as the operator adds
 	QVBoxLayout *rowsLayout_ = nullptr;
 	QLineEdit *edit1_ = nullptr;

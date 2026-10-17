@@ -159,6 +159,16 @@ Library loadLibrary()
 					   : -1;
 		lib.serviceName = str(obs_data_get_string(root, "service"));
 		{
+			OBSDataArrayAutoRelease points = obs_data_get_array(root, "points");
+			const size_t n = points ? std::min(obs_data_array_count(points), kMaxPoints) : 0;
+			for (size_t i = 0; i < n; ++i) {
+				OBSDataAutoRelease entry = obs_data_array_item(points, i);
+				lib.points.push_back(str(obs_data_get_string(entry, "text")));
+			}
+			lib.pointsOneAtATime = !obs_data_has_user_value(root, "pointsOneAtATime") ||
+					       obs_data_get_bool(root, "pointsOneAtATime");
+		}
+		{
 			OBSDataArrayAutoRelease services = obs_data_get_array(root, "services");
 			const size_t n = services ? obs_data_array_count(services) : 0;
 			for (size_t i = 0; i < n; ++i) {
@@ -255,6 +265,16 @@ bool saveLibrary(const Library &lib)
 			obs_data_set_array(root, "queue", queue);
 			obs_data_set_int(root, "queueCurrent", lib.queueCurrent);
 			obs_data_set_string(root, "service", lib.serviceName.c_str());
+			{
+				OBSDataArrayAutoRelease points = obs_data_array_create();
+				for (const std::string &text : lib.points) {
+					OBSDataAutoRelease entry = obs_data_create();
+					obs_data_set_string(entry, "text", text.c_str());
+					obs_data_array_push_back(points, entry);
+				}
+				obs_data_set_array(root, "points", points);
+				obs_data_set_bool(root, "pointsOneAtATime", lib.pointsOneAtATime);
+			}
 			OBSDataArrayAutoRelease services = obs_data_array_create();
 			for (const auto &kv : lib.services) {
 				OBSDataAutoRelease entry = obs_data_create();

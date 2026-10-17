@@ -84,7 +84,16 @@ struct Library {
 	std::map<std::string, Placement> placements; // by style id; a style not listed uses the default
 	std::string targetSource;                    // name of the "Laycue Title" source the panel controls
 	std::map<std::string, LayerState> layers;    // by source name; what each layer held when last left
+	// The points bank for the Notes templates: points kept for later, shown one at a time in any order.
+	std::vector<std::string> points;
+	bool pointsOneAtATime = true; // false: the Notes rows are stacked on one card as before
 };
+
+constexpr size_t kMaxPoints = 200;
+
+// The draft with only point `index` on it, numbered by its place in the bank (point 7 shows the marker "7").
+// An index outside the bank gives the draft unchanged.
+TitleContent contentForPoint(const TitleContent &draft, const std::vector<std::string> &points, size_t index);
 
 // How fast titles come and go. A small range on purpose: lower thirds look wrong when they crawl or snap.
 constexpr int kSpeedSteps = 5;
