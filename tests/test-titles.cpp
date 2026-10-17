@@ -155,8 +155,9 @@ TEST_CASE("titles: every category has templates, the Live and Social ones are wh
 			   Category::Social, Category::News, Category::Notes})
 		CHECK(perCategory[c] >= 2);
 	CHECK_EQ(perCategory[Category::Notes], 4);
-	for (const char *id : {"logo-sweep", "logo-spin", "logo-pulse", "logo-float", "logo-flip", "logo-ripple",
-			       "logo-hop", "logo-reveal", "logo-orbit", "logo-water", "logo-glass-cube", "logo-glass-disc"}) {
+	for (const char *id :
+	     {"logo-sweep", "logo-spin", "logo-pulse", "logo-float", "logo-flip", "logo-ripple", "logo-hop",
+	      "logo-reveal", "logo-orbit", "logo-water", "logo-glass-cube", "logo-glass-disc"}) {
 		const TitleTemplate *t = findTemplate(id);
 		CHECK(t != nullptr);
 		if (t) {
