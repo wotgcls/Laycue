@@ -13,6 +13,8 @@
 #include <QRegularExpressionValidator>
 #include <QTimer>
 
+#include <algorithm>
+
 namespace laycue::scripture {
 
 using namespace laycue::ui;
@@ -63,10 +65,16 @@ ReferenceBox::ReferenceBox(QWidget *parent) : QWidget(parent)
 		new QRegularExpressionValidator(QRegularExpression(QStringLiteral("\\d{0,3}(-\\d{0,3})?")), verse_));
 	chapter_->setAlignment(Qt::AlignCenter);
 	verse_->setAlignment(Qt::AlignCenter);
-	chapter_->setMaximumWidth(84);
-	verse_->setMaximumWidth(104);
+	chapter_->setFixedWidth(48); // three digits and a little air
+	verse_->setFixedWidth(84);   // "16-18" and "100-120" fit
 
+	// The book box is always wide enough for the longest book name, so the whole name stays in view.
+	int widest = 0;
+	const QFontMetrics fm(book_->font());
+	for (const BookInfo &info : books())
+		widest = std::max(widest, fm.horizontalAdvance(QString::fromStdString(info.name)));
 	auto *bookArea = new QWidget(this);
+	bookArea->setMinimumWidth(widest + 24);
 	auto *b = new QHBoxLayout(bookArea);
 	b->setContentsMargins(0, 0, 0, 0);
 	b->setSpacing(0);
@@ -79,7 +87,12 @@ ReferenceBox::ReferenceBox(QWidget *parent) : QWidget(parent)
 	h->addWidget(bookArea, 1);
 	h->addWidget(divider(this));
 	h->addWidget(chapter_);
-	h->addWidget(divider(this));
+	auto *colon = new QLabel(QStringLiteral(":"), this); // chapter:verse, as in "John 3:16"
+	colon->setAlignment(Qt::AlignCenter);
+	colon->setFixedWidth(12);
+	colon->setStyleSheet(QStringLiteral("color: %1; background: transparent; font-size: 20px; font-weight: 600;")
+				     .arg(hex(color::textTertiary)));
+	h->addWidget(colon);
 	h->addWidget(verse_);
 
 	for (QLineEdit *edit : {book_, chapter_, verse_}) {
@@ -126,6 +139,7 @@ void ReferenceBox::setReference(const Reference &ref)
 	hint_->hide();
 	suggestion_.clear();
 	lastBookLength_ = book_->text().length();
+	book_->setCursorPosition(0); // show the start of the name
 	filling_ = false;
 }
 
@@ -196,6 +210,8 @@ bool ReferenceBox::eventFilter(QObject *watched, QEvent *event)
 		QTimer::singleShot(0, edit, [edit]() { edit->selectAll(); });
 		update();
 	} else if (event->type() == QEvent::FocusOut) {
+		if (edit == book_)
+			book_->setCursorPosition(0);
 		update();
 	}
 	if (event->type() != QEvent::KeyPress)

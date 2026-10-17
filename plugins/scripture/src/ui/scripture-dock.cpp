@@ -51,7 +51,7 @@ QString qs(const std::string &s)
 ScriptureDock::ScriptureDock(QWidget *parent) : QWidget(parent)
 {
 	setObjectName("LaycueScriptureDock");
-	setMinimumWidth(280);
+	setMinimumWidth(340);
 	loadBrandFonts();
 	slides::loadSlideFonts();
 	settings_ = loadSettings();
