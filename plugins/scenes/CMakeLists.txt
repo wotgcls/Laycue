@@ -6,12 +6,16 @@ laycue_add_plugin(
     src/core/detect.cpp
     src/core/geometry.cpp
     src/core/autotag.cpp
+    src/core/frame-style.cpp
+    src/core/frame-style.hpp
     src/core/layouts.cpp
     src/core/exclusivity.cpp
     src/core/config.cpp
     src/core/scene-model.cpp
     src/core/source-kinds.cpp
     src/features/app.cpp
+    src/features/layout-frame.cpp
+    src/features/layout-frame.hpp
     src/features/hotkeys.cpp
     src/features/hotkeys.hpp
     src/features/overlay-engine.cpp

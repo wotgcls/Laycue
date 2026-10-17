@@ -61,6 +61,12 @@ struct Layout {
 	std::string sceneName;
 	FitMode fit = FitMode::Fill;
 	std::vector<SlotSource> sources; // one per slot of the template, in order; uuid empty = empty slot
+	// An optional background picture. With one, each slot gets a gold or silver frame picked to suit it.
+	std::string background;     // path of the picture; empty = none
+	std::string framePath;      // the frame picture Laycue drew for this layout
+	std::string metal;          // "gold" or "silver" (what was picked), for display
+	std::string backgroundUuid; // the scene's image sources, so a rebuild finds them again
+	std::string frameUuid;
 };
 
 struct Settings {

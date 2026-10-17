@@ -24,6 +24,7 @@ add_executable(
   test-config.cpp
   test-locale.cpp
   test-layouts.cpp
+  test-frame-style.cpp
   test-titles.cpp
   test-network.cpp
   test-update.cpp
@@ -34,6 +35,7 @@ add_executable(
   "${LAYCUE_SRC}/core/autotag.cpp"
   "${LAYCUE_SRC}/core/exclusivity.cpp"
   "${LAYCUE_SRC}/core/config.cpp"
+  "${LAYCUE_SRC}/core/frame-style.cpp"
   "${LAYCUE_SRC}/core/layouts.cpp"
   "${COMMON_SRC}/core/update-info.cpp"
   "${CLOCK_SRC}/core/clock-core.cpp"

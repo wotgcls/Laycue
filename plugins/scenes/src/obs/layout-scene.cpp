@@ -1,5 +1,6 @@
 #include "obs/layout-scene.hpp"
 
+#include "core/frame-style.hpp"
 #include "core/geometry.hpp"
 #include "core/layouts.hpp"
 #include "obs/scene-util.hpp"
@@ -42,9 +43,48 @@ bool collectStale(obs_scene_t *, obs_sceneitem_t *item, void *param)
 {
 	auto *collector = static_cast<StaleCollector *>(param);
 	obs_source_t *source = obs_sceneitem_get_source(item);
-	if (!isSlotSource(*collector->layout, str(source ? obs_source_get_uuid(source) : nullptr)))
+	const std::string uuid = str(source ? obs_source_get_uuid(source) : nullptr);
+	const Layout &layout = *collector->layout;
+	const bool ownPicture = !layout.background.empty() && !uuid.empty() &&
+				(uuid == layout.backgroundUuid || uuid == layout.frameUuid);
+	if (!ownPicture && !isSlotSource(layout, uuid))
 		collector->stale.push_back(item);
 	return true;
+}
+
+// An image source in the scene showing `file` (made if it isn't there yet, so a rebuild finds the same one).
+// Returns its UUID, or "" if OBS couldn't make it.
+std::string ensureImage(obs_scene_t *scene, const std::string &uuid, const std::string &name, const std::string &file)
+{
+	OBSDataAutoRelease settings = obs_data_create();
+	obs_data_set_string(settings, "file", file.c_str());
+	OBSSourceAutoRelease source = uuid.empty() ? nullptr : obs_get_source_by_uuid(uuid.c_str());
+	if (source)
+		obs_source_update(source, settings);
+	else
+		source = obs_source_create("image_source", freeSourceName(name).c_str(), settings, nullptr);
+	if (!source)
+		return std::string();
+	const std::string id = str(obs_source_get_uuid(source));
+	if (!itemForSource(scene, id) && !obs_scene_add(scene, source))
+		return std::string();
+	return id;
+}
+
+// Puts a picture item over the whole canvas at the bottom of the stack.
+void placeFullCanvas(obs_scene_t *scene, const std::string &uuid, const Canvas &canvas, bool cover)
+{
+	obs_sceneitem_t *item = uuid.empty() ? nullptr : itemForSource(scene, uuid);
+	OBSSourceAutoRelease source = obs_get_source_by_uuid(uuid.c_str());
+	if (!item || !source)
+		return;
+	const RectF whole{0, 0, canvas.w, canvas.h};
+	double w = 0, h = 0;
+	sourceSize(source, canvas, w, h);
+	const Placement placement = cover ? fillWindow(w, h, whole) : Placement{whole, Crop{}};
+	placeItem(item, placement.box, placement.crop);
+	obs_sceneitem_set_visible(item, true);
+	obs_sceneitem_set_order(item, OBS_ORDER_MOVE_BOTTOM);
 }
 
 } // namespace
@@ -58,7 +98,9 @@ bool fitLayout(const Layout &layout)
 	obs_scene_t *scene = obs_scene_from_source(sceneSource);
 	const std::string ownUuid = str(obs_source_get_uuid(sceneSource));
 	const Canvas canvas = readCanvas();
-	const std::vector<RectF> rects = slotRects(*shape, canvas.w, canvas.h, 0);
+	const bool framed = !layout.background.empty();
+	const std::vector<RectF> rects =
+		slotRects(*shape, canvas.w, canvas.h, framed ? frameGap(canvas.w, canvas.h) : 0);
 
 	// Slots are stacked in order, so a later slot (the small picture) sits above an earlier one.
 	for (size_t i = 0; i < rects.size() && i < layout.sources.size(); ++i) {
@@ -80,6 +122,12 @@ bool fitLayout(const Layout &layout)
 		placeItem(item, placement.box, placement.crop);
 		obs_sceneitem_set_visible(item, true);
 		obs_sceneitem_set_order(item, OBS_ORDER_MOVE_TOP);
+	}
+
+	if (framed) {
+		// Bottom of the stack, back to front: the background picture, then the frames, then the slots above.
+		placeFullCanvas(scene, layout.frameUuid, canvas, false);
+		placeFullCanvas(scene, layout.backgroundUuid, canvas, true);
 	}
 
 	StaleCollector stale{&layout, {}};
@@ -113,6 +161,16 @@ LayoutBuildResult buildLayoutScene(const Layout &input)
 	}
 	layout.sceneUuid = str(obs_source_get_uuid(sceneSource));
 	layout.sceneName = str(obs_source_get_name(sceneSource));
+
+	obs_scene_t *scene = obs_scene_from_source(sceneSource);
+	if (scene && !layout.background.empty()) {
+		layout.backgroundUuid = ensureImage(scene, layout.backgroundUuid, "Laycue background · " + layout.name,
+						    layout.background);
+		layout.frameUuid = layout.framePath.empty()
+					   ? std::string()
+					   : ensureImage(scene, layout.frameUuid, "Laycue frames · " + layout.name,
+							 layout.framePath);
+	}
 
 	result.ok = fitLayout(layout);
 	if (!result.ok)

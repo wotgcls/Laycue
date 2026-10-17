@@ -9,6 +9,7 @@
 
 class QAbstractButton;
 class QGridLayout;
+class QLabel;
 class QLineEdit;
 class QVBoxLayout;
 
@@ -43,6 +44,8 @@ private:
 	void rebuildSlotRows();
 	void chooseFor(int slot, QAbstractButton *button);
 	void updateCreate();
+	void chooseBackground();
+	void showBackground();
 	void create();
 
 	App &app_;
@@ -54,6 +57,11 @@ private:
 	QLabel *shapeLabel_ = nullptr;
 	QAbstractButton *createButton_ = nullptr;
 	QLabel *errorLabel_ = nullptr;
+	QAbstractButton *backgroundButton_ = nullptr;
+	QAbstractButton *backgroundRemove_ = nullptr;
+	QLabel *backgroundLabel_ = nullptr;
+	std::string background_; // the chosen picture, or empty
+	bool silver_ = false;    // the metal picked for it
 	bool nameEdited_ = false;
 	bool settingName_ = false;
 	std::vector<Choice> available_;

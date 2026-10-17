@@ -1,11 +1,14 @@
 #include "ui/pages/new-layout-page.hpp"
 
+#include "core/frame-style.hpp"
 #include "core/layouts.hpp"
+#include "features/layout-frame.hpp"
 #include "features/app.hpp"
 #include "obs/layout-scene.hpp"
 #include "obs/overlay-items.hpp"
 #include "obs/pixel-reader.hpp"
 #include "obs/scene-reader.hpp"
+#include "obs/scene-util.hpp"
 #include "ui/controls.hpp"
 #include "ui/labels.hpp"
 #include "ui/pages/helpers.hpp"
@@ -13,12 +16,16 @@
 #include "ui/tokens.hpp"
 
 #include <QAbstractButton>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QGridLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QPainter>
 #include <QPainterPath>
+
+#include <obs-module.h>
 
 #include <algorithm>
 
@@ -106,6 +113,26 @@ NewLayoutPage::NewLayoutPage(App &app, int initialTemplate, QWidget *parent)
 	fitSeg_->setCurrent(1); // show everything: nothing gets cropped unless the operator asks for it
 	c->addWidget(fitSeg_);
 	c->addWidget(innerLabel(card, lt("Laycue.Layout.FitHint"), 11, 400, color::textTertiary));
+	c->addWidget(innerLabel(card, lt("Laycue.Layout.Background"), 12, 600, color::textSecondary));
+	auto *backgroundRow = new QWidget(card);
+	auto *backgroundLayout = new QHBoxLayout(backgroundRow);
+	backgroundLayout->setContentsMargins(0, 0, 0, 0);
+	backgroundLayout->setSpacing(size::gapSmall);
+	backgroundButton_ = button(backgroundRow, lt("Laycue.Layout.BackgroundChoose"), "laycueSecondary");
+	connect(backgroundButton_, &QAbstractButton::clicked, this, &NewLayoutPage::chooseBackground);
+	backgroundLayout->addWidget(backgroundButton_);
+	backgroundRemove_ = button(backgroundRow, lt("Laycue.Layout.BackgroundRemove"), "laycueLink");
+	connect(backgroundRemove_, &QAbstractButton::clicked, this, [this]() {
+		background_.clear();
+		showBackground();
+	});
+	backgroundLayout->addWidget(backgroundRemove_);
+	backgroundLayout->addStretch(1);
+	c->addWidget(backgroundRow);
+	backgroundLabel_ = innerLabel(card, QString(), 11, 400, color::textTertiary);
+	backgroundLabel_->setWordWrap(true);
+	c->addWidget(backgroundLabel_);
+	showBackground();
 	c->addWidget(innerLabel(card, lt("Laycue.Add.Name"), 12, 600, color::textSecondary));
 	nameEdit_ = new QLineEdit(card);
 	nameEdit_->setAccessibleName(lt("Laycue.Add.Name"));
@@ -211,6 +238,37 @@ void NewLayoutPage::updateCreate()
 	createButton_->setEnabled(any && !nameEdit_->text().trimmed().isEmpty());
 }
 
+void NewLayoutPage::showBackground()
+{
+	const bool has = !background_.empty();
+	backgroundRemove_->setVisible(has);
+	if (!has) {
+		backgroundLabel_->setText(lt("Laycue.Layout.BackgroundHint"));
+		return;
+	}
+	const QString file = QFileInfo(QString::fromStdString(background_)).fileName();
+	backgroundLabel_->setText(lt(silver_ ? "Laycue.Layout.FrameSilver" : "Laycue.Layout.FrameGold").arg(file));
+}
+
+void NewLayoutPage::chooseBackground()
+{
+	const QString file = QFileDialog::getOpenFileName(this, lt("Laycue.Layout.BackgroundChoose"), QString(),
+							  lt("Laycue.Layout.PictureFiles"));
+	if (file.isEmpty())
+		return;
+	const RgbaImage picture = loadImageFile(file.toStdString());
+	if (picture.empty()) {
+		errorLabel_->setText(lt("Laycue.Layout.BackgroundFailed"));
+		errorLabel_->show();
+		return;
+	}
+	errorLabel_->hide();
+	// Gold or silver, whichever stands out on this picture.
+	silver_ = chooseMetal(averageColor(picture.pixels, picture.width, picture.height)) == Metal::Silver;
+	background_ = file.toStdString();
+	showBackground();
+}
+
 void NewLayoutPage::create()
 {
 	const QString name = nameEdit_->text().trimmed();
@@ -225,6 +283,25 @@ void NewLayoutPage::create()
 	layout.fit = fitSeg_->current() == 0 ? FitMode::Fill : FitMode::Whole;
 	for (const Choice &c : chosen_)
 		layout.sources.push_back({c.uuid, c.name});
+
+	if (!background_.empty()) {
+		// The background picture, and a frame picture Laycue draws around every slot in gold or silver.
+		const Canvas canvas = readCanvas();
+		const Metal metal = silver_ ? Metal::Silver : Metal::Gold;
+		char *base = obs_module_config_path(("frames/" + layout.id + ".png").c_str());
+		const std::string framePath = base ? base : "";
+		bfree(base);
+		const std::vector<RectF> rects = slotRects(shape, canvas.w, canvas.h, frameGap(canvas.w, canvas.h));
+		if (!renderFramePicture(framePath, int(canvas.w), int(canvas.h), rects,
+					frameThickness(canvas.w, canvas.h), metal)) {
+			errorLabel_->setText(lt("Laycue.Layout.Failed"));
+			errorLabel_->show();
+			return;
+		}
+		layout.background = background_;
+		layout.framePath = framePath;
+		layout.metal = silver_ ? "silver" : "gold";
+	}
 
 	const LayoutBuildResult result = buildLayoutScene(layout);
 	if (!result.ok) {
