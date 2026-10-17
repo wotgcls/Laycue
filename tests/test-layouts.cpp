@@ -4,6 +4,9 @@
 
 using laycue::RectF;
 
+#include <cmath>
+#define CHECK_NEAR(a, b, e) CHECK(std::fabs((a) - (b)) < (e))
+
 TEST_CASE("layouts: every template has slots and a known id")
 {
 	CHECK(!laycue::layoutTemplates().empty());
@@ -56,4 +59,36 @@ TEST_CASE("layouts: a huge gap is limited and an empty canvas gives nothing")
 	for (const RectF &r : rects)
 		CHECK(r.w > 0 && r.h > 0);
 	CHECK(laycue::slotRects(*layout, 0, 0, 10).empty());
+}
+
+TEST_CASE("layouts: a two-part split can give the first part more or less room")
+{
+	using namespace laycue;
+	const LayoutTemplate *side = findTemplate("side-by-side");
+	const LayoutTemplate *big = findTemplate("main-and-side");
+	const LayoutTemplate *stacked = findTemplate("stacked");
+	CHECK(side && big && stacked);
+	CHECK(hasSplit(*side) && hasSplit(*big) && hasSplit(*stacked));
+	CHECK(!hasSplit(*findTemplate("four-grid")) && !hasSplit(*findTemplate("full")) &&
+	      !hasSplit(*findTemplate("picture-in-picture")));
+	CHECK_EQ(defaultSplit(*side), 50);
+	CHECK_EQ(defaultSplit(*big), 67);
+
+	const LayoutTemplate wide = withSplit(*side, 70);
+	CHECK_NEAR(wide.shapes[0].w, 0.7, 1e-9);
+	CHECK_NEAR(wide.shapes[1].x, 0.7, 1e-9);
+	CHECK_NEAR(wide.shapes[1].w, 0.3, 1e-9);
+	const std::vector<RectF> rects = slotRects(wide, 1920, 1080, 0);
+	CHECK_NEAR(rects[0].w, 1344, 1e-6);
+	CHECK_NEAR(rects[1].x, 1344, 1e-6);
+	CHECK_NEAR(rects[0].w + rects[1].w, 1920, 1e-6); // nothing lost or doubled
+
+	const LayoutTemplate tall = withSplit(*stacked, 30);
+	CHECK_NEAR(tall.shapes[0].h, 0.3, 1e-9);
+	CHECK_NEAR(tall.shapes[1].y, 0.3, 1e-9);
+
+	CHECK_NEAR(withSplit(*side, 5).shapes[0].w, kMinSplit / 100.0, 1e-9);         // clamped
+	CHECK_NEAR(withSplit(*side, 99).shapes[0].w, kMaxSplit / 100.0, 1e-9);        // clamped
+	CHECK_NEAR(withSplit(*side, 0).shapes[0].w, 0.5, 1e-9);                       // 0 = the template's own
+	CHECK_NEAR(withSplit(*findTemplate("four-grid"), 70).shapes[0].w, 0.5, 1e-9); // can't be split: unchanged
 }

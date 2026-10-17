@@ -99,8 +99,9 @@ bool fitLayout(const Layout &layout)
 	const std::string ownUuid = str(obs_source_get_uuid(sceneSource));
 	const Canvas canvas = readCanvas();
 	const bool framed = !layout.background.empty();
+	const LayoutTemplate adjusted = withSplit(*shape, layout.split);
 	const std::vector<RectF> rects =
-		slotRects(*shape, canvas.w, canvas.h, framed ? frameGap(canvas.w, canvas.h) : 0);
+		slotRects(adjusted, canvas.w, canvas.h, framed ? frameGap(canvas.w, canvas.h) : 0);
 
 	// Slots are stacked in order, so a later slot (the small picture) sits above an earlier one.
 	for (size_t i = 0; i < rects.size() && i < layout.sources.size(); ++i) {

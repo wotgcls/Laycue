@@ -2,6 +2,7 @@
 // each part, name it. Laycue builds a scene of its own for it; nothing else in OBS is touched.
 #pragma once
 
+#include "core/config.hpp"
 #include "ui/pages/page-frame.hpp"
 
 #include <string>
@@ -27,7 +28,9 @@ class NewLayoutPage : public PageFrame {
 
 public:
 	// `initialTemplate` is the shape already picked on the Layouts tab (-1: show the shapes to choose from).
-	explicit NewLayoutPage(App &app, int initialTemplate = -1, QWidget *parent = nullptr);
+	// `existing` opens a layout that was made before, to change it (same scene, same name unless edited).
+	explicit NewLayoutPage(App &app, int initialTemplate = -1, const Layout *existing = nullptr,
+			       QWidget *parent = nullptr);
 
 signals:
 	// The layout was made; `sceneUuid` is its scene.
@@ -44,6 +47,8 @@ private:
 	void rebuildSlotRows();
 	void chooseFor(int slot, QAbstractButton *button);
 	void updateCreate();
+	void moveSlot(int from, int to);
+	void showSplit();
 	void chooseBackground();
 	void showBackground();
 	void create();
@@ -60,6 +65,12 @@ private:
 	QAbstractButton *backgroundButton_ = nullptr;
 	QAbstractButton *backgroundRemove_ = nullptr;
 	QLabel *backgroundLabel_ = nullptr;
+	QWidget *splitBox_ = nullptr;
+	QLabel *splitValue_ = nullptr;
+	int split_ = 0;     // first part's share in percent for a two-part split
+	int splitFor_ = -1; // the template split_ belongs to
+	bool editing_ = false;
+	Layout existing_;        // the layout being changed, when editing_
 	std::string background_; // the chosen picture, or empty
 	bool silver_ = false;    // the metal picked for it
 	bool nameEdited_ = false;

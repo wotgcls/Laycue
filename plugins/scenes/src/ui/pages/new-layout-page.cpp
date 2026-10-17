@@ -33,10 +33,20 @@ namespace laycue::ui {
 
 using namespace page;
 
-NewLayoutPage::NewLayoutPage(App &app, int initialTemplate, QWidget *parent)
-	: PageFrame(lt("Laycue.Layouts.Title"), lt("Laycue.Layout.NewTitle"), parent),
+NewLayoutPage::NewLayoutPage(App &app, int initialTemplate, const Layout *existing, QWidget *parent)
+	: PageFrame(lt("Laycue.Layouts.Title"), lt(existing ? "Laycue.Layout.EditTitle" : "Laycue.Layout.NewTitle"),
+		    parent),
 	  app_(app)
 {
+	if (existing) {
+		editing_ = true;
+		existing_ = *existing;
+		const auto &all = layoutTemplates();
+		for (size_t i = 0; i < all.size(); ++i) {
+			if (existing->templateId == all[i].id)
+				initialTemplate = int(i);
+		}
+	}
 	const bool shapeChosen = initialTemplate >= 0 && initialTemplate < int(layoutTemplates().size());
 	if (shapeChosen)
 		template_ = initialTemplate;
@@ -102,6 +112,32 @@ NewLayoutPage::NewLayoutPage(App &app, int initialTemplate, QWidget *parent)
 	slotsLayout->setSpacing(size::gapSmall);
 	body()->addWidget(slotsHost_);
 
+	// For a two-part split: how much room the first part gets.
+	splitBox_ = new QWidget(this);
+	auto *splitLayout = new QHBoxLayout(splitBox_);
+	splitLayout->setContentsMargins(size::shadowMargin, 0, size::shadowMargin, 0);
+	splitLayout->setSpacing(size::gapSmall);
+	splitLayout->addWidget(innerLabel(splitBox_, lt("Laycue.Layout.Split"), 13, 600, color::cream), 1);
+	auto *less = button(splitBox_, QStringLiteral("\u2212"), "laycueSecondary");
+	less->setAccessibleName(lt("Laycue.Layout.SplitLess"));
+	connect(less, &QAbstractButton::clicked, this, [this]() {
+		split_ = std::max(kMinSplit, split_ - kSplitStep);
+		showSplit();
+	});
+	splitLayout->addWidget(less);
+	splitValue_ = innerLabel(splitBox_, QString(), 13, 700, color::cream);
+	splitValue_->setAlignment(Qt::AlignCenter);
+	splitValue_->setMinimumWidth(80);
+	splitLayout->addWidget(splitValue_);
+	auto *more = button(splitBox_, QStringLiteral("+"), "laycueSecondary");
+	more->setAccessibleName(lt("Laycue.Layout.SplitMore"));
+	connect(more, &QAbstractButton::clicked, this, [this]() {
+		split_ = std::min(kMaxSplit, split_ + kSplitStep);
+		showSplit();
+	});
+	splitLayout->addWidget(more);
+	body()->addWidget(splitBox_);
+
 	// 3. How it fits and what it's called.
 	auto *card = new Surface(1, this);
 	auto *c = new QVBoxLayout(card);
@@ -158,6 +194,22 @@ NewLayoutPage::NewLayoutPage(App &app, int initialTemplate, QWidget *parent)
 	row->addWidget(createButton_, 1);
 	setFooter(footer);
 
+	if (editing_) {
+		splitFor_ = template_;
+		split_ = existing_.split > 0 ? existing_.split : defaultSplit(layoutTemplates()[template_]);
+		chosen_.resize(layoutTemplates()[template_].shapes.size());
+		for (size_t i = 0; i < chosen_.size() && i < existing_.sources.size(); ++i)
+			chosen_[i] = {existing_.sources[i].uuid, existing_.sources[i].name, QString()};
+		fitSeg_->setCurrent(existing_.fit == FitMode::Whole ? 1 : 0);
+		nameEdited_ = true;
+		settingName_ = true;
+		nameEdit_->setText(QString::fromStdString(existing_.name));
+		settingName_ = false;
+		background_ = existing_.background;
+		silver_ = existing_.metal == "silver";
+		showBackground();
+		createButton_->setText(lt("Laycue.Layout.SaveChanges"));
+	}
 	selectTemplate(template_);
 }
 
@@ -167,6 +219,10 @@ void NewLayoutPage::selectTemplate(int index)
 	if (index < 0 || index >= int(all.size()))
 		return;
 	template_ = index;
+	if (splitFor_ != index) {
+		split_ = defaultSplit(all[index]); // a new shape starts with its own proportion
+		splitFor_ = index;
+	}
 	if (shapeLabel_)
 		shapeLabel_->setText(lt("Laycue.Layout.ShapeIs").arg(lt(all[index].nameKey)));
 	for (size_t i = 0; i < cards_.size(); ++i)
@@ -177,6 +233,25 @@ void NewLayoutPage::selectTemplate(int index)
 		nameEdit_->setText(lt(all[index].nameKey));
 		settingName_ = false;
 	}
+	rebuildSlotRows();
+	showSplit();
+	updateCreate();
+}
+
+void NewLayoutPage::showSplit()
+{
+	const LayoutTemplate &shape = layoutTemplates()[template_];
+	splitBox_->setVisible(hasSplit(shape));
+	if (!hasSplit(shape))
+		return;
+	splitValue_->setText(lt("Laycue.Layout.SplitValue").arg(split_).arg(100 - split_));
+}
+
+void NewLayoutPage::moveSlot(int from, int to)
+{
+	if (from < 0 || to < 0 || from >= int(chosen_.size()) || to >= int(chosen_.size()))
+		return;
+	std::swap(chosen_[from], chosen_[to]); // the sources trade places; the parts keep their shape
 	rebuildSlotRows();
 	updateCreate();
 }
@@ -198,6 +273,18 @@ void NewLayoutPage::rebuildSlotRows()
 		pick->setToolTip(lt("Laycue.Layout.ChooseTip"));
 		connect(pick, &QAbstractButton::clicked, this, [this, i, pick]() { chooseFor(int(i), pick); });
 		h->addWidget(pick, 3);
+		if (shape.shapes.size() > 1) {
+			auto *up = button(row, QStringLiteral("\u2191"), "laycueSecondary");
+			up->setAccessibleName(lt("Laycue.Layout.MoveUp"));
+			up->setEnabled(i > 0);
+			connect(up, &QAbstractButton::clicked, this, [this, i]() { moveSlot(int(i), int(i) - 1); });
+			h->addWidget(up);
+			auto *down = button(row, QStringLiteral("\u2193"), "laycueSecondary");
+			down->setAccessibleName(lt("Laycue.Layout.MoveDown"));
+			down->setEnabled(i + 1 < shape.shapes.size());
+			connect(down, &QAbstractButton::clicked, this, [this, i]() { moveSlot(int(i), int(i) + 1); });
+			h->addWidget(down);
+		}
 		layout->addWidget(row);
 	}
 }
@@ -277,8 +364,15 @@ void NewLayoutPage::create()
 	const LayoutTemplate &shape = layoutTemplates()[template_];
 
 	Layout layout;
-	layout.id = newLayoutId(app_.config());
+	layout.id = editing_ ? existing_.id : newLayoutId(app_.config());
 	layout.name = name.toStdString();
+	if (editing_) { // the same scene and pictures, changed in place
+		layout.sceneUuid = existing_.sceneUuid;
+		layout.sceneName = existing_.sceneName;
+		layout.backgroundUuid = existing_.backgroundUuid;
+		layout.frameUuid = existing_.frameUuid;
+	}
+	layout.split = hasSplit(shape) && split_ != defaultSplit(shape) ? split_ : 0;
 	layout.templateId = shape.id;
 	layout.fit = fitSeg_->current() == 0 ? FitMode::Fill : FitMode::Whole;
 	for (const Choice &c : chosen_)
@@ -291,7 +385,8 @@ void NewLayoutPage::create()
 		char *base = obs_module_config_path(("frames/" + layout.id + ".png").c_str());
 		const std::string framePath = base ? base : "";
 		bfree(base);
-		const std::vector<RectF> rects = slotRects(shape, canvas.w, canvas.h, frameGap(canvas.w, canvas.h));
+		const std::vector<RectF> rects =
+			slotRects(withSplit(shape, layout.split), canvas.w, canvas.h, frameGap(canvas.w, canvas.h));
 		if (!renderFramePicture(framePath, int(canvas.w), int(canvas.h), rects,
 					frameThickness(canvas.w, canvas.h), metal)) {
 			errorLabel_->setText(lt("Laycue.Layout.Failed"));
@@ -301,7 +396,12 @@ void NewLayoutPage::create()
 		layout.background = background_;
 		layout.framePath = framePath;
 		layout.metal = silver_ ? "silver" : "gold";
+	} else {
+		layout.backgroundUuid.clear(); // the background and frames come out of the scene
+		layout.frameUuid.clear();
 	}
+	if (editing_ && layout.name != existing_.name)
+		renameLayoutScene(existing_, layout.name);
 
 	const LayoutBuildResult result = buildLayoutScene(layout);
 	if (!result.ok) {
@@ -309,7 +409,15 @@ void NewLayoutPage::create()
 		errorLabel_->show();
 		return;
 	}
-	app_.modify([&](Config &config) { config.layouts.push_back(result.layout); });
+	app_.modify([&](Config &config) {
+		for (Layout &l : config.layouts) {
+			if (editing_ && l.id == result.layout.id) {
+				l = result.layout;
+				return;
+			}
+		}
+		config.layouts.push_back(result.layout);
+	});
 	emit created(result.layout.sceneUuid, name);
 	emit backRequested();
 }

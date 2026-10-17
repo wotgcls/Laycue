@@ -123,3 +123,13 @@ holds the one list of them (the Overlays tab):
 ## Layout backgrounds
 
 When you make a layout (Scenes → Layouts), **Background picture** is optional. With one, the picture fills the canvas behind the layout, each part gets a space around it, and Laycue draws a **gold or silver frame** around every part. It picks the metal from the picture's average colour: gold on blues, purples, greens and light pictures; silver on warm yellow and orange ones (where gold would disappear) and on dark grey ones. The frame is always metal, whatever the picture looks like. The code is `core/frame-style.*` (the choice, tested) and `features/layout-frame.*` (the drawing).
+
+## Changing a layout
+
+- **Swap or reorder:** the ↑ and ↓ beside each part move its source up or down, trading places with the next part. The parts keep their shape; the sources move.
+- **Room for each part:** for two-part splits (Side by side, Big and small, Top and bottom), **−** and **+** change how much room the first part gets, from 20% to 80% in 5% steps.
+- **Edit a layout you already made:** right-click its card under **Your layouts** and choose **Edit layout…**. Laycue changes the same scene in place. Frames are redrawn to the new sizes.
+
+## Panel switcher
+
+The names at the top of every Laycue panel (Clock, Network, Scenes, Titles) swap the panel in place: the one you pick takes this panel's spot and this one closes, so no new window or tab appears. A panel that is already open (for example one you dragged out) just comes forward.

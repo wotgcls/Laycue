@@ -1,6 +1,7 @@
 // A slim row of names (Clock, Network, Scenes, Titles) at the top of every Laycue panel. Clicking one shows that
-// panel in the same place as this one (as a tab beside it), so you can move between them without opening more panels.
-// A panel you have dragged out into its own window stays where it is and is just brought to the front.
+// panel in the same place as this one, so you can move between them without opening more panels.
+// The other panel takes this panel's place (docked or floating, as this one is), so nothing new opens. A panel
+// that is already open, for instance one you dragged out into its own window, stays where it is and comes forward.
 #pragma once
 
 #include <QRect>

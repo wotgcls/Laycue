@@ -1160,9 +1160,9 @@ void LaycueDock::openAddPushback()
 	openPage(page);
 }
 
-void LaycueDock::openNewLayout(int shape)
+void LaycueDock::openNewLayout(int shape, const Layout *existing)
 {
-	auto *page = new ui::NewLayoutPage(app_, shape);
+	auto *page = new ui::NewLayoutPage(app_, shape, existing);
 	connect(page, &ui::PageFrame::backRequested, this, [this]() {
 		closePage();
 		showTab(Tab::Pushbacks);
@@ -1214,6 +1214,10 @@ void LaycueDock::layoutMenu(const std::string &layoutId, const QPoint &globalPos
 	const bool locked = app_.config().settings.locked;
 
 	QMenu menu(this);
+	if (!locked) {
+		QAction *edit = menu.addAction(text("Laycue.Layouts.Edit"));
+		connect(edit, &QAction::triggered, this, [this, layout]() { openNewLayout(-1, &layout); });
+	}
 	QAction *refit = menu.addAction(text("Laycue.Layouts.Refit"));
 	connect(refit, &QAction::triggered, this, [this, layout]() {
 		fitLayout(layout);

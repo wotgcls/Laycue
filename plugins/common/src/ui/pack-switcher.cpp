@@ -12,6 +12,8 @@
 #include <QMainWindow>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPointer>
+#include <QTimer>
 
 #include <algorithm>
 
@@ -108,10 +110,29 @@ void PackSwitcher::mousePressEvent(QMouseEvent *event)
 				qobject_cast<QMainWindow *>(static_cast<QWidget *>(obs_frontend_get_main_window()));
 			if (!target || !self || !window)
 				return;
-			if (!target->isVisible() && !self->isFloating() && !target->isFloating())
-				window->tabifyDockWidget(self, target); // sits beside this panel as a tab
+			if (target->isVisible()) {
+				// Already open somewhere (the operator put it there): just bring it forward.
+				target->raise();
+				target->activateWindow();
+				return;
+			}
+			// Not open: it takes this panel's exact place, so there is no new window and no new tab.
+			if (self->isFloating()) {
+				target->setFloating(true);
+				target->resize(self->size());
+				target->move(self->pos());
+			} else {
+				target->setFloating(false); // it may have been floating when it was last closed
+				window->tabifyDockWidget(self, target);
+			}
 			target->show();
 			target->raise();
+			QPointer<QDockWidget> leaving(self);
+			// Hidden after the click is handled; a hidden panel leaves the tab group, so no tab bar appears.
+			QTimer::singleShot(0, target, [leaving]() {
+				if (leaving)
+					leaving->hide();
+			});
 			return;
 		}
 	} catch (...) {

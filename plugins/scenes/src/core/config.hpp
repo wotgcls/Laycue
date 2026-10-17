@@ -61,6 +61,7 @@ struct Layout {
 	std::string sceneName;
 	FitMode fit = FitMode::Fill;
 	std::vector<SlotSource> sources; // one per slot of the template, in order; uuid empty = empty slot
+	int split = 0; // first part's share in percent for a two-part split; 0 = the template's own proportion
 	// An optional background picture. With one, each slot gets a gold or silver frame picked to suit it.
 	std::string background;     // path of the picture; empty = none
 	std::string framePath;      // the frame picture Laycue drew for this layout

@@ -152,6 +152,7 @@ OBSData configToData(const Config &config)
 			obs_data_set_string(item, "sceneUuid", l.sceneUuid.c_str());
 			obs_data_set_string(item, "sceneName", l.sceneName.c_str());
 			obs_data_set_string(item, "fit", l.fit == FitMode::Whole ? "whole" : "fill");
+			obs_data_set_int(item, "split", l.split);
 			obs_data_set_string(item, "background", l.background.c_str());
 			obs_data_set_string(item, "framePath", l.framePath.c_str());
 			obs_data_set_string(item, "metal", l.metal.c_str());
@@ -278,6 +279,7 @@ Config configFromData(obs_data_t *data)
 			l.sceneUuid = getString(item, "sceneUuid");
 			l.sceneName = getString(item, "sceneName");
 			l.fit = getString(item, "fit") == "whole" ? FitMode::Whole : FitMode::Fill;
+			l.split = int(obs_data_get_int(item, "split"));
 			l.background = getString(item, "background");
 			l.framePath = getString(item, "framePath");
 			l.metal = getString(item, "metal");

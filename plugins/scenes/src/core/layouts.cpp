@@ -44,6 +44,54 @@ const LayoutTemplate *findTemplate(const std::string &id)
 	return nullptr;
 }
 
+namespace {
+// Two parts that share the canvas along one axis: the second starts where the first ends.
+bool splitsHorizontally(const LayoutTemplate &t)
+{
+	return t.shapes.size() == 2 && t.shapes[0].h > 0.9999 && t.shapes[1].h > 0.9999 && t.shapes[0].x < 0.0001 &&
+	       t.shapes[0].w + t.shapes[1].w > 0.9999 && t.shapes[1].x + t.shapes[1].w > 0.9999 &&
+	       t.shapes[1].x > 0.0001;
+}
+bool splitsVertically(const LayoutTemplate &t)
+{
+	return t.shapes.size() == 2 && t.shapes[0].w > 0.9999 && t.shapes[1].w > 0.9999 && t.shapes[0].y < 0.0001 &&
+	       t.shapes[0].h + t.shapes[1].h > 0.9999 && t.shapes[1].y + t.shapes[1].h > 0.9999 &&
+	       t.shapes[1].y > 0.0001;
+}
+} // namespace
+
+bool hasSplit(const LayoutTemplate &layout)
+{
+	return splitsHorizontally(layout) || splitsVertically(layout);
+}
+
+int defaultSplit(const LayoutTemplate &layout)
+{
+	if (splitsHorizontally(layout))
+		return int(layout.shapes[0].w * 100.0 + 0.5);
+	if (splitsVertically(layout))
+		return int(layout.shapes[0].h * 100.0 + 0.5);
+	return 0;
+}
+
+LayoutTemplate withSplit(const LayoutTemplate &layout, int split)
+{
+	if (split <= 0 || !hasSplit(layout))
+		return layout;
+	const double first = std::min(kMaxSplit, std::max(kMinSplit, split)) / 100.0;
+	LayoutTemplate out = layout;
+	if (splitsHorizontally(layout)) {
+		out.shapes[0].w = first;
+		out.shapes[1].x = first;
+		out.shapes[1].w = 1.0 - first;
+	} else {
+		out.shapes[0].h = first;
+		out.shapes[1].y = first;
+		out.shapes[1].h = 1.0 - first;
+	}
+	return out;
+}
+
 std::vector<RectF> slotRects(const LayoutTemplate &layout, double canvasWidth, double canvasHeight, double gap)
 {
 	std::vector<RectF> rects;

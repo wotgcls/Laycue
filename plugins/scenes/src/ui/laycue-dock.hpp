@@ -88,7 +88,7 @@ private:
 	void stepCamera(int direction);
 	void pushbackMenu(const std::string &pushbackId, const QPoint &globalPos);
 	void openAddPushback();
-	void openNewLayout(int shape = -1);
+	void openNewLayout(int shape = -1, const Layout *existing = nullptr);
 	void layoutMenu(const std::string &layoutId, const QPoint &globalPos);
 	void repairLayouts();
 	void updateGuide();
