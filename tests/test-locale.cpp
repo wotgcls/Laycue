@@ -7,7 +7,7 @@
 // (KEY="") is one of those, and everything after it then shows as a bare key. So no language file may have one.
 TEST_CASE("locale: no language file has an empty value or a line without an equals sign")
 {
-	for (const char *plugin : {"scenes", "titles", "network", "clock"}) {
+	for (const char *plugin : {"scenes", "titles", "network", "clock", "scripture", "lyrics"}) {
 		const std::string path = std::string(LAYCUE_PLUGINS_DIR) + "/" + plugin + "/data/locale/en-US.ini";
 		std::ifstream in(path);
 		CHECK(bool(in));

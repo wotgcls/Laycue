@@ -12,6 +12,8 @@ set(TITLES_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/titles/src")
 set(NETWORK_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/network/src")
 set(CLOCK_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/clock/src")
 set(COMMON_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/common/src")
+set(SCRIPTURE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/scripture/src")
+set(LYRICS_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../plugins/lyrics/src")
 
 add_executable(
   laycue-tests
@@ -29,6 +31,8 @@ add_executable(
   test-network.cpp
   test-update.cpp
   test-clock.cpp
+  test-scripture.cpp
+  test-lyrics.cpp
   "${LAYCUE_SRC}/core/cue-state.cpp"
   "${LAYCUE_SRC}/core/detect.cpp"
   "${LAYCUE_SRC}/core/geometry.cpp"
@@ -38,6 +42,11 @@ add_executable(
   "${LAYCUE_SRC}/core/frame-style.cpp"
   "${LAYCUE_SRC}/core/layouts.cpp"
   "${COMMON_SRC}/core/update-info.cpp"
+  "${COMMON_SRC}/core/xml-lite.cpp"
+  "${SCRIPTURE_SRC}/core/books.cpp"
+  "${SCRIPTURE_SRC}/core/reference.cpp"
+  "${SCRIPTURE_SRC}/core/bible.cpp"
+  "${LYRICS_SRC}/core/song.cpp"
   "${CLOCK_SRC}/core/clock-core.cpp"
   "${NETWORK_SRC}/core/stats.cpp"
   "${NETWORK_SRC}/core/speed-analysis.cpp"
@@ -57,7 +66,15 @@ add_executable(
 
 target_include_directories(
   laycue-tests
-  PRIVATE "${LAYCUE_SRC}" "${TITLES_SRC}" "${NETWORK_SRC}" "${COMMON_SRC}" "${CLOCK_SRC}" "${CMAKE_CURRENT_SOURCE_DIR}"
+  PRIVATE
+    "${LAYCUE_SRC}"
+    "${TITLES_SRC}"
+    "${NETWORK_SRC}"
+    "${COMMON_SRC}"
+    "${CLOCK_SRC}"
+    "${SCRIPTURE_SRC}"
+    "${LYRICS_SRC}"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
 target_compile_definitions(laycue-tests PRIVATE LAYCUE_PLUGINS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../plugins")

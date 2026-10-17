@@ -1,0 +1,11 @@
+laycue_add_plugin(
+  laycue-lyrics
+  SOURCES
+    src/plugin-main.cpp
+    src/core/song.cpp
+    src/core/song.hpp
+    src/store/lyrics-io.cpp
+    src/store/lyrics-io.hpp
+    src/ui/lyrics-dock.cpp
+    src/ui/lyrics-dock.hpp
+)

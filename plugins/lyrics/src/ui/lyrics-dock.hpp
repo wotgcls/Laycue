@@ -1,0 +1,89 @@
+// The Laycue Lyrics panel: type a song's name, pick it, and its lines go on screen two at a time. Songs can be
+// written, pasted, edited and imported (OpenLyrics XML or text).
+#pragma once
+
+#include "core/song.hpp"
+#include "store/lyrics-io.hpp"
+
+#include <QTimer>
+#include <QWidget>
+
+#include <string>
+#include <vector>
+
+class QLabel;
+class QLineEdit;
+class QPlainTextEdit;
+class QStackedWidget;
+class QVBoxLayout;
+
+namespace laycue::ui {
+class ActionButton;
+class Segmented;
+} // namespace laycue::ui
+
+namespace laycue::lyrics {
+
+class LyricsDock : public QWidget {
+	Q_OBJECT
+
+public:
+	explicit LyricsDock(QWidget *parent = nullptr);
+	~LyricsDock() override;
+
+	void runHotkey(int index); // 0 show/hide, 1 next, 2 previous
+
+protected:
+	bool eventFilter(QObject *watched, QEvent *event) override;
+
+private:
+	QWidget *buildMain();
+	QWidget *buildEditor();
+	void searched();
+	void openSong(size_t index);
+	void showSlide(int index);
+	void toggleShown();
+	void step(int direction);
+	void push();
+	void rebuildResults();
+	void rebuildSlides();
+	void updateStatus();
+	void edit(bool newSong);
+	void saveEdit();
+	void deleteSong();
+	void importSong();
+	void chooseBackground();
+	void toast(const QString &text);
+	int songIndex() const; // the open song in songs_, or -1
+
+	std::vector<Song> songs_;
+	LyricsSettings settings_;
+	std::string songId_; // the open song
+	std::vector<LyricSlide> slides_;
+	int slide_ = -1; // the slide on screen (or ready)
+	bool shown_ = false;
+	std::string sourceName_;
+	bool editingNew_ = false;
+
+	QStackedWidget *stack_ = nullptr;
+	QLabel *status_ = nullptr;
+	QLabel *presence_ = nullptr;
+	QLineEdit *search_ = nullptr;
+	QVBoxLayout *resultsLayout_ = nullptr;
+	QWidget *resultsBox_ = nullptr;
+	QLabel *songTitle_ = nullptr;
+	QVBoxLayout *slidesLayout_ = nullptr;
+	ui::ActionButton *showButton_ = nullptr;
+	ui::Segmented *look_ = nullptr;
+	QWidget *backgroundRow_ = nullptr;
+	QLabel *backgroundName_ = nullptr;
+	QLineEdit *editTitle_ = nullptr;
+	QLineEdit *editAuthor_ = nullptr;
+	QPlainTextEdit *editText_ = nullptr;
+	ui::ActionButton *deleteButton_ = nullptr;
+	QLabel *toast_ = nullptr;
+	QTimer toastTimer_;
+	QTimer pollTimer_;
+};
+
+} // namespace laycue::lyrics

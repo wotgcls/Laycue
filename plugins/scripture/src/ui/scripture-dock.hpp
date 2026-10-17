@@ -1,0 +1,81 @@
+// The Laycue Scripture panel: pick a version, type a reference the EasyWorship way ("jn" Space "3" Space
+// "16" Enter), and the verse goes on screen. Next and Previous walk the verses; saved scriptures come back with
+// one tap.
+#pragma once
+
+#include "core/bible.hpp"
+#include "store/scripture-io.hpp"
+
+#include <QTimer>
+#include <QWidget>
+
+#include <memory>
+#include <string>
+
+class QLabel;
+class QLineEdit;
+class QVBoxLayout;
+
+namespace laycue::ui {
+class RowButton;
+class Segmented;
+class ActionButton;
+} // namespace laycue::ui
+
+namespace laycue::scripture {
+
+class ScriptureDock : public QWidget {
+	Q_OBJECT
+
+public:
+	explicit ScriptureDock(QWidget *parent = nullptr);
+	~ScriptureDock() override;
+
+	void runHotkey(int index); // 0 show/hide, 1 next, 2 previous
+
+protected:
+	bool eventFilter(QObject *watched, QEvent *event) override;
+
+private:
+	void build();
+	void chooseVersion();
+	bool useVersion(const VersionFile &version);
+	void typed();
+	void go(); // Enter: show what is typed
+	void showVerse(const Reference &ref);
+	void toggleShown();
+	void step(int direction);
+	void push(); // writes the current verse into the layer
+	void rebuildVerses();
+	void rebuildSaved();
+	void updateStatus();
+	void chooseBackground();
+	void save();
+	void toast(const QString &text);
+
+	ScriptureSettings settings_;
+	VersionFile version_;
+	std::shared_ptr<const Bible> bible_;
+	Reference current_; // the verse on screen (or ready)
+	bool shown_ = false;
+	std::string sourceName_;
+
+	ui::RowButton *versionRow_ = nullptr;
+	QLabel *presence_ = nullptr;
+	QLabel *status_ = nullptr;
+	QLineEdit *input_ = nullptr;
+	QLabel *hint_ = nullptr;
+	QLabel *referenceLabel_ = nullptr; // "John 3:16 (KJV)" above the verses
+	QWidget *versesBox_ = nullptr;
+	QVBoxLayout *versesLayout_ = nullptr;
+	ui::ActionButton *showButton_ = nullptr;
+	ui::Segmented *look_ = nullptr;
+	QWidget *backgroundRow_ = nullptr;
+	QLabel *backgroundName_ = nullptr;
+	QVBoxLayout *savedLayout_ = nullptr;
+	QLabel *toast_ = nullptr;
+	QTimer toastTimer_;
+	QTimer pollTimer_;
+};
+
+} // namespace laycue::scripture

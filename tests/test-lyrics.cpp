@@ -1,0 +1,136 @@
+#include "check.hpp"
+
+#include "core/song.hpp"
+
+#include <fstream>
+#include <sstream>
+
+using namespace laycue::lyrics;
+
+TEST_CASE("lyrics: part names are recognised, lyrics are not")
+{
+	CHECK_EQ(sectionLabel("Verse 1"), std::string("Verse 1"));
+	CHECK_EQ(sectionLabel("[Chorus]"), std::string("Chorus"));
+	CHECK_EQ(sectionLabel("Bridge:"), std::string("Bridge"));
+	CHECK_EQ(sectionLabel("Pre-Chorus 2"), std::string("Pre-Chorus 2"));
+	CHECK_EQ(sectionLabel("V2"), std::string("Verse 2"));
+	CHECK_EQ(sectionLabel("C2"), std::string("Chorus 2"));
+	CHECK_EQ(sectionLabel("C"), std::string()); // a bare letter may be a lyric
+	CHECK_EQ(sectionLabel("Come, thou Fount"), std::string());
+	CHECK_EQ(sectionLabel("Chorus of angels sing"), std::string());
+	CHECK_EQ(sectionLabel("Verses"), std::string());
+	CHECK_EQ(sectionLabel("Bless the Lord"), std::string());
+}
+
+TEST_CASE("lyrics: plain text becomes parts, and back")
+{
+	const Song song = parseSongText(" Amazing Grace ", "John Newton",
+					"Verse 1\nAmazing grace! How sweet the sound\nThat saved a wretch like me!\n"
+					"I once was lost, but now am found;\nWas blind, but now I see.\n\n\n"
+					"[Chorus]\nLine A\nLine B\nLine C\n\nNo label here\n");
+	CHECK_EQ(song.title, std::string("Amazing Grace"));
+	CHECK_EQ(song.sections.size(), size_t(3));
+	CHECK_EQ(song.sections[0].label, std::string("Verse 1"));
+	CHECK_EQ(song.sections[0].lines.size(), size_t(4));
+	CHECK_EQ(song.sections[1].label, std::string("Chorus"));
+	CHECK_EQ(song.sections[2].label, std::string());
+	const Song again = parseSongText("Amazing Grace", "John Newton", songText(song));
+	CHECK(again.sections == song.sections);
+}
+
+TEST_CASE("lyrics: two lines at a time")
+{
+	const Song song = parseSongText("S", "", "Verse 1\na\nb\nc\nd\n\nChorus\ne\nf\ng\n");
+	const std::vector<LyricSlide> slides = slidesFor(song, 2);
+	CHECK_EQ(slides.size(), size_t(4));
+	CHECK_EQ(slides[0].text, std::string("a\nb"));
+	CHECK_EQ(slides[0].label, std::string("Verse 1"));
+	CHECK_EQ(slides[1].text, std::string("c\nd"));
+	CHECK_EQ(slides[2].text, std::string("e\nf"));
+	CHECK_EQ(slides[3].text, std::string("g")); // an odd last line gets its own slide
+	CHECK_EQ(slides[3].label, std::string("Chorus"));
+	CHECK_EQ(slidesFor(song, 4).size(), size_t(2));
+}
+
+TEST_CASE("lyrics: OpenLyrics files from OpenLP")
+{
+	Song song;
+	std::string error;
+	CHECK(parseOpenLyrics("<?xml version='1.0' encoding='UTF-8'?>"
+			      "<song xmlns=\"http://openlyrics.info/namespace/2009/song\" version=\"0.8\">"
+			      "<properties><titles><title>Holy, Holy, Holy</title></titles>"
+			      "<authors><author>Reginald Heber</author></authors></properties><lyrics>"
+			      "<verse name=\"v1\"><lines>Holy, holy, holy!<br/>Lord God Almighty!<comment>x</comment>"
+			      "</lines></verse><verse name=\"c\"><lines>Line one\nLine two</lines></verse>"
+			      "</lyrics></song>",
+			      song, error));
+	CHECK_EQ(song.title, std::string("Holy, Holy, Holy"));
+	CHECK_EQ(song.author, std::string("Reginald Heber"));
+	CHECK_EQ(song.sections.size(), size_t(2));
+	CHECK_EQ(song.sections[0].label, std::string("Verse 1"));
+	CHECK_EQ(song.sections[0].lines.size(), size_t(2));
+	CHECK_EQ(song.sections[0].lines[1], std::string("Lord God Almighty!"));
+	CHECK_EQ(song.sections[1].label, std::string("Chorus"));
+	CHECK_EQ(song.sections[1].lines.size(), size_t(2));
+	CHECK(!parseOpenLyrics("<song><properties/></song>", song, error));
+}
+
+TEST_CASE("lyrics: typing a song name finds it")
+{
+	std::vector<Song> songs;
+	for (const char *title :
+	     {"Amazing Grace", "Holy, Holy, Holy", "It Is Well with My Soul", "Rock of Ages", "Grace Alone"})
+		songs.push_back(parseSongText(title, "", "Verse 1\nfirst line of " + std::string(title) + "\n"));
+	songs[3].sections[0].lines[0] = "Cleft for me";
+	const auto names = [&](const std::string &q) {
+		std::string out;
+		for (size_t i : searchSongs(songs, q))
+			out += songs[i].title + "|";
+		return out;
+	};
+	CHECK_EQ(names("amaz"), std::string("Amazing Grace|"));
+	CHECK_EQ(names("grace"), std::string("Grace Alone|Amazing Grace|")); // starts with it first
+	CHECK_EQ(names("well"), std::string("It Is Well with My Soul|"));
+	CHECK_EQ(names("holy holy"), std::string("Holy, Holy, Holy|"));
+	CHECK_EQ(names("cleft"), std::string("Rock of Ages|")); // by its first line
+	CHECK_EQ(names("zzz"), std::string());
+	CHECK_EQ(searchSongs(songs, "", 3).size(), size_t(3));
+
+	CHECK_EQ(makeSongId("It Is Well (With My Soul)", {}), std::string("it-is-well-with-my-soul"));
+	CHECK_EQ(makeSongId("Amazing Grace", {"amazing-grace"}), std::string("amazing-grace-2"));
+}
+
+TEST_CASE("lyrics: song files with a Title and Author header")
+{
+	const Song song =
+		parseSongFile("Title: Rock of Ages\r\nAuthor: Augustus Toplady\r\n\r\nVerse 1\r\nRock of Ages, "
+			      "cleft for me,\r\nLet me hide myself in Thee;\r\n",
+			      "rock-of-ages");
+	CHECK_EQ(song.title, std::string("Rock of Ages"));
+	CHECK_EQ(song.author, std::string("Augustus Toplady"));
+	CHECK_EQ(song.sections.size(), size_t(1));
+	CHECK_EQ(song.sections[0].lines[1], std::string("Let me hide myself in Thee;"));
+	CHECK_EQ(parseSongFile("Just a line\n", "My Song").title, std::string("My Song"));
+}
+
+TEST_CASE("lyrics: every bundled hymn reads cleanly")
+{
+	for (const char *file :
+	     {"amazing-grace", "holy-holy-holy", "it-is-well-with-my-soul", "blessed-assurance",
+	      "what-a-friend-we-have-in-jesus", "rock-of-ages", "when-i-survey-the-wondrous-cross", "come-thou-fount",
+	      "to-god-be-the-glory", "nothing-but-the-blood", "all-hail-the-power", "joyful-joyful-we-adore-thee",
+	      "i-surrender-all", "doxology", "jesus-loves-me"}) {
+		std::ifstream in(std::string(LAYCUE_PLUGINS_DIR) + "/lyrics/data/songs/" + file + ".txt");
+		CHECK(in.good());
+		std::stringstream buffer;
+		buffer << in.rdbuf();
+		const Song song = parseSongFile(buffer.str(), file);
+		CHECK(!song.title.empty() && song.title != file);
+		CHECK(!song.author.empty());
+		CHECK(!song.sections.empty());
+		for (const Section &s : song.sections) {
+			CHECK(!s.label.empty()); // every part is named
+			CHECK(!s.lines.empty());
+		}
+	}
+}

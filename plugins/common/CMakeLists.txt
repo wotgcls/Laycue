@@ -7,6 +7,8 @@ target_sources(
   laycue-common
   PRIVATE
     src/core/update-info.cpp
+    src/core/xml-lite.cpp
+    src/core/xml-lite.hpp
     src/core/update-info.hpp
     src/hotkey-set.cpp
     src/hotkey-set.hpp
@@ -16,6 +18,12 @@ target_sources(
     src/obs/scene-presence.hpp
     src/ui/brand-mark.cpp
     src/ui/brand-mark.hpp
+    src/slides/slide-control.cpp
+    src/slides/slide-control.hpp
+    src/slides/slide-render.cpp
+    src/slides/slide-render.hpp
+    src/slides/slide-source.cpp
+    src/slides/slide-source.hpp
     src/ui/controls.cpp
     src/ui/controls.hpp
     src/ui/laycue-menu.cpp

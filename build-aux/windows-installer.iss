@@ -42,23 +42,27 @@ RestartApplications=no
 
 [Messages]
 WelcomeLabel2=This installs [name/ver] into OBS Studio.%n%nPlease save your work in OBS. If OBS is open, the installer will offer to close it.
-FinishedLabel=Laycue is installed.%n%nStart OBS, then open the panels from the Docks menu: Laycue Scenes, Laycue Titles, Laycue Network and Laycue Clock.
+FinishedLabel=Laycue is installed.%n%nStart OBS, then open the panels from the Docks menu: Laycue Scenes, Titles, Network, Clock, Scripture and Lyrics (or the Laycue menu).
 
 [Types]
-Name: "full"; Description: "Everything (Scenes, Titles, Network and Clock)"
+Name: "full"; Description: "Everything (Scenes, Titles, Network, Clock, Scripture and Lyrics)"
 Name: "custom"; Description: "Choose which to install"; Flags: iscustom
 
 [Components]
 Name: "scenes"; Description: "Laycue Scenes: layouts and automatic overlay rules"; Types: full custom
-Name: "titles"; Description: "Laycue Titles: 58 lower thirds, tickers and logo animations"; Types: full custom
+Name: "titles"; Description: "Laycue Titles: 68 lower thirds, tickers and logo animations"; Types: full custom
 Name: "network"; Description: "Laycue Network: bitrate advice and auto-adjust"; Types: full custom
 Name: "clock"; Description: "Laycue Clock: countdowns and timers, on video or on a background"; Types: full custom
+Name: "scripture"; Description: "Laycue Scripture: type a verse, show it (King James Version included)"; Types: full custom
+Name: "lyrics"; Description: "Laycue Lyrics: type a song name, show it two lines at a time"; Types: full custom
 
 [Files]
 Source: "{#SourceDir}\laycue-scenes\*"; DestDir: "{app}\laycue-scenes"; Excludes: "*.pdb"; Flags: recursesubdirs createallsubdirs ignoreversion; Components: scenes
 Source: "{#SourceDir}\laycue-titles\*"; DestDir: "{app}\laycue-titles"; Excludes: "*.pdb"; Flags: recursesubdirs createallsubdirs ignoreversion; Components: titles
 Source: "{#SourceDir}\laycue-network\*"; DestDir: "{app}\laycue-network"; Excludes: "*.pdb"; Flags: recursesubdirs createallsubdirs ignoreversion; Components: network
 Source: "{#SourceDir}\laycue-clock\*"; DestDir: "{app}\laycue-clock"; Excludes: "*.pdb"; Flags: recursesubdirs createallsubdirs ignoreversion; Components: clock
+Source: "{#SourceDir}\laycue-scripture\*"; DestDir: "{app}\laycue-scripture"; Excludes: "*.pdb"; Flags: recursesubdirs createallsubdirs ignoreversion; Components: scripture
+Source: "{#SourceDir}\laycue-lyrics\*"; DestDir: "{app}\laycue-lyrics"; Excludes: "*.pdb"; Flags: recursesubdirs createallsubdirs ignoreversion; Components: lyrics
 
 [InstallDelete]
 ; Earlier versions installed a single "laycue" folder; remove it so OBS does not load two copies.
@@ -69,3 +73,5 @@ Type: filesandordirs; Name: "{app}\laycue-scenes"
 Type: filesandordirs; Name: "{app}\laycue-titles"
 Type: filesandordirs; Name: "{app}\laycue-network"
 Type: filesandordirs; Name: "{app}\laycue-clock"
+Type: filesandordirs; Name: "{app}\laycue-scripture"
+Type: filesandordirs; Name: "{app}\laycue-lyrics"

@@ -1,6 +1,6 @@
 # The Laycue pack: product definition (v1.0)
 
-Three OBS plugins that are installed (and removed) separately. They share one look and feel and
+Six OBS plugins that are installed (and removed) separately. They share one look and feel and
 nothing else at run time, so any one of them can be used alone.
 
 | Plugin | Job | Folder |
@@ -9,6 +9,8 @@ nothing else at run time, so any one of them can be used alone.
 | **Laycue Titles** | Broadcast-quality lower thirds, live badges, social cards and tickers, made inside OBS | `plugins/titles` |
 | **Laycue Network** | Choose the right bitrate, watch the connection live, protect the stream | `plugins/network` |
 | **Laycue Clock** | Countdowns and timers on screen, over video or on a background | `plugins/clock` (see `clock.md`) |
+| **Laycue Scripture** | Type a verse the EasyWorship way and show it; versions from XML files | `plugins/scripture` (see `scripture.md`) |
+| **Laycue Lyrics** | Type a song's name and show it two lines at a time; write, edit, import songs | `plugins/lyrics` (see `lyrics.md`) |
 
 ## What problem each one solves (and what OBS and others already do)
 
