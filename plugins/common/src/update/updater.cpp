@@ -22,8 +22,8 @@ namespace laycue::update {
 
 namespace {
 
-// The public repository the installers are published to (the source repository stays private).
-constexpr const char *kRepo = "wotgcls/laycue-releases";
+// The public repository whose newest release holds the installers.
+constexpr const char *kRepo = "wotgcls/Laycue";
 constexpr int kMaxRedirects = 5;
 constexpr int kTimeoutMs = 20000;
 

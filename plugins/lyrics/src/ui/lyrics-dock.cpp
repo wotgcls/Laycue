@@ -14,6 +14,7 @@
 #include "ui/style.hpp"
 #include "ui/text.hpp"
 #include "ui/tokens.hpp"
+#include "ui/update-card.hpp"
 
 #include <obs-module.h>
 #include <plugin-support.h>
@@ -331,6 +332,7 @@ QWidget *LyricsDock::buildMain()
 		toast(lt("Laycue.Lyrics.ScriptureBackgroundUsed"));
 	});
 	v->addWidget(matchScripture);
+	v->addWidget(new UpdateCard(updater_, page));
 	v->addStretch(1);
 	return scroll;
 }

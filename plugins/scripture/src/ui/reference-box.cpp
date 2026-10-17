@@ -12,6 +12,7 @@
 #include <QPainterPath>
 #include <QRegularExpressionValidator>
 #include <QTimer>
+#include <QValidator>
 
 #include <algorithm>
 
@@ -38,6 +39,19 @@ QLineEdit *part(QWidget *parent, const QString &placeholder, int px)
 	return edit;
 }
 
+// The book part only takes letters that can still become a book: "gen" goes in, "genb" does not. Short forms
+// count too ("jn", "1cor"), so anything the Space key would accept is also something that can be typed.
+class BookValidator : public QValidator {
+public:
+	explicit BookValidator(QObject *parent) : QValidator(parent) {}
+	State validate(QString &input, int &) const override
+	{
+		if (input.trimmed().isEmpty())
+			return Acceptable;
+		return suggestBooks(input.toStdString(), 1).empty() ? Invalid : Acceptable;
+	}
+};
+
 QWidget *divider(QWidget *parent)
 {
 	auto *line = new QWidget(parent);
@@ -59,6 +73,7 @@ ReferenceBox::ReferenceBox(QWidget *parent) : QWidget(parent)
 	book_ = part(this, lt("Laycue.Scripture.Book"), 18);
 	chapter_ = part(this, lt("Laycue.Scripture.Chapter"), 18);
 	verse_ = part(this, lt("Laycue.Scripture.Verse"), 18);
+	book_->setValidator(new BookValidator(book_));
 	chapter_->setValidator(
 		new QRegularExpressionValidator(QRegularExpression(QStringLiteral("\\d{0,3}")), chapter_));
 	verse_->setValidator(

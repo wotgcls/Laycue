@@ -5,12 +5,17 @@
 
 #include "core/bible.hpp"
 #include "store/scripture-io.hpp"
+#include "update/updater.hpp"
 
 #include <QTimer>
 #include <QWidget>
 
 #include <memory>
 #include <string>
+
+// The plugin version string (defined in plugin-support.c). Declared here rather than including plugin-support.h,
+// which clashes with OBS's own logging declarations when included before them.
+extern "C" const char *PLUGIN_VERSION;
 
 class QLabel;
 class QLineEdit;
@@ -78,6 +83,7 @@ private:
 	QVBoxLayout *savedLayout_ = nullptr;
 	QLabel *toast_ = nullptr;
 	QTimer toastTimer_;
+	laycue::update::Updater updater_{QString::fromUtf8(PLUGIN_VERSION)}; // "Check for updates" card
 	QTimer pollTimer_;
 };
 
