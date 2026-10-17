@@ -20,8 +20,13 @@ class QVBoxLayout;
 
 namespace laycue::ui {
 class ActionButton;
+class RowButton;
 class Segmented;
 } // namespace laycue::ui
+
+namespace laycue::slides {
+class StyleEditor;
+}
 
 namespace laycue::lyrics {
 
@@ -57,7 +62,8 @@ private:
 	void importSong();
 	void searchOnline();
 	void addOnline(size_t index);
-	void chooseBackground();
+	void addFound(const OnlineSong &found);
+	void useTemplate(int index);
 	void toast(const QString &text);
 	int songIndex() const; // the open song in songs_, or -1
 
@@ -84,9 +90,9 @@ private:
 	QLabel *songTitle_ = nullptr;
 	QVBoxLayout *slidesLayout_ = nullptr;
 	ui::ActionButton *showButton_ = nullptr;
-	ui::Segmented *look_ = nullptr;
-	QWidget *backgroundRow_ = nullptr;
-	QLabel *backgroundName_ = nullptr;
+	ui::Segmented *templates_ = nullptr;
+	slides::StyleEditor *editor_ = nullptr;
+	ui::RowButton *editRow_ = nullptr;
 	QLineEdit *editTitle_ = nullptr;
 	QLineEdit *editAuthor_ = nullptr;
 	QPlainTextEdit *editText_ = nullptr;

@@ -123,6 +123,19 @@ std::string bookHint(const std::string &typed)
 	return found.empty() ? std::string() : bookByNumber(found.front())->name;
 }
 
+std::string inlineBookCompletion(const std::string &typed)
+{
+	const std::string hint = bookHint(typed);
+	const std::string t = trim(typed);
+	if (hint.size() <= t.size())
+		return std::string();
+	for (size_t i = 0; i < t.size(); ++i) {
+		if (std::tolower(static_cast<unsigned char>(hint[i])) != std::tolower(static_cast<unsigned char>(t[i])))
+			return std::string();
+	}
+	return hint;
+}
+
 std::string afterSpace(const std::string &typed)
 {
 	bool numbers = false;

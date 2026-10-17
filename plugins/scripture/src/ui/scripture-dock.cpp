@@ -2,14 +2,17 @@
 
 #include "core/books.hpp"
 #include "core/reference.hpp"
+#include "core/templates.hpp"
 #include "obs/scene-presence.hpp"
 #include "slides/slide-control.hpp"
 #include "slides/slide-render.hpp"
+#include "slides/style-editor.hpp"
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
 #include "ui/pack-switcher.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/presence-text.hpp"
+#include "ui/reference-box.hpp"
 #include "ui/style.hpp"
 #include "ui/text.hpp"
 #include "ui/tokens.hpp"
@@ -132,16 +135,10 @@ void ScriptureDock::build()
 	connect(versionRow_, &RowButton::clicked, this, &ScriptureDock::chooseVersion);
 	s->addWidget(versionRow_);
 
-	input_ = new QLineEdit(stage);
-	input_->setPlaceholderText(lt("Laycue.Scripture.TypeHint"));
-	input_->setAccessibleName(lt("Laycue.Scripture.TypeHint"));
-	QFont big = input_->font();
-	big.setPixelSize(18);
-	input_->setFont(big);
-	input_->setMinimumHeight(size::touch);
-	input_->installEventFilter(this);
-	connect(input_, &QLineEdit::textEdited, this, &ScriptureDock::typed);
-	connect(input_, &QLineEdit::returnPressed, this, &ScriptureDock::go);
+	input_ = new ReferenceBox(stage);
+	connect(input_, &ReferenceBox::edited, this, &ScriptureDock::typed);
+	connect(input_, &ReferenceBox::submitted, this, &ScriptureDock::go);
+	connect(input_, &ReferenceBox::stepped, this, &ScriptureDock::step);
 	s->addWidget(input_);
 	hint_ = innerLabel(stage, QString(), 12, 500, color::textTertiary);
 	s->addWidget(hint_);
@@ -175,30 +172,40 @@ void ScriptureDock::build()
 
 	// How it looks on screen.
 	v->addWidget(label(page, lt("Laycue.Scripture.Look"), 11, 600, color::textTertiary));
-	look_ = new Segmented(page);
-	look_->setItems({lt("Laycue.Slides.Bar"), lt("Laycue.Slides.Card"), lt("Laycue.Slides.Clean"),
-			 lt("Laycue.Slides.Full")});
-	look_->setCurrent(std::clamp(settings_.look, 0, slides::kLookCount - 1));
-	connect(look_, &Segmented::changed, this, [this](int index) {
-		settings_.look = index;
-		backgroundRow_->setVisible(index == int(slides::Look::Full));
+	templates_ = new Segmented(page);
+	QStringList names;
+	for (const ScriptureTemplate &t : scriptureTemplates())
+		names << lt(t.nameKey);
+	templates_->setItems(names);
+	templates_->setCurrent(settings_.templateIndex);
+	connect(templates_, &Segmented::changed, this, &ScriptureDock::useTemplate);
+	v->addWidget(templates_);
+	// Every template can be changed: background (colour, gradient or picture), colours and text size.
+	editRow_ = new RowButton(page);
+	editRow_->setTitle(lt("Laycue.Slides.EditLook"));
+	editRow_->setOpen(true);
+	v->addWidget(editRow_);
+	slides::StyleEditor::Options options;
+	options.accentLabel = lt("Laycue.Scripture.ReferenceColour");
+	editor_ = new slides::StyleEditor(options, page);
+	editor_->setStyle(settings_.styles[size_t(settings_.templateIndex)]);
+	connect(editor_, &slides::StyleEditor::changed, this, [this](const slides::SlideStyle &style) {
+		settings_.styles[size_t(settings_.templateIndex)] = style;
 		save();
 		push();
 	});
-	v->addWidget(look_);
-	backgroundRow_ = new QWidget(page);
-	auto *bg = new QHBoxLayout(backgroundRow_);
-	bg->setContentsMargins(0, 0, 0, 0);
-	bg->setSpacing(size::gapSmall);
-	auto *chooseBg = button(backgroundRow_, lt("Laycue.Slides.ChooseBackground"), "laycueSecondary");
-	connect(chooseBg, &QAbstractButton::clicked, this, &ScriptureDock::chooseBackground);
-	bg->addWidget(chooseBg);
-	backgroundName_ = innerLabel(backgroundRow_, QString(), 11, 400, color::textTertiary);
-	bg->addWidget(backgroundName_, 1);
-	backgroundRow_->setVisible(settings_.look == int(slides::Look::Full));
-	backgroundName_->setText(settings_.background.empty() ? lt("Laycue.Slides.NoBackground")
-							      : QFileInfo(qs(settings_.background)).fileName());
-	v->addWidget(backgroundRow_);
+	connect(editor_, &slides::StyleEditor::resetRequested, this, [this]() {
+		settings_.styles[size_t(settings_.templateIndex)] =
+			scriptureTemplates()[size_t(settings_.templateIndex)].style;
+		editor_->setStyle(settings_.styles[size_t(settings_.templateIndex)]);
+		save();
+		push();
+	});
+	connect(editRow_, &RowButton::clicked, this, [this]() {
+		editor_->setVisible(!editor_->isVisible());
+		editRow_->setOpen(editor_->isVisible());
+	});
+	v->addWidget(editor_);
 
 	// Saved scriptures: the ones read every week.
 	auto *savedHeader = new QHBoxLayout();
@@ -231,34 +238,12 @@ void ScriptureDock::build()
 
 // ---- Typing ------------------------------------------------------------------------------------------------
 
-bool ScriptureDock::eventFilter(QObject *watched, QEvent *event)
-{
-	if (watched == input_ && event->type() == QEvent::KeyPress) {
-		auto *key = static_cast<QKeyEvent *>(event);
-		if (key->key() == Qt::Key_Space && input_->cursorPosition() == input_->text().length()) {
-			// Space finishes the book's name, then puts the colon after the chapter.
-			input_->setText(qs(afterSpace(input_->text().toStdString())));
-			typed();
-			return true;
-		}
-		if (key->key() == Qt::Key_Down) {
-			step(1);
-			return true;
-		}
-		if (key->key() == Qt::Key_Up) {
-			step(-1);
-			return true;
-		}
-	}
-	return QWidget::eventFilter(watched, event);
-}
-
 void ScriptureDock::typed()
 {
 	const std::string text = input_->text().toStdString();
 	const std::string book = bookHint(text);
 	Reference ref;
-	if (!book.empty()) {
+	if (!book.empty() && !input_->text().contains(QLatin1Char(' '))) {
 		hint_->setText(lt("Laycue.Scripture.HintBook").arg(qs(book)));
 	} else if (parseReference(text, ref) && ref.valid()) {
 		hint_->setText(lt("Laycue.Scripture.HintGo").arg(qs(referenceLabel(ref))));
@@ -293,6 +278,7 @@ void ScriptureDock::showVerse(const Reference &ref)
 	const bool sameChapter = ref.book == current_.book && ref.chapter == current_.chapter;
 	current_ = ref;
 	current_.verseTo = 0;
+	input_->setReference(current_); // the box shows what is on screen
 	push();
 	if (!sameChapter)
 		rebuildVerses();
@@ -319,8 +305,7 @@ void ScriptureDock::push()
 	slides::Slide slide;
 	slide.text = bible_->verse(current_.book, current_.chapter, current_.verseFrom);
 	slide.caption = referenceLabel(current_) + " (" + bible_->abbrev + ")";
-	slide.look = settings_.look;
-	slide.background = settings_.background;
+	slide.style = settings_.styles[size_t(settings_.templateIndex)];
 	slide.shown = shown_;
 	if (shown_)
 		slides::hideOthers(kSourceId); // a verse and a song never stack
@@ -487,14 +472,12 @@ void ScriptureDock::chooseVersion()
 	menu.exec(versionRow_->mapToGlobal(QPoint(0, versionRow_->height())));
 }
 
-void ScriptureDock::chooseBackground()
+void ScriptureDock::useTemplate(int index)
 {
-	const QString file = QFileDialog::getOpenFileName(this, lt("Laycue.Slides.ChooseBackground"), QString(),
-							  lt("Laycue.Slides.PictureFiles"));
-	if (file.isEmpty())
+	if (index < 0 || index >= int(settings_.styles.size()))
 		return;
-	settings_.background = file.toStdString();
-	backgroundName_->setText(QFileInfo(file).fileName());
+	settings_.templateIndex = index;
+	editor_->setStyle(settings_.styles[size_t(index)]);
 	save();
 	push();
 }

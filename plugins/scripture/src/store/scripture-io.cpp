@@ -1,5 +1,8 @@
 #include "store/scripture-io.hpp"
 
+#include "core/templates.hpp"
+#include "slides/slide-style-io.hpp"
+
 #include <obs-module.h>
 #include <obs.hpp>
 #include <util/platform.h>
@@ -53,13 +56,20 @@ void addFolder(std::vector<VersionFile> &out, const QString &folder)
 ScriptureSettings loadSettings()
 {
 	ScriptureSettings s;
+	for (const ScriptureTemplate &t : scriptureTemplates())
+		s.styles.push_back(t.style);
 	const std::string path = configPath("scripture.json");
 	OBSDataAutoRelease data = obs_data_create_from_json_file_safe(path.c_str(), "bak");
 	if (!data)
 		return s;
 	s.version = str(obs_data_get_string(data, "version"));
-	s.look = int(obs_data_get_int(data, "look"));
-	s.background = str(obs_data_get_string(data, "background"));
+	s.templateIndex = std::clamp(int(obs_data_get_int(data, "template")), 0, int(s.styles.size()) - 1);
+	OBSDataArrayAutoRelease styles = obs_data_get_array(data, "styles");
+	const size_t count = styles ? obs_data_array_count(styles) : 0;
+	for (size_t i = 0; i < count && i < s.styles.size(); ++i) {
+		OBSDataAutoRelease item = obs_data_array_item(styles, i);
+		s.styles[i] = slides::readStyle(item);
+	}
 	s.lastTyped = str(obs_data_get_string(data, "lastTyped"));
 	OBSDataArrayAutoRelease saved = obs_data_get_array(data, "saved");
 	const size_t n = saved ? obs_data_array_count(saved) : 0;
@@ -77,8 +87,14 @@ void saveSettings(const ScriptureSettings &s)
 	OBSDataAutoRelease data = obs_data_create();
 	obs_data_set_int(data, "version_schema", 1);
 	obs_data_set_string(data, "version", s.version.c_str());
-	obs_data_set_int(data, "look", s.look);
-	obs_data_set_string(data, "background", s.background.c_str());
+	obs_data_set_int(data, "template", s.templateIndex);
+	OBSDataArrayAutoRelease styles = obs_data_array_create();
+	for (const slides::SlideStyle &style : s.styles) {
+		OBSDataAutoRelease item = obs_data_create();
+		slides::writeStyle(item, style);
+		obs_data_array_push_back(styles, item);
+	}
+	obs_data_set_array(data, "styles", styles);
 	obs_data_set_string(data, "lastTyped", s.lastTyped.c_str());
 	OBSDataArrayAutoRelease saved = obs_data_array_create();
 	for (const std::string &ref : s.saved) {

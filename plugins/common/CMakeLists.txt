@@ -24,6 +24,12 @@ target_sources(
     src/slides/slide-render.hpp
     src/slides/slide-source.cpp
     src/slides/slide-source.hpp
+    src/slides/slide-style-io.cpp
+    src/slides/slide-style-io.hpp
+    src/slides/slide-style.cpp
+    src/slides/slide-style.hpp
+    src/slides/style-editor.cpp
+    src/slides/style-editor.hpp
     src/ui/controls.cpp
     src/ui/controls.hpp
     src/ui/laycue-menu.cpp

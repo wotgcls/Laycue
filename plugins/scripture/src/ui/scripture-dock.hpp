@@ -22,7 +22,13 @@ class Segmented;
 class ActionButton;
 } // namespace laycue::ui
 
+namespace laycue::slides {
+class StyleEditor;
+}
+
 namespace laycue::scripture {
+
+class ReferenceBox;
 
 class ScriptureDock : public QWidget {
 	Q_OBJECT
@@ -32,9 +38,6 @@ public:
 	~ScriptureDock() override;
 
 	void runHotkey(int index); // 0 show/hide, 1 next, 2 previous
-
-protected:
-	bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
 	void build();
@@ -49,7 +52,7 @@ private:
 	void rebuildVerses();
 	void rebuildSaved();
 	void updateStatus();
-	void chooseBackground();
+	void useTemplate(int index);
 	void save();
 	void toast(const QString &text);
 
@@ -63,15 +66,15 @@ private:
 	ui::RowButton *versionRow_ = nullptr;
 	QLabel *presence_ = nullptr;
 	QLabel *status_ = nullptr;
-	QLineEdit *input_ = nullptr;
+	ReferenceBox *input_ = nullptr;
 	QLabel *hint_ = nullptr;
 	QLabel *referenceLabel_ = nullptr; // "John 3:16 (KJV)" above the verses
 	QWidget *versesBox_ = nullptr;
 	QVBoxLayout *versesLayout_ = nullptr;
 	ui::ActionButton *showButton_ = nullptr;
-	ui::Segmented *look_ = nullptr;
-	QWidget *backgroundRow_ = nullptr;
-	QLabel *backgroundName_ = nullptr;
+	ui::Segmented *templates_ = nullptr;
+	slides::StyleEditor *editor_ = nullptr;
+	ui::RowButton *editRow_ = nullptr;
 	QVBoxLayout *savedLayout_ = nullptr;
 	QLabel *toast_ = nullptr;
 	QTimer toastTimer_;

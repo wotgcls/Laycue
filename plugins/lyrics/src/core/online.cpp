@@ -26,16 +26,16 @@ bool hasWords(const OnlineSong &s)
 		return std::all_of(t.begin(), t.end(),
 				   [](char c) { return std::isspace(static_cast<unsigned char>(c)); });
 	};
-	return !s.instrumental && (!blank(s.plainLyrics) || !blank(s.syncedLyrics));
+	return !s.instrumental && (s.needsWords || !blank(s.plainLyrics) || !blank(s.syncedLyrics));
 }
 
 } // namespace
 
-std::string onlineSearchUrl(const std::string &query)
+std::string percentEncode(const std::string &text)
 {
 	static const char *hex = "0123456789ABCDEF";
 	std::string encoded;
-	for (unsigned char c : query) {
+	for (unsigned char c : text) {
 		if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
 			encoded += char(c);
 		} else {
@@ -44,7 +44,51 @@ std::string onlineSearchUrl(const std::string &query)
 			encoded += hex[c & 15];
 		}
 	}
-	return "https://lrclib.net/api/search?q=" + encoded;
+	return encoded;
+}
+
+std::string onlineSearchUrl(const std::string &query)
+{
+	return "https://lrclib.net/api/search?q=" + percentEncode(query);
+}
+
+std::string ovhSuggestUrl(const std::string &query)
+{
+	return "https://api.lyrics.ovh/suggest/" + percentEncode(query);
+}
+
+std::string ovhLyricsUrl(const std::string &artist, const std::string &title)
+{
+	return "https://api.lyrics.ovh/v1/" + percentEncode(artist) + "/" + percentEncode(title);
+}
+
+std::string cleanOvhLyrics(const std::string &text)
+{
+	std::string out;
+	std::istringstream in(text);
+	std::string line;
+	int blanks = 0;
+	bool first = true;
+	while (std::getline(in, line)) {
+		if (!line.empty() && line.back() == '\r')
+			line.pop_back();
+		if (first && line.rfind("Paroles de la chanson", 0) == 0) {
+			first = false;
+			continue;
+		}
+		first = false;
+		const bool blank = line.find_first_not_of(" \t") == std::string::npos;
+		if (blank) {
+			++blanks;
+			if (blanks > 1 || out.empty())
+				continue;
+			out += "\n";
+			continue;
+		}
+		blanks = 0;
+		out += line + "\n";
+	}
+	return out;
 }
 
 std::string plainFromSynced(const std::string &synced)

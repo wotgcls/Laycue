@@ -175,3 +175,20 @@ TEST_CASE("lyrics: songs found online")
 	CHECK_EQ(useful.size(), size_t(2));
 	CHECK_EQ(useful[1].artist, std::string("Another Singer"));
 }
+
+TEST_CASE("lyrics: the second online source")
+{
+	CHECK_EQ(ovhSuggestUrl("mercy chinwo"), std::string("https://api.lyrics.ovh/suggest/mercy%20chinwo"));
+	CHECK_EQ(ovhLyricsUrl("Nathaniel Bassey", "Onise Iyanu"),
+		 std::string("https://api.lyrics.ovh/v1/Nathaniel%20Bassey/Onise%20Iyanu"));
+	CHECK_EQ(cleanOvhLyrics(
+			 "Paroles de la chanson Excess Love par Mercy Chinwo\r\nLine one\r\nLine two\r\n\r\n\r\n\r\n"
+			 "Chorus line\r\n"),
+		 std::string("Line one\nLine two\n\nChorus line\n"));
+	OnlineSong listed;
+	listed.source = OnlineSource::LyricsOvh;
+	listed.needsWords = true; // no words yet: still worth showing
+	listed.title = "Excess Love";
+	listed.artist = "Mercy Chinwo";
+	CHECK_EQ(usefulResults({listed}).size(), size_t(1));
+}

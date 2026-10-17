@@ -8,6 +8,7 @@
 #include <QLinearGradient>
 #include <QPainter>
 #include <QPainterPath>
+#include <QStringList>
 
 #include <algorithm>
 
@@ -17,10 +18,22 @@ namespace {
 
 QString g_family = QStringLiteral("Outfit");
 
-const QColor kGold(0xE0, 0xA9, 0x1E);
-const QColor kGoldLight(0xFF, 0xE9, 0x9A);
-const QColor kInk(0x0C, 0x10, 0x1C);
-const QColor kNavy(0x14, 0x21, 0x3D);
+QColor rgb(uint32_t c, int alpha = 255)
+{
+	return QColor(int((c >> 16) & 0xFF), int((c >> 8) & 0xFF), int(c & 0xFF), alpha);
+}
+
+QColor lighter(const QColor &c)
+{
+	return QColor::fromHsv(c.hsvHue() < 0 ? 0 : c.hsvHue(), std::max(0, c.hsvSaturation() - 70),
+			       std::min(255, c.value() + 70));
+}
+
+// Dark text on a light accent, light text on a dark one.
+QColor onColour(const QColor &c)
+{
+	return c.lightness() > 150 ? QColor(0x10, 0x12, 0x18) : QColor(Qt::white);
+}
 
 QFont fontOf(double px, int weight)
 {
@@ -42,33 +55,77 @@ QFont fitFont(const QString &text, const QRectF &box, double maxPx, double minPx
 	return fontOf(minPx, weight);
 }
 
-// Text with a soft shadow (and an outline for the panel-less look), so it reads on any picture.
+// Words with a soft shadow, and an outline when nothing is behind them, so they read on any video.
 void drawText(QPainter &p, const QRectF &box, const QString &text, const QFont &font, const QColor &colour,
 	      double scale, bool outline)
 {
 	p.setFont(font);
 	const int flags = Qt::AlignCenter | Qt::TextWordWrap;
-	p.setPen(QColor(0, 0, 0, outline ? 200 : 130));
-	for (const QPointF offset : {QPointF(0, 3 * scale), QPointF(2 * scale, 3 * scale)})
-		p.drawText(box.translated(offset), flags, text);
+	const QColor shade = colour.lightness() > 128 ? QColor(0, 0, 0) : QColor(255, 255, 255);
 	if (outline) {
-		for (const QPointF offset : {QPointF(-2 * scale, 0), QPointF(2 * scale, 0), QPointF(0, -2 * scale)})
+		QColor o = shade;
+		o.setAlpha(210);
+		p.setPen(o);
+		for (const QPointF offset : {QPointF(-2 * scale, 0), QPointF(2 * scale, 0), QPointF(0, -2 * scale),
+					     QPointF(0, 2 * scale), QPointF(2 * scale, 3 * scale)})
 			p.drawText(box.translated(offset), flags, text);
+	} else {
+		QColor s = shade;
+		s.setAlpha(110);
+		p.setPen(s);
+		p.drawText(box.translated(0, 3 * scale), flags, text);
 	}
 	p.setPen(colour);
 	p.drawText(box, flags, text);
 }
 
 void drawCaption(QPainter &p, const QRectF &box, const QString &caption, double px, const QColor &colour,
-		 Qt::Alignment align, double scale)
+		 Qt::Alignment align, double scale, bool outline)
 {
 	if (caption.isEmpty())
 		return;
 	p.setFont(fontOf(px, 700));
-	p.setPen(QColor(0, 0, 0, 140));
+	p.setPen(QColor(0, 0, 0, outline ? 200 : 120));
 	p.drawText(box.translated(0, 2 * scale), int(align | Qt::AlignVCenter), caption);
 	p.setPen(colour);
 	p.drawText(box, int(align | Qt::AlignVCenter), caption);
+}
+
+// Paints the style's background into `area` (clipped to `shape` when given).
+void paintFill(QPainter &p, const QRectF &area, const QPainterPath &shape, const SlideStyle &s, const QImage &picture)
+{
+	p.save();
+	if (!shape.isEmpty())
+		p.setClipPath(shape);
+	switch (Fill(s.fill)) {
+	case Fill::None:
+		break;
+	case Fill::Solid:
+		p.fillRect(area, rgb(s.color1));
+		break;
+	case Fill::SeeThrough:
+		p.fillRect(area, rgb(s.color1, 150));
+		break;
+	case Fill::Picture:
+		if (!picture.isNull()) {
+			const QSizeF size = picture.size().scaled(area.size().toSize(), Qt::KeepAspectRatioByExpanding);
+			const QRectF target(area.center().x() - size.width() / 2.0,
+					    area.center().y() - size.height() / 2.0, size.width(), size.height());
+			p.drawImage(target, picture);
+			p.fillRect(area, QColor(0, 0, 0, 70)); // a little darker, so the words always read
+			break;
+		}
+		[[fallthrough]];
+	case Fill::Gradient:
+	default: {
+		QLinearGradient g(area.topLeft(), area.bottomRight());
+		g.setColorAt(0, rgb(s.color1));
+		g.setColorAt(1, rgb(s.color2));
+		p.fillRect(area, g);
+		break;
+	}
+	}
+	p.restore();
 }
 
 } // namespace
@@ -91,6 +148,24 @@ void loadSlideFonts()
 	}
 }
 
+QString applyCase(const QString &text, TextCase textCase)
+{
+	if (textCase == TextCase::Upper)
+		return text.toUpper();
+	if (textCase != TextCase::FirstLetter)
+		return text;
+	QStringList lines = text.split(QLatin1Char('\n'));
+	for (QString &line : lines) {
+		for (int i = 0; i < line.size(); ++i) {
+			if (line[i].isLetter()) {
+				line[i] = line[i].toUpper();
+				break;
+			}
+		}
+	}
+	return lines.join(QLatin1Char('\n'));
+}
+
 QImage renderSlide(const SlideRequest &r)
 {
 	const int W = std::max(16, r.canvasWidth), H = std::max(16, r.canvasHeight);
@@ -98,80 +173,68 @@ QImage renderSlide(const SlideRequest &r)
 	image.fill(Qt::transparent);
 	if (r.text.trimmed().isEmpty() && r.caption.trimmed().isEmpty())
 		return image;
-	const double s = H / 1080.0;
+	SlideStyle s = r.style;
+	sanitize(s);
+	if (s.fill == int(Fill::Picture) && r.picture.isNull())
+		s.fill = int(Fill::Gradient);
+	const double k = H / 1080.0;               // canvas scale
+	const double size = s.sizePercent / 100.0; // the operator's text size
+	const QString text = applyCase(r.text, TextCase(s.textCase));
+	const QColor textColour = rgb(s.text), accent = rgb(s.accent);
+	const bool bare = s.fill == int(Fill::None);
+
 	QPainter p(&image);
 	p.setRenderHint(QPainter::Antialiasing, true);
 	p.setRenderHint(QPainter::TextAntialiasing, true);
 	p.setRenderHint(QPainter::SmoothPixmapTransform, true);
 
-	switch (r.look) {
-	case Look::Full: {
-		const QRectF all(0, 0, W, H);
-		if (!r.background.isNull()) {
-			// Cover the canvas, cropping the picture evenly.
-			const QSizeF size =
-				r.background.size().scaled(all.size().toSize(), Qt::KeepAspectRatioByExpanding);
-			const QRectF target((W - size.width()) / 2.0, (H - size.height()) / 2.0, size.width(),
-					    size.height());
-			p.drawImage(target, r.background);
-			p.fillRect(all, QColor(0, 0, 0, 70)); // a little darker, so white text always reads
-		} else {
-			QLinearGradient g(0, 0, W, H);
-			g.setColorAt(0, QColor(0x14, 0x24, 0x5C));
-			g.setColorAt(1, QColor(0x3A, 0x1E, 0x5E));
-			p.fillRect(all, g);
-		}
+	switch (Layout(s.layout)) {
+	case Layout::FullScreen: {
+		paintFill(p, QRectF(0, 0, W, H), QPainterPath(), s, r.picture);
 		const QRectF box(W * 0.08, H * 0.12, W * 0.84, H * 0.66);
-		drawText(p, box, r.text, fitFont(r.text, box, 96 * s, 30 * s, 700), Qt::white, s, false);
-		drawCaption(p, QRectF(W * 0.08, H * 0.80, W * 0.84, H * 0.10), r.caption, 52 * s, kGold, Qt::AlignRight,
-			    s);
+		drawText(p, box, text, fitFont(text, box, 96 * k * size, 26 * k, 700), textColour, k, bare);
+		drawCaption(p, QRectF(W * 0.08, H * 0.80, W * 0.84, H * 0.10), r.caption, 50 * k, accent,
+			    Qt::AlignRight, k, bare);
 		break;
 	}
-	case Look::Card: {
+	case Layout::Card: {
 		const QRectF card(W * 0.08, H * 0.665, W * 0.84, H * 0.28);
 		QPainterPath path;
-		path.addRoundedRect(card, 22 * s, 22 * s);
-		p.fillPath(path, QColor(kNavy.red(), kNavy.green(), kNavy.blue(), 236));
-		QLinearGradient edge(card.topLeft(), card.bottomRight());
-		edge.setColorAt(0, kGoldLight);
-		edge.setColorAt(0.5, kGold);
-		edge.setColorAt(1, kGoldLight);
-		p.setPen(QPen(QBrush(edge), 4 * s));
-		p.drawPath(path);
+		path.addRoundedRect(card, 22 * k, 22 * k);
+		paintFill(p, card, path, s, r.picture);
+		if (!bare) {
+			QLinearGradient edge(card.topLeft(), card.bottomRight());
+			edge.setColorAt(0, lighter(accent));
+			edge.setColorAt(0.5, accent);
+			edge.setColorAt(1, lighter(accent));
+			p.setPen(QPen(QBrush(edge), 4 * k));
+			p.drawPath(path);
+		}
 		if (!r.caption.isEmpty()) {
-			p.setFont(fontOf(26 * s, 700));
-			const double pillW = QFontMetricsF(p.font()).horizontalAdvance(r.caption) + 36 * s;
-			const QRectF pill(card.left() + 28 * s, card.top() - 20 * s, pillW, 40 * s);
+			p.setFont(fontOf(26 * k, 700));
+			const double pillW = QFontMetricsF(p.font()).horizontalAdvance(r.caption) + 36 * k;
+			const QRectF pill(card.left() + 28 * k, card.top() - 20 * k, pillW, 40 * k);
 			QPainterPath pp;
-			pp.addRoundedRect(pill, 20 * s, 20 * s);
-			p.fillPath(pp, kGold);
-			p.setPen(kInk);
+			pp.addRoundedRect(pill, 20 * k, 20 * k);
+			p.fillPath(pp, accent);
+			p.setPen(onColour(accent));
 			p.drawText(pill, Qt::AlignCenter, r.caption);
 		}
-		const QRectF box = card.adjusted(40 * s, 30 * s, -40 * s, -22 * s);
-		drawText(p, box, r.text, fitFont(r.text, box, 58 * s, 22 * s, 600), Qt::white, s, false);
+		const QRectF box = card.adjusted(40 * k, 30 * k, -40 * k, -22 * k);
+		drawText(p, box, text, fitFont(text, box, 58 * k * size, 20 * k, 600), textColour, k, bare);
 		break;
 	}
-	case Look::Clean: {
-		const QRectF box(W * 0.07, H * 0.70, W * 0.86, H * 0.22);
-		drawText(p, box, r.text, fitFont(r.text, box, 64 * s, 24 * s, 700), Qt::white, s, true);
-		drawCaption(p, QRectF(W * 0.07, H * 0.925, W * 0.86, H * 0.05), r.caption, 26 * s, kGoldLight,
-			    Qt::AlignCenter, s);
-		break;
-	}
-	case Look::Bar:
+	case Layout::LowerThird:
 	default: {
 		const QRectF band(0, H * 0.70, W, H * 0.25);
-		QLinearGradient g(band.topLeft(), band.bottomLeft());
-		g.setColorAt(0, QColor(kInk.red(), kInk.green(), kInk.blue(), 225));
-		g.setColorAt(1, QColor(kInk.red(), kInk.green(), kInk.blue(), 245));
-		p.fillRect(band, g);
-		p.fillRect(QRectF(0, band.top(), W, 5 * s), kGold);
-		const QRectF box(W * 0.06, band.top() + 22 * s, W * 0.88,
-				 band.height() - (r.caption.isEmpty() ? 40 : 76) * s);
-		drawText(p, box, r.text, fitFont(r.text, box, 60 * s, 22 * s, 600), Qt::white, s, false);
-		drawCaption(p, QRectF(W * 0.06, band.bottom() - 52 * s, W * 0.88, 40 * s), r.caption, 28 * s, kGold,
-			    Qt::AlignRight, s);
+		paintFill(p, band, QPainterPath(), s, r.picture);
+		if (!bare)
+			p.fillRect(QRectF(0, band.top(), W, 5 * k), accent);
+		const double captionRoom = r.caption.isEmpty() ? 40 : 76;
+		const QRectF box(W * 0.06, band.top() + 22 * k, W * 0.88, band.height() - captionRoom * k);
+		drawText(p, box, text, fitFont(text, box, 62 * k * size, 20 * k, 600), textColour, k, bare);
+		drawCaption(p, QRectF(W * 0.06, band.bottom() - 52 * k, W * 0.88, 40 * k), r.caption, 28 * k, accent,
+			    Qt::AlignRight, k, bare);
 		break;
 	}
 	}

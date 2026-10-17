@@ -3,7 +3,9 @@
 #include "obs/scene-presence.hpp"
 #include "slides/slide-control.hpp"
 #include "store/online-search.hpp"
+#include "core/templates.hpp"
 #include "slides/slide-render.hpp"
+#include "slides/style-editor.hpp"
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
 #include "ui/pack-switcher.hpp"
@@ -104,6 +106,10 @@ LyricsDock::LyricsDock(QWidget *parent) : QWidget(parent)
 			onlineResults_ = songs;
 			rebuildResults();
 		});
+	connect(online_, &OnlineSearch::wordsReady, this, [this](const OnlineSong &song) { addFound(song); });
+	connect(online_, &OnlineSearch::wordsFailed, this, [this](const OnlineSong &song, const QString &) {
+		toast(lt("Laycue.Lyrics.OnlineNoWords").arg(qs(song.title)));
+	});
 	connect(online_, &OnlineSearch::failed, this, [this](const QString &query, const QString &reason) {
 		if (query != onlineQuery_)
 			return;
@@ -221,30 +227,57 @@ QWidget *LyricsDock::buildMain()
 	v->addLayout(songRow);
 
 	v->addWidget(label(page, lt("Laycue.Lyrics.Look"), 11, 600, color::textTertiary));
-	look_ = new Segmented(page);
-	look_->setItems({lt("Laycue.Slides.Bar"), lt("Laycue.Slides.Card"), lt("Laycue.Slides.Clean"),
-			 lt("Laycue.Slides.Full")});
-	look_->setCurrent(std::clamp(settings_.look, 0, slides::kLookCount - 1));
-	connect(look_, &Segmented::changed, this, [this](int index) {
-		settings_.look = index;
-		backgroundRow_->setVisible(index == int(slides::Look::Full));
+	templates_ = new Segmented(page);
+	QStringList names;
+	for (const LyricsTemplate &t : lyricsTemplates())
+		names << lt(t.nameKey);
+	templates_->setItems(names);
+	templates_->setCurrent(settings_.templateIndex);
+	connect(templates_, &Segmented::changed, this, &LyricsDock::useTemplate);
+	v->addWidget(templates_);
+	editRow_ = new RowButton(page);
+	editRow_->setTitle(lt("Laycue.Slides.EditLook"));
+	editRow_->setOpen(true);
+	v->addWidget(editRow_);
+	slides::StyleEditor::Options options;
+	options.showCase = true;
+	options.accentLabel = lt("Laycue.Lyrics.SongNameColour");
+	editor_ = new slides::StyleEditor(options, page);
+	editor_->setStyle(settings_.styles[size_t(settings_.templateIndex)]);
+	connect(editor_, &slides::StyleEditor::changed, this, [this](const slides::SlideStyle &style) {
+		settings_.styles[size_t(settings_.templateIndex)] = style;
 		saveSettings(settings_);
 		push();
 	});
-	v->addWidget(look_);
-	backgroundRow_ = new QWidget(page);
-	auto *bg = new QHBoxLayout(backgroundRow_);
-	bg->setContentsMargins(0, 0, 0, 0);
-	bg->setSpacing(size::gapSmall);
-	auto *chooseBg = button(backgroundRow_, lt("Laycue.Slides.ChooseBackground"), "laycueSecondary");
-	connect(chooseBg, &QAbstractButton::clicked, this, &LyricsDock::chooseBackground);
-	bg->addWidget(chooseBg);
-	backgroundName_ = innerLabel(backgroundRow_, QString(), 11, 400, color::textTertiary);
-	bg->addWidget(backgroundName_, 1);
-	backgroundRow_->setVisible(settings_.look == int(slides::Look::Full));
-	backgroundName_->setText(settings_.background.empty() ? lt("Laycue.Slides.NoBackground")
-							      : QFileInfo(qs(settings_.background)).fileName());
-	v->addWidget(backgroundRow_);
+	connect(editor_, &slides::StyleEditor::resetRequested, this, [this]() {
+		settings_.styles[size_t(settings_.templateIndex)] =
+			lyricsTemplates()[size_t(settings_.templateIndex)].style;
+		editor_->setStyle(settings_.styles[size_t(settings_.templateIndex)]);
+		saveSettings(settings_);
+		push();
+	});
+	connect(editRow_, &RowButton::clicked, this, [this]() {
+		editor_->setVisible(!editor_->isVisible());
+		editRow_->setOpen(editor_->isVisible());
+	});
+	v->addWidget(editor_);
+	// Songs can sit on the same background as the verses.
+	auto *matchScripture = button(page, lt("Laycue.Lyrics.UseScriptureBackground"), "laycueSecondary");
+	connect(matchScripture, &QAbstractButton::clicked, this, [this]() {
+		slides::SlideStyle scripture;
+		if (!scriptureBackground(scripture)) {
+			toast(lt("Laycue.Lyrics.NoScriptureBackground"));
+			return;
+		}
+		slides::SlideStyle &mine = settings_.styles[size_t(settings_.templateIndex)];
+		slides::copyBackground(scripture, mine);
+		mine.layout = scripture.layout;
+		editor_->setStyle(mine);
+		saveSettings(settings_);
+		push();
+		toast(lt("Laycue.Lyrics.ScriptureBackgroundUsed"));
+	});
+	v->addWidget(matchScripture);
 	v->addStretch(1);
 	return scroll;
 }
@@ -340,7 +373,7 @@ void LyricsDock::rebuildResults()
 	if (onlineQuery_ != typed || (!onlineBusy_ && onlineResults_.empty() && onlineError_.isEmpty())) {
 		auto *look = new RowButton(resultsBox_);
 		look->setTitle(lt("Laycue.Lyrics.SearchOnline").arg(typed));
-		look->setValue(QStringLiteral("LRCLIB"));
+		look->setValue(lt("Laycue.Lyrics.Online"));
 		connect(look, &RowButton::clicked, this, &LyricsDock::searchOnline);
 		resultsLayout_->addWidget(look);
 		return;
@@ -360,7 +393,10 @@ void LyricsDock::rebuildResults()
 		auto *row = new RowButton(resultsBox_);
 		row->setTitle(qs(onlineResults_[i].title));
 		row->setValue(qs(onlineResults_[i].artist));
-		row->setToolTip(lt("Laycue.Lyrics.OnlineAddTip"));
+		row->setToolTip(lt("Laycue.Lyrics.OnlineAddTip") + QStringLiteral(" (") +
+				(onlineResults_[i].source == OnlineSource::LyricsOvh ? QStringLiteral("lyrics.ovh")
+										     : QStringLiteral("LRCLIB")) +
+				QStringLiteral(")"));
 		connect(row, &RowButton::clicked, this, [this, i]() { addOnline(i); });
 		resultsLayout_->addWidget(row);
 	}
@@ -388,7 +424,18 @@ void LyricsDock::addOnline(size_t index)
 {
 	if (index >= onlineResults_.size())
 		return;
-	Song song = songFromOnline(onlineResults_[index]);
+	const OnlineSong found = onlineResults_[index];
+	if (found.needsWords) {
+		toast(lt("Laycue.Lyrics.OnlineGettingWords").arg(qs(found.title)));
+		online_->fetchWords(found); // addFound runs when they arrive
+		return;
+	}
+	addFound(found);
+}
+
+void LyricsDock::addFound(const OnlineSong &found)
+{
+	Song song = songFromOnline(found);
 	if (song.sections.empty()) {
 		toast(lt("Laycue.Lyrics.OnlineNone"));
 		return;
@@ -493,9 +540,10 @@ void LyricsDock::push()
 	const int index = songIndex();
 	slides::Slide slide;
 	slide.text = slides_[size_t(slide_)].text;
-	slide.caption = index >= 0 && settings_.look != int(slides::Look::Clean) ? songs_[size_t(index)].title : "";
-	slide.look = settings_.look;
-	slide.background = settings_.background;
+	slide.style = settings_.styles[size_t(settings_.templateIndex)];
+	// The song's name goes with a background; words alone stay words alone.
+	slide.caption = index >= 0 && slide.style.fill != int(slides::Fill::None) ? songs_[size_t(index)].title
+										  : std::string();
 	slide.shown = shown_;
 	if (shown_)
 		slides::hideOthers(kSourceId); // a verse and a song never stack
@@ -632,14 +680,12 @@ void LyricsDock::importSong()
 	toast(lt("Laycue.Lyrics.Imported").arg(added));
 }
 
-void LyricsDock::chooseBackground()
+void LyricsDock::useTemplate(int index)
 {
-	const QString file = QFileDialog::getOpenFileName(this, lt("Laycue.Slides.ChooseBackground"), QString(),
-							  lt("Laycue.Slides.PictureFiles"));
-	if (file.isEmpty())
+	if (index < 0 || index >= int(settings_.styles.size()))
 		return;
-	settings_.background = file.toStdString();
-	backgroundName_->setText(QFileInfo(file).fileName());
+	settings_.templateIndex = index;
+	editor_->setStyle(settings_.styles[size_t(index)]);
 	saveSettings(settings_);
 	push();
 }

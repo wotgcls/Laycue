@@ -6,6 +6,8 @@ laycue_add_plugin(
     src/core/online.hpp
     src/core/song.cpp
     src/core/song.hpp
+    src/core/templates.cpp
+    src/core/templates.hpp
     src/store/lyrics-io.cpp
     src/store/lyrics-io.hpp
     src/store/online-search.cpp

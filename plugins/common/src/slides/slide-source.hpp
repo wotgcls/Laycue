@@ -11,9 +11,8 @@ namespace laycue::slides {
 namespace key {
 constexpr const char *text = "text";
 constexpr const char *caption = "caption";
-constexpr const char *look = "look";             // slides::Look
-constexpr const char *background = "background"; // picture file for the full-screen look
-constexpr const char *shown = "shown";           // false: fades out
+// ...and the style keys of slide-style-io (layout, fill, color1, color2, picture, textColor, accent, case, size)
+constexpr const char *shown = "shown"; // false: fades out
 } // namespace key
 
 // Call once from obs_module_load. `nameKey` is the locale key for the name in OBS's Sources list.

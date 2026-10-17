@@ -186,3 +186,14 @@ TEST_CASE("scripture: the bundled King James Version loads")
 			verses += size_t(kjv.verseCount(book, c));
 	CHECK_EQ(verses, size_t(31102));
 }
+
+TEST_CASE("scripture: the book fills in as you type")
+{
+	CHECK_EQ(inlineBookCompletion("joh"), std::string("John"));
+	CHECK_EQ(inlineBookCompletion("Gen"), std::string("Genesis"));
+	CHECK_EQ(inlineBookCompletion("1 co"), std::string("1 Corinthians"));
+	CHECK_EQ(inlineBookCompletion("jn"), std::string()); // not the start of "John": shown as a hint instead
+	CHECK_EQ(bookHint("jn"), std::string("John"));
+	CHECK_EQ(inlineBookCompletion("John"), std::string()); // already complete
+	CHECK_EQ(inlineBookCompletion("1"), std::string());    // could still be 1 John, 1 Kings...
+}

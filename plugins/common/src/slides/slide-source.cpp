@@ -1,6 +1,7 @@
 #include "slides/slide-source.hpp"
 
 #include "slides/slide-render.hpp"
+#include "slides/slide-style-io.hpp"
 
 #include <obs-module.h>
 #include <obs.hpp>
@@ -23,12 +24,8 @@ constexpr double kFadeSeconds = 0.25;
 struct Content {
 	std::string text;
 	std::string caption;
-	int look = 0;
-	std::string background;
-	bool operator==(const Content &o) const
-	{
-		return text == o.text && caption == o.caption && look == o.look && background == o.background;
-	}
+	SlideStyle style;
+	bool operator==(const Content &o) const { return text == o.text && caption == o.caption && style == o.style; }
 	bool operator!=(const Content &o) const { return !(*this == o); }
 };
 
@@ -79,8 +76,7 @@ void update(void *data, obs_data_t *d)
 		Content c;
 		c.text = str(obs_data_get_string(d, key::text));
 		c.caption = str(obs_data_get_string(d, key::caption));
-		c.look = std::clamp(int(obs_data_get_int(d, key::look)), 0, kLookCount - 1);
-		c.background = str(obs_data_get_string(d, key::background));
+		c.style = readStyle(d);
 		s->wanted = c;
 		s->shown = obs_data_get_bool(d, key::shown);
 	} catch (...) {
@@ -129,7 +125,6 @@ uint32_t getHeight(void *data)
 
 void getDefaults(obs_data_t *d)
 {
-	obs_data_set_default_int(d, key::look, 0);
 	obs_data_set_default_bool(d, key::shown, false);
 }
 
@@ -158,8 +153,10 @@ void tick(void *data, float seconds)
 			s->rerender = true;
 		}
 		if (s->rerender) {
-			if (s->showing.background != s->backgroundPath) {
-				s->backgroundPath = s->showing.background;
+			const std::string wantedPicture =
+				s->showing.style.fill == int(Fill::Picture) ? s->showing.style.picture : std::string();
+			if (wantedPicture != s->backgroundPath) {
+				s->backgroundPath = wantedPicture;
 				s->backgroundImage = s->backgroundPath.empty()
 							     ? QImage()
 							     : QImage(QString::fromStdString(s->backgroundPath));
@@ -167,8 +164,8 @@ void tick(void *data, float seconds)
 			SlideRequest r;
 			r.text = QString::fromStdString(s->showing.text);
 			r.caption = QString::fromStdString(s->showing.caption);
-			r.look = Look(s->showing.look);
-			r.background = s->backgroundImage;
+			r.style = s->showing.style;
+			r.picture = s->backgroundImage;
 			r.canvasWidth = int(s->canvasW);
 			r.canvasHeight = int(s->canvasH);
 			s->base = renderSlide(r);

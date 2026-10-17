@@ -32,6 +32,10 @@ std::string bookPart(const std::string &typed, bool *hasNumbers = nullptr);
 // is added ("John 3" -> "John 3:"), otherwise a plain space.
 std::string afterSpace(const std::string &typed);
 
+// While typing a book: the full name when it starts with what was typed ("joh" -> "John", so the rest can
+// be filled in and selected), or "" when the name doesn't start that way ("jn" -> "": use bookHint).
+std::string inlineBookCompletion(const std::string &typed);
+
 // The grey hint shown while typing a book: the full name it will become, or "".
 std::string bookHint(const std::string &typed);
 

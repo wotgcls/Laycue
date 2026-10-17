@@ -26,8 +26,10 @@ more). Your library is kept in `songs.json` in OBS's plugin config folder.
 
 ## Searching online
 
-Type a song's name. If it isn't in your songs, **Enter** (or **Search online for "…"**) asks LRCLIB
-(https://lrclib.net), a free community lyrics site with millions of songs, modern worship songs included. Tap a
+Type a song's name (adding the singer helps: "Excess Love Mercy Chinwo"). If it isn't in your songs, **Enter** (or
+**Search online for "…"**) asks LRCLIB (https://lrclib.net), a free community lyrics site with millions of songs. When
+LRCLIB has fewer than five matches, lyrics.ovh (another free site) is asked too; its songs get their words when you pick
+one. Tap a
 result and it is added to your songs and opened, ready to edit and show. After that it is in your library and works
 without the internet.
 
@@ -40,10 +42,16 @@ without the internet.
 Code: `core/online.*` (the address, turning an answer into a song, choosing useful results; tested) and
 `store/online-search.*` (the request, through the pack's web client `plugins/common/src/net`).
 
-## How it looks
+## Templates and how they look
 
-The same four looks as Scripture: **Bar**, **Card** (with the song name), **Clean** (words only, with an outline, for
-over video) and **Full screen** with your own background picture.
+Lyrics has its own four templates: **Black**, **White** (a solid band), **Faded** (see-through) and **No background**
+(the words alone, outlined so they read over video). **Edit this look** changes any of them, as in Scripture:
+where on screen (lower third, card, full screen), what is behind the words (none, colour, faded, gradient, picture),
+the colours and the text size. Two things only songs have:
+
+- **Letters**: as written, **ALL CAPS**, or **First letter** (a capital at the start of every line).
+- **Use the Scripture background**: copies the background of the Scripture template in use, so songs and verses
+  match.
 
 Code: `plugins/lyrics/src/core/song.*` (parts, slides, search, OpenLyrics, tested in `tests/test-lyrics.cpp`),
 `store/` (library), `ui/` (the panel).

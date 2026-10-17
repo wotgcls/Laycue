@@ -1,6 +1,8 @@
 // How a panel finds and drives its slide source (the "Laycue Scripture" or "Laycue Lyrics" layer). UI thread.
 #pragma once
 
+#include "slides/slide-style.hpp"
+
 #include <string>
 #include <vector>
 
@@ -9,8 +11,7 @@ namespace laycue::slides {
 struct Slide {
 	std::string text;
 	std::string caption;
-	int look = 0;
-	std::string background;
+	SlideStyle style;
 	bool shown = false;
 };
 

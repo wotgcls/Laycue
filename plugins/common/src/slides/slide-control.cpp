@@ -1,6 +1,7 @@
 #include "slides/slide-control.hpp"
 
 #include "slides/slide-source.hpp"
+#include "slides/slide-style-io.hpp"
 
 #include <obs-frontend-api.h>
 #include <obs.hpp>
@@ -108,8 +109,7 @@ bool send(const std::string &sourceName, const Slide &slide)
 	OBSDataAutoRelease settings = obs_data_create();
 	obs_data_set_string(settings, key::text, slide.text.c_str());
 	obs_data_set_string(settings, key::caption, slide.caption.c_str());
-	obs_data_set_int(settings, key::look, slide.look);
-	obs_data_set_string(settings, key::background, slide.background.c_str());
+	writeStyle(settings, slide.style);
 	obs_data_set_bool(settings, key::shown, slide.shown);
 	obs_source_update(source, settings);
 	return true;

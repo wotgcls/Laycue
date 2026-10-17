@@ -8,8 +8,12 @@ laycue_add_plugin(
     src/core/books.hpp
     src/core/reference.cpp
     src/core/reference.hpp
+    src/core/templates.cpp
+    src/core/templates.hpp
     src/store/scripture-io.cpp
     src/store/scripture-io.hpp
+    src/ui/reference-box.cpp
+    src/ui/reference-box.hpp
     src/ui/scripture-dock.cpp
     src/ui/scripture-dock.hpp
 )

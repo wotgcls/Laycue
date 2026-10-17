@@ -3,6 +3,7 @@
 #pragma once
 
 #include "core/bible.hpp"
+#include "slides/slide-style.hpp"
 
 #include <memory>
 #include <string>
@@ -11,10 +12,10 @@
 namespace laycue::scripture {
 
 struct ScriptureSettings {
-	std::string version;            // file name of the chosen version ("kjv.xml")
-	int look = 0;                   // slides::Look
-	std::string background;         // picture for the full-screen look
-	std::vector<std::string> saved; // saved scriptures, as typed references ("John 3:16")
+	std::string version;                    // file name of the chosen version ("kjv.xml")
+	int templateIndex = 0;                  // which of scriptureTemplates() is in use
+	std::vector<slides::SlideStyle> styles; // one per template, with the operator's changes
+	std::vector<std::string> saved;         // saved scriptures, as typed references ("John 3:16")
 	std::string lastTyped;
 };
 

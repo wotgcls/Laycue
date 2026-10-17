@@ -5,22 +5,28 @@ A small panel that puts Bible verses on screen the way EasyWorship does: you typ
 ## Using it
 
 1. Open it: **Laycue → Scripture** (or the names at the top of any Laycue panel).
-2. Type the start of a book: `jn`, `gen`, `1 cor`, `ps`. The hint under the box says which book it will be.
-3. Press **Space**. The book's name is filled in (`John `). Type the chapter, press **Space** again and a colon
-   appears (`John 3:`). Type the verse and press **Enter**. The verse goes on screen with its reference,
-   for example "John 3:16 (KJV)".
-4. **◀** and **▶** (or the ↑ and ↓ keys while typing) go to the previous and next verse, on into the next chapter.
-   The list shows the verses around the one on screen; tap any of them.
-5. **Show on screen / Hide** fades the verse in and out. The first time you show a verse, a "Laycue Scripture"
-   layer is added to the live scene. After that it stays where you put it.
-6. **Save this** keeps the reference under **Saved scriptures**, for verses you read every week. Tap one to show it.
+2. The reference box has three parts in one box: **Book | Chapter | Verse**.
+3. Type the start of a book: `mat`. The rest fills in and is selected ("Mat**thew**"); keep typing to change it, or
+   press **Space** to take it. Short forms work too (`jn` shows "→ John"). A number typed straight after the book
+   starts the chapter.
+4. Type the chapter, **Space**, the verse, **Enter**. The verse goes on screen with its reference,
+   for example "Matthew 24:33 (KJV)".
+5. Click any part (book, chapter or verse) and all of it is selected, so a new number can be typed straight over it.
+6. **◀** and **▶** (or ↑ and ↓ in the box) go to the previous and next verse, on into the next chapter. The box
+   always shows the verse on screen.
+7. **Show on screen / Hide** fades the verse in and out. **Save this** keeps a reference under **Saved scriptures**.
 
 Hotkeys (OBS Settings → Hotkeys): show or hide, next verse, previous verse.
 
-## How it looks
+## Templates and how they look
 
-**Bar**, **Card** and **Clean** are lower thirds. **Full screen** fills the screen; **Background picture…** puts
-your own picture behind the words (it is darkened a little so the words always read).
+Scripture has its own three templates: **Bar**, **Card** and **Full screen** (Lyrics has its own, different set).
+Each can be changed under **Edit this look**, and the changes are kept per template:
+
+- **Where on screen**: lower third, card, or full screen.
+- **Behind the words**: none, a colour, a faded (see-through) colour, a gradient (two colours), or your own picture.
+- The colours of the words and of the reference, and the text size.
+- **Reset this template** goes back to how it came.
 
 ## Versions
 

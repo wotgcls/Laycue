@@ -1,11 +1,15 @@
 #include "store/lyrics-io.hpp"
 
+#include "core/templates.hpp"
+#include "slides/slide-style-io.hpp"
+
 #include <obs-module.h>
 #include <obs.hpp>
 
 #include <QDir>
 #include <QFileInfo>
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 
@@ -53,11 +57,18 @@ std::vector<std::string> idsOf(const std::vector<Song> &songs)
 LyricsSettings loadSettings()
 {
 	LyricsSettings s;
+	for (const LyricsTemplate &t : lyricsTemplates())
+		s.styles.push_back(t.style);
 	OBSDataAutoRelease data = obs_data_create_from_json_file_safe(configPath("lyrics.json").c_str(), "bak");
 	if (!data)
 		return s;
-	s.look = int(obs_data_get_int(data, "look"));
-	s.background = str(obs_data_get_string(data, "background"));
+	s.templateIndex = std::clamp(int(obs_data_get_int(data, "template")), 0, int(s.styles.size()) - 1);
+	OBSDataArrayAutoRelease styles = obs_data_get_array(data, "styles");
+	const size_t count = styles ? obs_data_array_count(styles) : 0;
+	for (size_t i = 0; i < count && i < s.styles.size(); ++i) {
+		OBSDataAutoRelease item = obs_data_array_item(styles, i);
+		s.styles[i] = slides::readStyle(item);
+	}
 	s.lastSong = str(obs_data_get_string(data, "lastSong"));
 	return s;
 }
@@ -65,8 +76,14 @@ LyricsSettings loadSettings()
 void saveSettings(const LyricsSettings &s)
 {
 	OBSDataAutoRelease data = obs_data_create();
-	obs_data_set_int(data, "look", s.look);
-	obs_data_set_string(data, "background", s.background.c_str());
+	obs_data_set_int(data, "template", s.templateIndex);
+	OBSDataArrayAutoRelease styles = obs_data_array_create();
+	for (const slides::SlideStyle &style : s.styles) {
+		OBSDataAutoRelease item = obs_data_create();
+		slides::writeStyle(item, style);
+		obs_data_array_push_back(styles, item);
+	}
+	obs_data_set_array(data, "styles", styles);
 	obs_data_set_string(data, "lastSong", s.lastSong.c_str());
 	saveJson(data, configPath("lyrics.json"));
 }
@@ -123,6 +140,24 @@ void saveLibrary(const std::vector<Song> &songs)
 	}
 	obs_data_set_array(data, "songs", array);
 	saveJson(data, configPath("songs.json"));
+}
+
+bool scriptureBackground(slides::SlideStyle &out)
+{
+	// Scripture keeps its settings beside ours: plugin_config/laycue-scripture/scripture.json.
+	const QDir own(QString::fromStdString(configPath("")));
+	const QString file = QDir(own.absoluteFilePath(QStringLiteral("..")))
+				     .filePath(QStringLiteral("laycue-scripture/scripture.json"));
+	OBSDataAutoRelease data = obs_data_create_from_json_file_safe(file.toUtf8().constData(), "bak");
+	if (!data)
+		return false;
+	OBSDataArrayAutoRelease styles = obs_data_get_array(data, "styles");
+	const size_t index = size_t(std::max<long long>(0, obs_data_get_int(data, "template")));
+	if (!styles || index >= obs_data_array_count(styles))
+		return false;
+	OBSDataAutoRelease item = obs_data_array_item(styles, index);
+	out = slides::readStyle(item);
+	return true;
 }
 
 bool importSongFile(const std::string &path, Song &out, std::string &error)
