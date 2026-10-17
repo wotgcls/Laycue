@@ -2,6 +2,7 @@
 
 #include "obs/scene-presence.hpp"
 #include "slides/slide-control.hpp"
+#include "store/online-search.hpp"
 #include "slides/slide-render.hpp"
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
@@ -93,6 +94,26 @@ LyricsDock::LyricsDock(QWidget *parent) : QWidget(parent)
 	toast_->hide();
 	contentLayout->addWidget(toast_, 0, Qt::AlignHCenter);
 
+	online_ = new OnlineSearch(this);
+	connect(online_, &OnlineSearch::found, this,
+		[this](const QString &query, const std::vector<OnlineSong> &songs) {
+			if (query != onlineQuery_)
+				return;
+			onlineBusy_ = false;
+			onlineError_.clear();
+			onlineResults_ = songs;
+			rebuildResults();
+		});
+	connect(online_, &OnlineSearch::failed, this, [this](const QString &query, const QString &reason) {
+		if (query != onlineQuery_)
+			return;
+		onlineBusy_ = false;
+		onlineResults_.clear();
+		onlineError_ = reason == QStringLiteral("secure") ? lt("Laycue.Lyrics.OnlineNoSecure")
+								  : lt("Laycue.Lyrics.OnlineFailed").arg(reason);
+		rebuildResults();
+	});
+
 	for (size_t i = 0; i < songs_.size(); ++i) {
 		if (songs_[i].id == settings_.lastSong)
 			openSong(i);
@@ -148,6 +169,8 @@ QWidget *LyricsDock::buildMain()
 		const std::vector<size_t> found = searchSongs(songs_, search_->text().toStdString(), 1);
 		if (!found.empty())
 			openSong(found.front());
+		else if (!search_->text().trimmed().isEmpty())
+			searchOnline(); // not in your songs: look online
 	});
 	s->addWidget(search_);
 	resultsBox_ = new QWidget(stage);
@@ -299,11 +322,9 @@ void LyricsDock::rebuildResults()
 	}
 	resultsBox_->show();
 	const std::vector<size_t> found = searchSongs(songs_, query, 6);
-	if (found.empty()) {
+	if (found.empty() && query.empty())
 		resultsLayout_->addWidget(
 			innerLabel(resultsBox_, lt("Laycue.Lyrics.NoMatch"), 11, 400, color::textTertiary));
-		return;
-	}
 	for (size_t index : found) {
 		auto *row = new RowButton(resultsBox_);
 		row->setTitle(qs(songs_[index].title));
@@ -311,6 +332,81 @@ void LyricsDock::rebuildResults()
 		connect(row, &RowButton::clicked, this, [this, index]() { openSong(index); });
 		resultsLayout_->addWidget(row);
 	}
+	if (query.empty())
+		return;
+
+	// Online: a button to look, then what came back.
+	const QString typed = search_->text().trimmed();
+	if (onlineQuery_ != typed || (!onlineBusy_ && onlineResults_.empty() && onlineError_.isEmpty())) {
+		auto *look = new RowButton(resultsBox_);
+		look->setTitle(lt("Laycue.Lyrics.SearchOnline").arg(typed));
+		look->setValue(QStringLiteral("LRCLIB"));
+		connect(look, &RowButton::clicked, this, &LyricsDock::searchOnline);
+		resultsLayout_->addWidget(look);
+		return;
+	}
+	resultsLayout_->addWidget(
+		innerLabel(resultsBox_, lt("Laycue.Lyrics.OnlineHeader"), 10, 700, color::textTertiary));
+	if (onlineBusy_) {
+		resultsLayout_->addWidget(
+			innerLabel(resultsBox_, lt("Laycue.Lyrics.OnlineSearching"), 11, 400, color::textTertiary));
+		return;
+	}
+	if (!onlineError_.isEmpty()) {
+		resultsLayout_->addWidget(innerLabel(resultsBox_, onlineError_, 11, 500, color::overlay));
+		return;
+	}
+	for (size_t i = 0; i < onlineResults_.size(); ++i) {
+		auto *row = new RowButton(resultsBox_);
+		row->setTitle(qs(onlineResults_[i].title));
+		row->setValue(qs(onlineResults_[i].artist));
+		row->setToolTip(lt("Laycue.Lyrics.OnlineAddTip"));
+		connect(row, &RowButton::clicked, this, [this, i]() { addOnline(i); });
+		resultsLayout_->addWidget(row);
+	}
+	if (onlineResults_.empty())
+		resultsLayout_->addWidget(
+			innerLabel(resultsBox_, lt("Laycue.Lyrics.OnlineNone"), 11, 400, color::textTertiary));
+	resultsLayout_->addWidget(
+		innerLabel(resultsBox_, lt("Laycue.Lyrics.OnlineLicence"), 10, 400, color::textTertiary));
+}
+
+void LyricsDock::searchOnline()
+{
+	const QString query = search_->text().trimmed();
+	if (query.isEmpty())
+		return;
+	onlineQuery_ = query;
+	onlineBusy_ = true;
+	onlineError_.clear();
+	onlineResults_.clear();
+	rebuildResults();
+	online_->search(query);
+}
+
+void LyricsDock::addOnline(size_t index)
+{
+	if (index >= onlineResults_.size())
+		return;
+	Song song = songFromOnline(onlineResults_[index]);
+	if (song.sections.empty()) {
+		toast(lt("Laycue.Lyrics.OnlineNone"));
+		return;
+	}
+	// Already in your songs (same name and singer): open that one, with any changes you made.
+	for (size_t i = 0; i < songs_.size(); ++i) {
+		if (songs_[i].title == song.title && songs_[i].author == song.author) {
+			openSong(i);
+			return;
+		}
+	}
+	song.id = makeSongId(song.title, idsOf(songs_));
+	songs_.push_back(song);
+	saveLibrary(songs_);
+	onlineQuery_.clear();
+	onlineResults_.clear();
+	openSong(songs_.size() - 1);
+	toast(lt("Laycue.Lyrics.OnlineAdded").arg(qs(song.title)));
 }
 
 void LyricsDock::openSong(size_t index)

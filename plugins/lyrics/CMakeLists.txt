@@ -2,10 +2,14 @@ laycue_add_plugin(
   laycue-lyrics
   SOURCES
     src/plugin-main.cpp
+    src/core/online.cpp
+    src/core/online.hpp
     src/core/song.cpp
     src/core/song.hpp
     src/store/lyrics-io.cpp
     src/store/lyrics-io.hpp
+    src/store/online-search.cpp
+    src/store/online-search.hpp
     src/ui/lyrics-dock.cpp
     src/ui/lyrics-dock.hpp
 )

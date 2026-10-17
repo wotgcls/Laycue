@@ -1,5 +1,6 @@
 #include "check.hpp"
 
+#include "core/online.hpp"
 #include "core/song.hpp"
 
 #include <fstream>
@@ -133,4 +134,44 @@ TEST_CASE("lyrics: every bundled hymn reads cleanly")
 			CHECK(!s.lines.empty());
 		}
 	}
+}
+
+TEST_CASE("lyrics: songs found online")
+{
+	CHECK_EQ(onlineSearchUrl("way maker & co"),
+		 std::string("https://lrclib.net/api/search?q=way%20maker%20%26%20co"));
+	CHECK_EQ(onlineSearchUrl("\xC3\xA9"), std::string("https://lrclib.net/api/search?q=%C3%A9"));
+
+	CHECK_EQ(plainFromSynced(
+			 "[00:12.34] Amazing grace\n[00:15.00][01:20.00] How sweet\n[00:20.00]\n[00:21.00] Next"),
+		 std::string("Amazing grace\nHow sweet\n\nNext\n"));
+	CHECK_EQ(plainFromSynced("[Chorus]\nline"), std::string("[Chorus]\nline\n")); // a part name is not a time
+
+	OnlineSong found;
+	found.title = "Great Song";
+	found.artist = "Someone";
+	found.plainLyrics = "Line one\nLine two\n\n[Chorus]\nChorus one\nChorus two\n";
+	const Song song = songFromOnline(found);
+	CHECK_EQ(song.title, std::string("Great Song"));
+	CHECK_EQ(song.author, std::string("Someone"));
+	CHECK_EQ(song.sections.size(), size_t(2));
+	CHECK_EQ(song.sections[1].label, std::string("Chorus"));
+
+	OnlineSong syncedOnly = found;
+	syncedOnly.plainLyrics.clear();
+	syncedOnly.syncedLyrics = "[00:01.00] Only synced\n[00:02.00] Second";
+	CHECK_EQ(songFromOnline(syncedOnly).sections.front().lines.size(), size_t(2));
+
+	OnlineSong instrumental = found;
+	instrumental.instrumental = true;
+	OnlineSong empty = found;
+	empty.title = "Empty";
+	empty.plainLyrics = "  \n ";
+	OnlineSong duplicate = found; // same title and artist, other spelling of case
+	duplicate.title = "great song";
+	OnlineSong other = found;
+	other.artist = "Another Singer";
+	const std::vector<OnlineSong> useful = usefulResults({found, instrumental, empty, duplicate, other});
+	CHECK_EQ(useful.size(), size_t(2));
+	CHECK_EQ(useful[1].artist, std::string("Another Singer"));
 }

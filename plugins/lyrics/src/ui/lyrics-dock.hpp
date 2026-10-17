@@ -2,6 +2,7 @@
 // written, pasted, edited and imported (OpenLyrics XML or text).
 #pragma once
 
+#include "core/online.hpp"
 #include "core/song.hpp"
 #include "store/lyrics-io.hpp"
 
@@ -23,6 +24,8 @@ class Segmented;
 } // namespace laycue::ui
 
 namespace laycue::lyrics {
+
+class OnlineSearch;
 
 class LyricsDock : public QWidget {
 	Q_OBJECT
@@ -52,6 +55,8 @@ private:
 	void saveEdit();
 	void deleteSong();
 	void importSong();
+	void searchOnline();
+	void addOnline(size_t index);
 	void chooseBackground();
 	void toast(const QString &text);
 	int songIndex() const; // the open song in songs_, or -1
@@ -64,6 +69,11 @@ private:
 	bool shown_ = false;
 	std::string sourceName_;
 	bool editingNew_ = false;
+	OnlineSearch *online_ = nullptr;
+	QString onlineQuery_; // the query the online results belong to
+	bool onlineBusy_ = false;
+	QString onlineError_;
+	std::vector<OnlineSong> onlineResults_;
 
 	QStackedWidget *stack_ = nullptr;
 	QLabel *status_ = nullptr;

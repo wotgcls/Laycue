@@ -47,6 +47,7 @@ add_executable(
   "${SCRIPTURE_SRC}/core/reference.cpp"
   "${SCRIPTURE_SRC}/core/bible.cpp"
   "${LYRICS_SRC}/core/song.cpp"
+  "${LYRICS_SRC}/core/online.cpp"
   "${CLOCK_SRC}/core/clock-core.cpp"
   "${NETWORK_SRC}/core/stats.cpp"
   "${NETWORK_SRC}/core/speed-analysis.cpp"

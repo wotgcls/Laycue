@@ -24,11 +24,21 @@ Hotkeys (OBS Settings → Hotkeys): show or hide, next lines, previous lines.
 15 public-domain hymns are included (Amazing Grace, Holy Holy Holy, It Is Well with My Soul, Blessed Assurance and
 more). Your library is kept in `songs.json` in OBS's plugin config folder.
 
-## Why it doesn't download lyrics
+## Searching online
 
-Modern worship songs are copyrighted. Churches project them under a licence (CCLI in most countries) and get the
-words from the licensed source. A free "all the lyrics on the internet" source does not exist legally, so Laycue
-does not download lyrics: you type, paste or import them once, and they stay in your library.
+Type a song's name. If it isn't in your songs, **Enter** (or **Search online for "…"**) asks LRCLIB
+(https://lrclib.net), a free community lyrics site with millions of songs, modern worship songs included. Tap a
+result and it is added to your songs and opened, ready to edit and show. After that it is in your library and works
+without the internet.
+
+- Laycue only asks LRCLIB when you search; nothing else is sent. It needs a secure (https) connection; OBS on Windows
+  uses Windows' own web client for that.
+- The words there are typed in by the community. Check them (**Edit**) before the service.
+- The site has no licence for the words. The owner chose this source knowing that; churches should project songs
+  under their own licence (CCLI in most countries), as the panel says under the results.
+
+Code: `core/online.*` (the address, turning an answer into a song, choosing useful results; tested) and
+`store/online-search.*` (the request, through the pack's web client `plugins/common/src/net`).
 
 ## How it looks
 
