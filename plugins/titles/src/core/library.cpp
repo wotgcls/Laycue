@@ -409,6 +409,11 @@ void renameLayerRefs(Library &lib, const std::string &from, const std::string &t
 		lib.layers[to] = found->second;
 		lib.layers.erase(from);
 	}
+	const auto bank = lib.banks.find(from);
+	if (bank != lib.banks.end()) {
+		lib.banks[to] = bank->second;
+		lib.banks.erase(from);
+	}
 	for (QueueItem &q : lib.queue) {
 		if (q.layer == from)
 			q.layer = to;
@@ -419,6 +424,24 @@ void renameLayerRefs(Library &lib, const std::string &from, const std::string &t
 				q.layer = to;
 		}
 	}
+}
+
+bool keepTitle(Library &lib, const std::string &layer, const TitleContent &content)
+{
+	if (layer.empty() || (content.line1.empty() && content.line2.empty()))
+		return false;
+	std::vector<TitleContent> &bank = lib.banks[layer];
+	if (bank.size() >= kMaxKept || std::find(bank.begin(), bank.end(), content) != bank.end())
+		return false;
+	bank.push_back(content);
+	return true;
+}
+
+std::string keptTitleLabel(const TitleContent &content)
+{
+	if (content.line1.empty())
+		return content.line2;
+	return content.line2.empty() ? content.line1 : content.line1 + " \xC2\xB7 " + content.line2;
 }
 
 void rememberLayer(Library &lib, const std::string &name)

@@ -598,3 +598,36 @@ TEST_CASE("titles: a bank point shows alone, numbered by its place in the bank")
 
 	CHECK(contentForPoint(draft, points, 9) == draft); // outside the bank: unchanged
 }
+
+TEST_CASE("titles: kept titles live on their own layer and follow its rename")
+{
+	Library lib;
+	TitleContent pastor;
+	pastor.line1 = "Pastor Dave";
+	pastor.line2 = "Senior Pastor";
+	TitleContent guest;
+	guest.line1 = "Dr. Ada Obi";
+
+	CHECK(keepTitle(lib, "Laycue Title", pastor));
+	CHECK(keepTitle(lib, "Laycue Title", guest));
+	CHECK(!keepTitle(lib, "Laycue Title", pastor));         // already kept
+	CHECK(!keepTitle(lib, "Laycue Title", TitleContent())); // nothing to keep
+	CHECK(!keepTitle(lib, "", pastor));                     // no layer
+	CHECK(keepTitle(lib, "Crawl", guest));                  // another layer has its own bank
+	CHECK_EQ(lib.banks["Laycue Title"].size(), size_t(2));
+	CHECK_EQ(lib.banks["Crawl"].size(), size_t(1));
+
+	CHECK_EQ(keptTitleLabel(pastor), std::string("Pastor Dave \xC2\xB7 Senior Pastor"));
+	CHECK_EQ(keptTitleLabel(guest), std::string("Dr. Ada Obi"));
+
+	renameLayerRefs(lib, "Laycue Title", "ttl. Pastor Dave");
+	CHECK_EQ(lib.banks.count("Laycue Title"), size_t(0));
+	CHECK_EQ(lib.banks["ttl. Pastor Dave"].size(), size_t(2));
+
+	for (size_t i = 0; i < kMaxKept + 5; ++i) {
+		TitleContent c;
+		c.line1 = "Speaker " + std::to_string(i);
+		keepTitle(lib, "Bulk", c);
+	}
+	CHECK_EQ(lib.banks["Bulk"].size(), kMaxKept);
+}

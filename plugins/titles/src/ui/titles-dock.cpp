@@ -344,6 +344,11 @@ QWidget *TitlesDock::buildStage()
 	rowsLayout_->setContentsMargins(0, 0, 0, 0);
 	rowsLayout_->setSpacing(size::gapSmall);
 	v->addWidget(rowsBox_);
+	keptBox_ = new QWidget(stage);
+	keptLayout_ = new QVBoxLayout(keptBox_);
+	keptLayout_->setContentsMargins(0, 0, 0, 0);
+	keptLayout_->setSpacing(size::gapSmall);
+	v->addWidget(keptBox_);
 
 	// Position and size: only for titles that do not span the whole picture.
 	placementBox_ = new QWidget(stage);
@@ -632,6 +637,7 @@ void TitlesDock::refreshFields()
 	rowsBox_->setVisible(t.maxRows > 0);
 	if (t.maxRows > 0)
 		rebuildRows();
+	rebuildKept();
 
 	const QString l1 = fromStd(library_.draft.line1);
 	if (t.longText) {
@@ -1755,11 +1761,16 @@ void TitlesDock::playPoint(size_t index)
 	// Only this point goes on screen; the sermon title and heading stay as they are in the boxes.
 	library_.draft = contentForPoint(library_.draft, library_.points, index);
 	pointShown_ = int(index);
+	swapOnAir();
+}
+
+void TitlesDock::swapOnAir()
+{
 	refreshFields();
 	updatePreview();
 	status_ = statusOf(target());
 	if (status_.onAir()) {
-		// The point on air leaves first, then the next one arrives, so they never stack.
+		// The title on air leaves first, then the next one arrives, so they never stack.
 		hideFromAir(target());
 		preview_->stop();
 		pendingPlay_ = true;
@@ -1768,6 +1779,83 @@ void TitlesDock::playPoint(size_t index)
 		applyAndShow();
 	}
 	scheduleSave();
+}
+
+void TitlesDock::playKept(size_t index)
+{
+	const auto bank = library_.banks.find(target());
+	if (bank == library_.banks.end() || index >= bank->second.size())
+		return;
+	library_.draft = bank->second[index]; // the layer keeps its template; only the words change
+	keptShown_ = int(index);
+	swapOnAir();
+}
+
+void TitlesDock::rebuildKept()
+{
+	page::clear(keptLayout_);
+	const TitleTemplate t = resolveStyle(library_, library_.selected);
+	const bool pointsMode = t.category == Category::Notes && t.maxRows > 0 && library_.pointsOneAtATime;
+	keptBox_->setVisible(!pointsMode && !sources_.empty());
+	if (pointsMode || sources_.empty())
+		return;
+	const std::vector<TitleContent> empty;
+	const auto found = library_.banks.find(target());
+	const std::vector<TitleContent> &bank = found == library_.banks.end() ? empty : found->second;
+
+	auto *header = new QWidget(keptBox_);
+	auto *headerLayout = new QHBoxLayout(header);
+	headerLayout->setContentsMargins(0, 0, 0, 0);
+	headerLayout->setSpacing(size::gapSmall);
+	headerLayout->addWidget(makeLabel(header, lt("Laycue.Titles.KeptTitle").arg(int(bank.size())), 11, 600,
+					  color::textTertiary),
+				1);
+	auto *keep = button(header, lt("Laycue.Titles.KeepThis"), "laycueSecondary");
+	connect(keep, &QAbstractButton::clicked, this, [this]() {
+		if (keepTitle(library_, target(), library_.draft)) {
+			keptShown_ =
+				int(library_.banks[target()].size()) - 1; // what is in the boxes is the one just kept
+			rebuildKept();
+			scheduleSave();
+		} else {
+			toast(lt("Laycue.Titles.KeepNothing"));
+		}
+	});
+	headerLayout->addWidget(keep);
+	keptLayout_->addWidget(header);
+	if (bank.empty()) {
+		auto *hint = makeLabel(keptBox_, lt("Laycue.Titles.KeptEmpty"), 11, 400, color::textTertiary);
+		hint->setWordWrap(true);
+		keptLayout_->addWidget(hint);
+		return;
+	}
+	for (size_t i = 0; i < bank.size(); ++i) {
+		auto *line = new QWidget(keptBox_);
+		auto *h = new QHBoxLayout(line);
+		h->setContentsMargins(0, 0, 0, 0);
+		h->setSpacing(size::gapSmall);
+		auto *show = new RowButton(line);
+		show->setTitle(fromStd(keptTitleLabel(bank[i])));
+		show->setValue(int(i) == keptShown_ ? lt("Laycue.Titles.PointShown") : lt("Laycue.Titles.PointShow"));
+		connect(show, &RowButton::clicked, this, [this, i]() { playKept(i); });
+		h->addWidget(show, 1);
+		auto *remove = button(line, QStringLiteral("\u2715"), "laycueSecondary");
+		remove->setAccessibleName(lt("Laycue.Titles.KeptRemove"));
+		connect(remove, &QAbstractButton::clicked, this, [this, i]() {
+			auto found = library_.banks.find(target());
+			if (found == library_.banks.end() || i >= found->second.size())
+				return;
+			found->second.erase(found->second.begin() + std::ptrdiff_t(i));
+			if (keptShown_ == int(i))
+				keptShown_ = -1;
+			else if (keptShown_ > int(i))
+				--keptShown_;
+			rebuildKept();
+			scheduleSave();
+		});
+		h->addWidget(remove);
+		keptLayout_->addWidget(line);
+	}
 }
 
 void TitlesDock::chooseLogo()
@@ -1981,6 +2069,7 @@ void TitlesDock::pickLayer()
 // Moves the panel to another layer: the one it leaves keeps its template and text, the new one brings back its own.
 void TitlesDock::switchLayer(const std::string &name)
 {
+	keptShown_ = -1; // each layer has its own kept titles
 	if (name == target() || name.empty())
 		return;
 	rememberLayer(library_, target());

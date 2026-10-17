@@ -119,3 +119,7 @@ holds the one list of them (the Overlays tab):
 - The Titles panel's own "Add to all scenes" does the same one-time job for a title layer when the Scenes plugin is not installed.
 
 ![How the Laycue pack works](pack-sketch.svg)
+
+## Layout backgrounds
+
+When you make a layout (Scenes → Layouts), **Background picture** is optional. With one, the picture fills the canvas behind the layout, each part gets a space around it, and Laycue draws a **gold or silver frame** around every part. It picks the metal from the picture's average colour: gold on blues, purples, greens and light pictures; silver on warm yellow and orange ones (where gold would disappear) and on dark grey ones. The frame is always metal, whatever the picture looks like. The code is `core/frame-style.*` (the choice, tested) and `features/layout-frame.*` (the drawing).

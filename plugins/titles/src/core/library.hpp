@@ -86,10 +86,20 @@ struct Library {
 	std::map<std::string, LayerState> layers;    // by source name; what each layer held when last left
 	// The points bank for the Notes templates: points kept for later, shown one at a time in any order.
 	std::vector<std::string> points;
+	// Titles kept for later, per title layer (by source name): the speakers and names for one layer, shown one at a
+	// time with that layer's template. The template stays the layer's; only the words are kept here.
+	std::map<std::string, std::vector<TitleContent>> banks;
 	bool pointsOneAtATime = true; // false: the Notes rows are stacked on one card as before
 };
 
 constexpr size_t kMaxPoints = 200;
+constexpr size_t kMaxKept = 100; // kept titles per layer
+
+// Keeps `content` in the layer's bank. False (nothing changes) if it is empty, already kept, or the bank is full.
+bool keepTitle(Library &lib, const std::string &layer, const TitleContent &content);
+
+// What a kept title is called in the list: its first line, then the second.
+std::string keptTitleLabel(const TitleContent &content);
 
 // The draft with only point `index` on it, numbered by its place in the bank (point 7 shows the marker "7").
 // An index outside the bank gives the draft unchanged.

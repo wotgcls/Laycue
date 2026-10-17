@@ -186,6 +186,12 @@ private:
 	QLineEdit *pointsEdit_ = nullptr; // the "type a point" box, kept so typing carries on after each Enter
 	int pointShown_ = -1;             // the bank point on screen (or last shown), -1 = none
 	void playPoint(size_t index);
+	void playKept(size_t index);
+	void swapOnAir();   // shows the draft now, or after the title on air has left, so titles never stack
+	void rebuildKept(); // the titles kept for this layer
+	QWidget *keptBox_ = nullptr;
+	QVBoxLayout *keptLayout_ = nullptr;
+	int keptShown_ = -1;
 	void rebuildPointsBank(const TitleTemplate &t);
 	QWidget *rowsBox_ = nullptr; // the accounts: label and number pairs, as many as the operator adds
 	QVBoxLayout *rowsLayout_ = nullptr;

@@ -118,3 +118,12 @@ Pick a Notes template (Sermon Notes, Numbered Points, Point Columns) and the pan
 - Tap a point to put **only that point** on screen, in any order. The sermon title and heading stay as they are in the boxes. Tapping another point makes the one on screen leave first, so points never pile up.
 - The row on screen says **On screen**. The **✕** removes a point from the bank.
 - Prefer the old behaviour (several points on one card)? Switch **One at a time** to **Stack them**.
+
+## Kept titles: many speakers, one layer
+
+Every other template (name bars, lower thirds, social cards, tickers) has **Keep this title** under the text boxes.
+
+- Fill in a name and role, press **Keep this title**, then do the next speaker. Up to 100 per layer.
+- Tap a kept title to show it, in any order. The layer keeps its template; only the words change. A title already on air leaves first, so titles never stack.
+- Kept titles belong to the layer: one template and one set of speakers per title layer. Make another layer (**Layer → New layer**) only when you want a different template running at the same time.
+- They are saved with the scene collection. Renaming a layer keeps its kept titles.
