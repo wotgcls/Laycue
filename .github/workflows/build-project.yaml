@@ -325,6 +325,29 @@ jobs:
           & $Iscc @IsccArgs
           if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
 
+      - name: Publish Test Build 🧪
+        # Laycue: every push to a branch replaces the installer on the "test-build" pre-release, so the newest
+        # Windows build can always be downloaded, even when the account's artifact storage is full.
+        if: github.event_name == 'push' && github.ref_type == 'branch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Publish Test Build 🧪
+          $Installer = Get-ChildItem "${{ github.workspace }}\release\*-windows-x64-Installer.exe" | Select-Object -First 1
+          if ( $Installer -eq $null ) { Write-Output 'No installer to publish'; exit 0 }
+          $Stable = Join-Path "${{ github.workspace }}\release" 'Laycue-test-build-windows-x64-Installer.exe'
+          Copy-Item $Installer.FullName $Stable -Force
+          $Notes = "Newest Windows test build. Branch ${{ github.ref_name }}, commit ${{ github.sha }}. Not an official release."
+          gh release view test-build --repo ${{ github.repository }} *> $null
+          if ( $LASTEXITCODE -ne 0 ) {
+            gh release create test-build --repo ${{ github.repository }} --prerelease --title 'Latest test build' --notes $Notes --target ${{ github.sha }}
+            if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+          } else {
+            gh release edit test-build --repo ${{ github.repository }} --notes $Notes
+          }
+          gh release upload test-build $Stable --clobber --repo ${{ github.repository }}
+          exit $LASTEXITCODE
+
       - name: Upload Artifacts 📡
         uses: actions/upload-artifact@v4
         with:

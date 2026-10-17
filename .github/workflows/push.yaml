@@ -21,7 +21,7 @@ jobs:
     uses: ./.github/workflows/build-project.yaml
     secrets: inherit
     permissions:
-      contents: read
+      contents: write # the Windows job publishes the newest installer to the test-build pre-release
 
   create-release:
     name: Create Release 🛫
