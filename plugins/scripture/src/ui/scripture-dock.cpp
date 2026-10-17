@@ -322,6 +322,8 @@ void ScriptureDock::push()
 	slide.look = settings_.look;
 	slide.background = settings_.background;
 	slide.shown = shown_;
+	if (shown_)
+		slides::hideOthers(kSourceId); // a verse and a song never stack
 	slides::send(sourceName_, slide);
 }
 
@@ -499,6 +501,11 @@ void ScriptureDock::chooseBackground()
 
 void ScriptureDock::updateStatus()
 {
+	// The other panel (or the layer's Properties) may have hidden it: the layer says what is true.
+	if (!sourceName_.empty() && shown_ && !slides::isShown(sourceName_)) {
+		shown_ = false;
+		rebuildVerses();
+	}
 	if (!sourceName_.empty()) {
 		bool live = false;
 		presence_->setText(presenceText(presenceOf(sourceName_), live));

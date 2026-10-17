@@ -75,6 +75,31 @@ std::string ensureSource(const char *id, const std::string &name, std::string &e
 	return candidate;
 }
 
+bool isShown(const std::string &sourceName)
+{
+	OBSSourceAutoRelease source = obs_get_source_by_name(sourceName.c_str());
+	if (!source)
+		return false;
+	OBSDataAutoRelease settings = obs_source_get_settings(source);
+	return settings && obs_data_get_bool(settings, key::shown);
+}
+
+void hideOthers(const char *keepId)
+{
+	for (const char *id : {"laycue_scripture", "laycue_lyrics"}) {
+		if (str(id) == str(keepId))
+			continue;
+		for (const std::string &name : sourcesOf(id)) {
+			OBSSourceAutoRelease source = obs_get_source_by_name(name.c_str());
+			if (!source)
+				continue;
+			OBSDataAutoRelease settings = obs_data_create();
+			obs_data_set_bool(settings, key::shown, false);
+			obs_source_update(source, settings); // only "shown" changes; the words stay
+		}
+	}
+}
+
 bool send(const std::string &sourceName, const Slide &slide)
 {
 	OBSSourceAutoRelease source = obs_get_source_by_name(sourceName.c_str());

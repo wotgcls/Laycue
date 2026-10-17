@@ -24,6 +24,12 @@ std::string ensureSource(const char *id, const std::string &name, std::string &e
 // Puts the source in the live scene (on top) if that scene doesn't have it yet. False if there is no live scene.
 bool addToLiveScene(const std::string &sourceName);
 
+// Whether the source is set to show (false if it is gone).
+bool isShown(const std::string &sourceName);
+
+// Fades out every Scripture and Lyrics layer except those of `keepId`, so a verse and a song never stack.
+void hideOthers(const char *keepId);
+
 // Writes the slide into the source; it fades to the new words (or out, when `shown` is false).
 bool send(const std::string &sourceName, const Slide &slide);
 
