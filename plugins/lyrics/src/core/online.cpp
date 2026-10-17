@@ -2,23 +2,11 @@
 
 #include <algorithm>
 #include <cctype>
-#include <set>
 #include <sstream>
 
 namespace laycue::lyrics {
 
 namespace {
-
-std::string lowerTrim(const std::string &s)
-{
-	std::string out;
-	for (char c : s)
-		out += char(std::tolower(static_cast<unsigned char>(c)));
-	const size_t a = out.find_first_not_of(" \t");
-	if (a == std::string::npos)
-		return std::string();
-	return out.substr(a, out.find_last_not_of(" \t") - a + 1);
-}
 
 bool hasWords(const OnlineSong &s)
 {
@@ -125,19 +113,19 @@ Song songFromOnline(const OnlineSong &found)
 			     plain ? found.plainLyrics : plainFromSynced(found.syncedLyrics));
 }
 
-std::vector<OnlineSong> usefulResults(const std::vector<OnlineSong> &all, size_t limit)
+std::vector<OnlineSong> listResults(const std::vector<OnlineSong> &all)
 {
 	std::vector<OnlineSong> out;
-	std::set<std::string> seen;
 	for (const OnlineSong &s : all) {
-		if (!hasWords(s) || s.title.empty())
+		if (s.title.empty())
 			continue;
-		const std::string key = lowerTrim(s.title) + "\n" + lowerTrim(s.artist);
-		if (!seen.insert(key).second)
-			continue;
-		out.push_back(s);
-		if (out.size() >= limit)
-			break;
+		OnlineSong shown = s;
+		if (!hasWords(s)) {
+			// No words came with the listing: they are looked for in the other source when it is picked.
+			shown.needsWords = true;
+			shown.instrumental = false;
+		}
+		out.push_back(shown);
 	}
 	return out;
 }

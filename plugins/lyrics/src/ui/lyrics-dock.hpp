@@ -15,6 +15,7 @@
 class QLabel;
 class QLineEdit;
 class QPlainTextEdit;
+class QScrollArea;
 class QStackedWidget;
 class QVBoxLayout;
 
@@ -89,6 +90,7 @@ private:
 	QWidget *resultsBox_ = nullptr;
 	QLabel *songTitle_ = nullptr;
 	QVBoxLayout *slidesLayout_ = nullptr;
+	QScrollArea *slidesScroll_ = nullptr; // the song's lines: a set height with its own scrolling
 	ui::ActionButton *showButton_ = nullptr;
 	ui::Segmented *templates_ = nullptr;
 	slides::StyleEditor *editor_ = nullptr;

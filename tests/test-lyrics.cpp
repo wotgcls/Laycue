@@ -171,9 +171,12 @@ TEST_CASE("lyrics: songs found online")
 	duplicate.title = "great song";
 	OnlineSong other = found;
 	other.artist = "Another Singer";
-	const std::vector<OnlineSong> useful = usefulResults({found, instrumental, empty, duplicate, other});
-	CHECK_EQ(useful.size(), size_t(2));
-	CHECK_EQ(useful[1].artist, std::string("Another Singer"));
+	const std::vector<OnlineSong> useful = listResults({found, instrumental, empty, duplicate, other});
+	CHECK_EQ(useful.size(), size_t(5)); // nothing is left out
+	CHECK(!useful[0].needsWords);
+	CHECK(useful[1].needsWords); // listed without words: looked for in the other source when picked
+	CHECK(useful[2].needsWords);
+	CHECK_EQ(useful[4].artist, std::string("Another Singer"));
 }
 
 TEST_CASE("lyrics: the second online source")
@@ -190,5 +193,5 @@ TEST_CASE("lyrics: the second online source")
 	listed.needsWords = true; // no words yet: still worth showing
 	listed.title = "Excess Love";
 	listed.artist = "Mercy Chinwo";
-	CHECK_EQ(usefulResults({listed}).size(), size_t(1));
+	CHECK_EQ(listResults({listed}).size(), size_t(1));
 }

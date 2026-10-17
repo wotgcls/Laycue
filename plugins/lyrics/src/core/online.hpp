@@ -44,8 +44,8 @@ std::string plainFromSynced(const std::string &synced);
 // The words as Laycue parts (blank lines between verses become parts). Title and artist come along.
 Song songFromOnline(const OnlineSong &found);
 
-// What is worth showing from a search: songs with words (or words still to fetch), one of each title and
-// artist, at most `limit`.
-std::vector<OnlineSong> usefulResults(const std::vector<OnlineSong> &all, size_t limit = 20);
+// Everything a search found, none left out: a song listed without words is marked so its words are looked for in
+// the other source when it is picked.
+std::vector<OnlineSong> listResults(const std::vector<OnlineSong> &all);
 
 } // namespace laycue::lyrics

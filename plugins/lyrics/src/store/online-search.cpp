@@ -15,7 +15,6 @@ namespace laycue::lyrics {
 namespace {
 
 constexpr int kTimeoutMs = 15000;
-constexpr size_t kEnoughFromLrclib = 5; // fewer than this: ask lyrics.ovh too
 
 std::vector<OnlineSong> parseLrclib(const QByteArray &json)
 {
@@ -115,12 +114,8 @@ void OnlineSearch::search(const QString &query)
 	    [this, query](bool ok, const QByteArray &body, const QString &error) {
 		    if (query != query_)
 			    return;
-		    std::vector<OnlineSong> songs = ok ? usefulResults(parseLrclib(body)) : std::vector<OnlineSong>();
-		    if (songs.size() >= kEnoughFromLrclib) {
-			    emit found(query, songs);
-			    return;
-		    }
-		    // Few or none: lyrics.ovh lists more songs (their words come when one is picked).
+		    std::vector<OnlineSong> songs = ok ? parseLrclib(body) : std::vector<OnlineSong>();
+		    // Always ask lyrics.ovh too: it lists more songs (their words come when one is picked).
 		    const QString firstError = ok ? QString() : error;
 		    get(QUrl(QString::fromStdString(ovhSuggestUrl(query.toStdString()))), searchReply_,
 			[this, query, songs, firstError](bool ok2, const QByteArray &body2,
@@ -136,7 +131,7 @@ void OnlineSearch::search(const QString &query)
 					return;
 				}
 				(void)error2;
-				emit found(query, usefulResults(songs));
+				emit found(query, listResults(songs));
 			});
 	    });
 }
@@ -148,7 +143,25 @@ void OnlineSearch::fetchWords(const OnlineSong &song)
 		    const QString words =
 			    QJsonDocument::fromJson(body).object().value(QStringLiteral("lyrics")).toString();
 		    if (!ok || words.trimmed().isEmpty()) {
-			    emit wordsFailed(song, ok ? QStringLiteral("no words") : error);
+			    // Not on lyrics.ovh: try LRCLIB by name before giving up.
+			    const QString reason = ok ? QStringLiteral("no words") : error;
+			    const QUrl byName(QString::fromStdString(onlineSearchUrl(song.artist + " " + song.title)));
+			    get(byName, wordsReply_,
+				[this, song, reason](bool ok2, const QByteArray &body2, const QString &) {
+					if (ok2) {
+						for (const OnlineSong &candidate : parseLrclib(body2)) {
+							if (songFromOnline(candidate).sections.empty())
+								continue;
+							OnlineSong withWords = candidate;
+							withWords.title = song.title;
+							withWords.artist = song.artist;
+							withWords.needsWords = false;
+							emit wordsReady(withWords);
+							return;
+						}
+					}
+					emit wordsFailed(song, reason);
+				});
 			    return;
 		    }
 		    OnlineSong withWords = song;

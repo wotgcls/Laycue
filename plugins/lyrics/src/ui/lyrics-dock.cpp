@@ -25,8 +25,12 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QMouseEvent>
+#include <QPainter>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
@@ -53,6 +57,41 @@ std::vector<std::string> idsOf(const std::vector<Song> &songs)
 		ids.push_back(s.id);
 	return ids;
 }
+
+// A thin bar under a scroll area: drag it up or down to change that area's height.
+class HeightGrip : public QWidget {
+public:
+	HeightGrip(QScrollArea *target, QWidget *parent) : QWidget(parent), target_(target)
+	{
+		setFixedHeight(14);
+		setCursor(Qt::SizeVerCursor);
+		setToolTip(QStringLiteral("Drag to make the song taller or shorter"));
+	}
+
+protected:
+	void mousePressEvent(QMouseEvent *event) override
+	{
+		startY_ = event->globalPosition().y();
+		startHeight_ = target_->height();
+	}
+	void mouseMoveEvent(QMouseEvent *event) override
+	{
+		const int height = startHeight_ + int(event->globalPosition().y() - startY_);
+		target_->setFixedHeight(std::clamp(height, 90, 900));
+	}
+	void paintEvent(QPaintEvent *) override
+	{
+		QPainter p(this);
+		p.setRenderHint(QPainter::Antialiasing, true);
+		p.setPen(QPen(color::textTertiary, 3, Qt::SolidLine, Qt::RoundCap));
+		p.drawLine(width() / 2 - 18, height() / 2, width() / 2 + 18, height() / 2);
+	}
+
+private:
+	QScrollArea *target_;
+	double startY_ = 0;
+	int startHeight_ = 0;
+};
 
 QScrollArea *scrolling(QWidget *parent, QWidget *&page)
 {
@@ -91,10 +130,13 @@ LyricsDock::LyricsDock(QWidget *parent) : QWidget(parent)
 	stack_->addWidget(buildEditor());
 	contentLayout->addWidget(stack_);
 	toast_ = innerLabel(content, QString(), 12, 500, color::cream);
-	toast_->setStyleSheet(QStringLiteral("background: %1; color: %2; border-radius: 16px; padding: 8px 14px;")
-				      .arg(hex(color::control), hex(color::cream)));
+	toast_->setStyleSheet(
+		QStringLiteral("background: %1; color: %2; border-radius: 12px; padding: 8px 14px; margin: 4px 8px;")
+			.arg(hex(color::control), hex(color::cream)));
+	toast_->setWordWrap(true); // a long message wraps instead of being cut off
+	toast_->setAlignment(Qt::AlignCenter);
 	toast_->hide();
-	contentLayout->addWidget(toast_, 0, Qt::AlignHCenter);
+	contentLayout->addWidget(toast_);
 
 	online_ = new OnlineSearch(this);
 	connect(online_, &OnlineSearch::found, this,
@@ -187,11 +229,22 @@ QWidget *LyricsDock::buildMain()
 
 	songTitle_ = innerLabel(stage, QString(), 12, 700, color::overlay);
 	s->addWidget(songTitle_);
-	auto *slidesBox = new QWidget(stage);
+	// The song's lines sit in a box of their own with its own scrolling, so the buttons and the look editor
+	// stay in reach however long the song is. Drag the bar under it to make it taller or shorter.
+	auto *slidesBox = new QWidget();
 	slidesLayout_ = new QVBoxLayout(slidesBox);
-	slidesLayout_->setContentsMargins(0, 0, 0, 0);
+	slidesLayout_->setContentsMargins(0, 0, 4, 0);
 	slidesLayout_->setSpacing(4);
-	s->addWidget(slidesBox);
+	slidesScroll_ = new QScrollArea(stage);
+	slidesScroll_->setWidgetResizable(true);
+	slidesScroll_->setFrameShape(QFrame::NoFrame);
+	slidesScroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	slidesScroll_->setWidget(slidesBox);
+	slidesScroll_->setFixedHeight(260);
+	slidesScroll_->viewport()->setAutoFillBackground(false);
+	slidesBox->setAutoFillBackground(false);
+	s->addWidget(slidesScroll_);
+	s->addWidget(new HeightGrip(slidesScroll_, stage));
 
 	auto *buttons = new QHBoxLayout();
 	buttons->setSpacing(size::gapSmall);
@@ -487,6 +540,8 @@ int LyricsDock::songIndex() const
 
 void LyricsDock::rebuildSlides()
 {
+	const int keepScroll = slidesScroll_->verticalScrollBar()->value();
+	QPointer<QWidget> current;
 	clear(slidesLayout_);
 	auto *parent = slidesLayout_->parentWidget();
 	if (slides_.empty()) {
@@ -507,9 +562,17 @@ void LyricsDock::rebuildSlides()
 		text.replace(QLatin1Char('\n'), QStringLiteral(" / "));
 		row->setTitle(mark + text);
 		row->setToolTip(qs(slide.text));
+		if (here)
+			current = row;
 		connect(row, &RowButton::clicked, this, [this, i]() { showSlide(int(i)); });
 		slidesLayout_->addWidget(row);
 	}
+	// Keep the list where it was, and bring the line on screen into view (Next can move past the edge).
+	QTimer::singleShot(0, slidesScroll_, [this, keepScroll, current]() {
+		slidesScroll_->verticalScrollBar()->setValue(keepScroll);
+		if (current)
+			slidesScroll_->ensureWidgetVisible(current, 0, 24);
+	});
 }
 
 void LyricsDock::showSlide(int index)
@@ -716,7 +779,7 @@ void LyricsDock::toast(const QString &text)
 {
 	toast_->setText(text);
 	toast_->show();
-	toastTimer_.start();
+	toastTimer_.start(2600 + 45 * int(text.length())); // longer messages stay up longer
 }
 
 } // namespace laycue::lyrics
