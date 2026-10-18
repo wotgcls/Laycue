@@ -60,9 +60,7 @@ constexpr double kDecorInterval = 1.0 / 30.0;
 
 bool hasWords(const Content &c)
 {
-	const auto blank = [](const std::string &t) { return t.find_first_not_of(" 	
-
-") == std::string::npos; };
+	const auto blank = [](const std::string &t) { return t.find_first_not_of(" \t\r\n") == std::string::npos; };
 	return !blank(c.text) || !blank(c.caption);
 }
 
