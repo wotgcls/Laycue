@@ -44,6 +44,7 @@ class StyleEditor : public QWidget {
 public:
 	struct Options {
 		bool showCase = false; // the ALL CAPS / First letter choice (songs)
+		bool showDecor = false; // the looping Bible picture (verses)
 		QString accentLabel;   // what the second colour is for: "Reference", "Song name"
 	};
 
@@ -65,6 +66,10 @@ private:
 	ui::Segmented *layout_ = nullptr;
 	ui::Segmented *fill_ = nullptr;
 	ui::Segmented *case_ = nullptr;
+	ui::Segmented *align_ = nullptr;
+	ui::Segmented *font_ = nullptr;
+	ui::Segmented *transition_ = nullptr;
+	ui::Segmented *decor_ = nullptr;
 	ColourSwatch *colour1_ = nullptr;
 	ColourSwatch *colour2_ = nullptr;
 	ColourSwatch *text_ = nullptr;

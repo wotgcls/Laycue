@@ -281,14 +281,25 @@ QWidget *LyricsDock::buildMain()
 	v->addLayout(songRow);
 
 	v->addWidget(label(page, lt("Laycue.Lyrics.Look"), 11, 600, color::textTertiary));
+	// Packs: sets of templates that suit one theme (the same themes as Scripture's).
+	packs_ = new Segmented(page);
+	QStringList packNames;
+	for (int p = 0; p < kLyricsPackCount; ++p)
+		packNames << lt(lyricsPackKey(p));
+	packs_->setItems(packNames);
+	connect(packs_, &Segmented::changed, this, [this](int pack) {
+		const std::vector<int> members = templatesOfPack(pack);
+		if (!members.empty())
+			useTemplate(members.front());
+	});
+	v->addWidget(packs_);
 	templates_ = new Segmented(page);
-	QStringList names;
-	for (const LyricsTemplate &t : lyricsTemplates())
-		names << lt(t.nameKey);
-	templates_->setItems(names);
-	templates_->setCurrent(settings_.templateIndex);
-	connect(templates_, &Segmented::changed, this, &LyricsDock::useTemplate);
+	connect(templates_, &Segmented::changed, this, [this](int position) {
+		if (position >= 0 && position < int(packMembers_.size()))
+			useTemplate(packMembers_[size_t(position)]);
+	});
 	v->addWidget(templates_);
+	showTemplates();
 	editRow_ = new RowButton(page);
 	editRow_->setTitle(lt("Laycue.Slides.EditLook"));
 	editRow_->setOpen(true);
@@ -751,8 +762,31 @@ void LyricsDock::useTemplate(int index)
 		return;
 	settings_.templateIndex = index;
 	editor_->setStyle(settings_.styles[size_t(index)]);
+	showTemplates();
 	saveSettings(settings_);
 	push();
+}
+
+// Shows the pack the chosen template belongs to, and that pack's templates.
+void LyricsDock::showTemplates()
+{
+	const int index = std::clamp(settings_.templateIndex, 0, int(lyricsTemplates().size()) - 1);
+	const int pack = lyricsTemplates()[size_t(index)].pack;
+	packMembers_ = templatesOfPack(pack);
+	QStringList names;
+	int position = 0;
+	for (size_t i = 0; i < packMembers_.size(); ++i) {
+		names << lt(lyricsTemplates()[size_t(packMembers_[i])].nameKey);
+		if (packMembers_[i] == index)
+			position = int(i);
+	}
+	packs_->blockSignals(true);
+	templates_->blockSignals(true);
+	packs_->setCurrent(pack);
+	templates_->setItems(names);
+	templates_->setCurrent(position);
+	packs_->blockSignals(false);
+	templates_->blockSignals(false);
 }
 
 void LyricsDock::updateStatus()

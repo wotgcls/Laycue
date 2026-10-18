@@ -12,6 +12,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 // The plugin version string (defined in plugin-support.c). Declared here rather than including plugin-support.h,
 // which clashes with OBS's own logging declarations when included before them.
@@ -58,6 +59,7 @@ private:
 	void rebuildSaved();
 	void updateStatus();
 	void useTemplate(int index);
+	void showTemplates();
 	void save();
 	void toast(const QString &text);
 
@@ -77,7 +79,9 @@ private:
 	QWidget *versesBox_ = nullptr;
 	QVBoxLayout *versesLayout_ = nullptr;
 	ui::ActionButton *showButton_ = nullptr;
-	ui::Segmented *templates_ = nullptr;
+	ui::Segmented *packs_ = nullptr;     // Classic / Modern / Sanctuary
+	ui::Segmented *templates_ = nullptr; // the templates of the chosen pack
+	std::vector<int> packMembers_;       // their positions in scriptureTemplates()
 	slides::StyleEditor *editor_ = nullptr;
 	ui::RowButton *editRow_ = nullptr;
 	QVBoxLayout *savedLayout_ = nullptr;

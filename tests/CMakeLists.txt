@@ -33,6 +33,7 @@ add_executable(
   test-clock.cpp
   test-scripture.cpp
   test-lyrics.cpp
+  test-slides.cpp
   "${LAYCUE_SRC}/core/cue-state.cpp"
   "${LAYCUE_SRC}/core/detect.cpp"
   "${LAYCUE_SRC}/core/geometry.cpp"
@@ -43,6 +44,9 @@ add_executable(
   "${LAYCUE_SRC}/core/layouts.cpp"
   "${COMMON_SRC}/core/update-info.cpp"
   "${COMMON_SRC}/core/xml-lite.cpp"
+  "${COMMON_SRC}/slides/slide-style.cpp"
+  "${SCRIPTURE_SRC}/core/templates.cpp"
+  "${LYRICS_SRC}/core/templates.cpp"
   "${SCRIPTURE_SRC}/core/books.cpp"
   "${SCRIPTURE_SRC}/core/reference.cpp"
   "${SCRIPTURE_SRC}/core/bible.cpp"

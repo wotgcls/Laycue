@@ -20,13 +20,31 @@ Hotkeys (OBS Settings → Hotkeys): show or hide, next verse, previous verse.
 
 ## Templates and how they look
 
-Scripture has its own three templates: **Bar**, **Card** and **Full screen** (Lyrics has its own, different set).
-Each can be changed under **Edit this look**, and the changes are kept per template:
+Scripture has **12 templates in three packs**, each pack suiting a theme. Choose a pack, then one of its four templates:
 
-- **Where on screen**: lower third, card, or full screen.
+- **Classic**: Bar, Card, Full screen and Clear (the words alone, outlined).
+- **Modern**: Tab (the reference in a coloured tab above a dark band), Rule (words beside a thick line), Clean (a light
+  band) and Pulpit (large quotation mark, centred words). Left-aligned.
+- **Sanctuary**: Open Bible, Glow, Parchment and Royal. Warm serif type. Open Bible, Glow and Royal have a small
+  **looping Bible** beside the words for as long as the verse is on screen: an open Bible whose page turns, or a
+  closed Bible with a gold cross that floats in turning rays of light. It sits on the side opposite the words, and the
+  words make room for it.
+
+Lyrics has its own set of eight in the same three packs. Each template can be changed under **Edit this look**, and
+the changes are kept per template:
+
+- **Where on screen**: bar, card, full screen, tab, rule or quote.
 - **Behind the words**: none, a colour, a faded (see-through) colour, a gradient (two colours), or your own picture.
 - The colours of the words and of the reference, and the text size.
+- **Text alignment**: left, centre or right. The layout still decides where the box sits, so it stays tidy.
+- **Font**: Modern (Outfit), Clean (Barlow), Compact (Barlow Condensed), Classic (Libre Baskerville) or Display
+  (Bebas Neue). All are bundled, so a verse looks the same on every computer.
+- **Between slides**: **Fade** (the old words fade out, the new fade in) or **Cut** (they swap at once).
+- **Looping animation**: none, Open Bible, or Glowing Bible.
 - **Reset this template** goes back to how it came.
+
+The pictures are drawn by Laycue itself (`slides/slide-render.cpp`): no video files, nothing to download, and they cost a
+few milliseconds a frame, only while a verse with one is on screen.
 
 ## Versions
 

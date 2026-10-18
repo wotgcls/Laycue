@@ -13,6 +13,10 @@ void writeStyle(obs_data_t *d, const SlideStyle &s)
 	obs_data_set_int(d, "accent", s.accent);
 	obs_data_set_int(d, "case", s.textCase);
 	obs_data_set_int(d, "size", s.sizePercent);
+	obs_data_set_int(d, "align", s.align);
+	obs_data_set_int(d, "font", s.font);
+	obs_data_set_int(d, "decor", s.decor);
+	obs_data_set_int(d, "transition", s.transition);
 }
 
 SlideStyle readStyle(obs_data_t *d)
@@ -33,6 +37,10 @@ SlideStyle readStyle(obs_data_t *d)
 	s.accent = uint32_t(number("accent", s.accent));
 	s.textCase = int(number("case", s.textCase));
 	s.sizePercent = int(number("size", s.sizePercent));
+	s.align = int(number("align", s.align));
+	s.font = int(number("font", s.font));
+	s.decor = int(number("decor", s.decor));
+	s.transition = int(number("transition", s.transition));
 	sanitize(s);
 	return s;
 }

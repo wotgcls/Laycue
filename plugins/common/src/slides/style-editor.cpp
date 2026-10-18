@@ -106,7 +106,8 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 
 	v->addWidget(innerLabel(this, lt("Laycue.Slides.Where"), 11, 600, color::textTertiary));
 	layout_ = new Segmented(this);
-	layout_->setItems({lt("Laycue.Slides.LowerThird"), lt("Laycue.Slides.Card"), lt("Laycue.Slides.FullScreen")});
+	layout_->setItems({lt("Laycue.Slides.LowerThird"), lt("Laycue.Slides.Card"), lt("Laycue.Slides.FullScreen"),
+			   lt("Laycue.Slides.Tab"), lt("Laycue.Slides.Rule"), lt("Laycue.Slides.Quote")});
 	connect(layout_, &Segmented::changed, this, [this](int index) {
 		style_.layout = index;
 		emitChanged();
@@ -188,6 +189,47 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 	});
 	sizeRow->addWidget(bigger);
 
+	v->addWidget(innerLabel(this, lt("Laycue.Slides.Align"), 11, 600, color::textTertiary));
+	align_ = new Segmented(this);
+	align_->setItems(
+		{lt("Laycue.Slides.AlignLeft"), lt("Laycue.Slides.AlignCentre"), lt("Laycue.Slides.AlignRight")});
+	connect(align_, &Segmented::changed, this, [this](int index) {
+		style_.align = index;
+		emitChanged();
+	});
+	v->addWidget(align_);
+
+	v->addWidget(innerLabel(this, lt("Laycue.Slides.Font"), 11, 600, color::textTertiary));
+	font_ = new Segmented(this);
+	font_->setItems({lt("Laycue.Slides.FontModern"), lt("Laycue.Slides.FontClean"), lt("Laycue.Slides.FontCompact"),
+			 lt("Laycue.Slides.FontClassic"), lt("Laycue.Slides.FontDisplay")});
+	connect(font_, &Segmented::changed, this, [this](int index) {
+		style_.font = index;
+		emitChanged();
+	});
+	v->addWidget(font_);
+
+	v->addWidget(innerLabel(this, lt("Laycue.Slides.Between"), 11, 600, color::textTertiary));
+	transition_ = new Segmented(this);
+	transition_->setItems({lt("Laycue.Slides.BetweenFade"), lt("Laycue.Slides.BetweenCut")});
+	connect(transition_, &Segmented::changed, this, [this](int index) {
+		style_.transition = index;
+		emitChanged();
+	});
+	v->addWidget(transition_);
+
+	if (options.showDecor) {
+		v->addWidget(innerLabel(this, lt("Laycue.Slides.Animation"), 11, 600, color::textTertiary));
+		decor_ = new Segmented(this);
+		decor_->setItems({lt("Laycue.Slides.AnimationNone"), lt("Laycue.Slides.AnimationOpenBible"),
+				  lt("Laycue.Slides.AnimationGlowBible")});
+		connect(decor_, &Segmented::changed, this, [this](int index) {
+			style_.decor = index;
+			emitChanged();
+		});
+		v->addWidget(decor_);
+	}
+
 	if (options.showCase) {
 		v->addWidget(innerLabel(this, lt("Laycue.Slides.Case"), 11, 600, color::textTertiary));
 		case_ = new Segmented(this);
@@ -238,6 +280,11 @@ void StyleEditor::refresh()
 	fill_->setCurrent(style_.fill);
 	if (case_)
 		case_->setCurrent(style_.textCase);
+	align_->setCurrent(style_.align);
+	font_->setCurrent(style_.font);
+	transition_->setCurrent(style_.transition);
+	if (decor_)
+		decor_->setCurrent(style_.decor);
 	const Fill fill = Fill(style_.fill);
 	colour1_->setColour(toQColor(style_.color1));
 	colour2_->setColour(toQColor(style_.color2));

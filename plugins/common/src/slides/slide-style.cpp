@@ -6,10 +6,14 @@ namespace laycue::slides {
 
 void sanitize(SlideStyle &s)
 {
-	s.layout = std::clamp(s.layout, 0, int(Layout::FullScreen));
+	s.layout = std::clamp(s.layout, 0, kLayoutCount - 1);
 	s.fill = std::clamp(s.fill, 0, int(Fill::Picture));
 	s.textCase = std::clamp(s.textCase, 0, int(TextCase::FirstLetter));
 	s.sizePercent = std::clamp(s.sizePercent, kMinSize, kMaxSize);
+	s.align = std::clamp(s.align, 0, int(Align::Right));
+	s.font = std::clamp(s.font, 0, kFontCount - 1);
+	s.decor = std::clamp(s.decor, 0, int(Decor::GlowBible));
+	s.transition = std::clamp(s.transition, 0, int(Transition::Cut));
 	s.color1 &= 0xFFFFFF;
 	s.color2 &= 0xFFFFFF;
 	s.text &= 0xFFFFFF;

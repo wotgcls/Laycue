@@ -70,6 +70,7 @@ private:
 	void addOnline(size_t index);
 	void addFound(const OnlineSong &found);
 	void useTemplate(int index);
+	void showTemplates();
 	void toast(const QString &text);
 	int songIndex() const; // the open song in songs_, or -1
 
@@ -97,7 +98,9 @@ private:
 	QVBoxLayout *slidesLayout_ = nullptr;
 	QScrollArea *slidesScroll_ = nullptr; // the song's lines: a set height with its own scrolling
 	ui::ActionButton *showButton_ = nullptr;
-	ui::Segmented *templates_ = nullptr;
+	ui::Segmented *packs_ = nullptr;     // Classic / Modern / Sanctuary
+	ui::Segmented *templates_ = nullptr; // the templates of the chosen pack
+	std::vector<int> packMembers_;       // their positions in lyricsTemplates()
 	slides::StyleEditor *editor_ = nullptr;
 	ui::RowButton *editRow_ = nullptr;
 	QLineEdit *editTitle_ = nullptr;

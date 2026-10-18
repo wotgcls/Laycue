@@ -7,9 +7,21 @@
 
 namespace laycue::slides {
 
-enum class Layout { LowerThird = 0, Card = 1, FullScreen = 2 };
+// Where the slide sits and how it is built. Tab: a band with the reference in a tab above its corner. Rule: words
+// beside a thick line. Quote: centred words with a large quotation mark.
+enum class Layout { LowerThird = 0, Card = 1, FullScreen = 2, Tab = 3, Rule = 4, Quote = 5 };
+constexpr int kLayoutCount = 6;
 enum class Fill { None = 0, Solid = 1, SeeThrough = 2, Gradient = 3, Picture = 4 };
 enum class TextCase { AsWritten = 0, Upper = 1, FirstLetter = 2 };
+// How the words line up inside their box. It is a loose alignment: the box itself is placed by the layout.
+enum class Align { Left = 0, Centre = 1, Right = 2 };
+// The bundled typefaces: modern, clean, compact, classic serif and tall display capitals.
+enum class Font { Modern = 0, Clean = 1, Compact = 2, Classic = 3, Display = 4 };
+constexpr int kFontCount = 5;
+// A small looping picture beside the words while the slide is on screen.
+enum class Decor { None = 0, OpenBible = 1, GlowBible = 2 };
+// What happens when the words change: the old ones fade out and the new fade in, or they swap at once.
+enum class Transition { Fade = 0, Cut = 1 };
 
 constexpr int kMinSize = 60;
 constexpr int kMaxSize = 160;
@@ -25,12 +37,17 @@ struct SlideStyle {
 	uint32_t accent = 0xE0A91E; // the reference or song name, and edges
 	int textCase = int(TextCase::AsWritten);
 	int sizePercent = 100;
+	int align = int(Align::Centre);
+	int font = int(Font::Modern);
+	int decor = int(Decor::None);
+	int transition = int(Transition::Fade);
 
 	bool operator==(const SlideStyle &o) const
 	{
 		return layout == o.layout && fill == o.fill && color1 == o.color1 && color2 == o.color2 &&
 		       picture == o.picture && text == o.text && accent == o.accent && textCase == o.textCase &&
-		       sizePercent == o.sizePercent;
+		       sizePercent == o.sizePercent && align == o.align && font == o.font && decor == o.decor &&
+		       transition == o.transition;
 	}
 	bool operator!=(const SlideStyle &o) const { return !(*this == o); }
 };

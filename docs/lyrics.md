@@ -44,10 +44,11 @@ Code: `core/online.*` (the address, turning an answer into a song, choosing usef
 
 ## Templates and how they look
 
-Lyrics has its own four templates: **Black**, **White** (a solid band), **Faded** (see-through) and **No background**
-(the words alone, outlined so they read over video). **Edit this look** changes any of them, as in Scripture:
-where on screen (lower third, card, full screen), what is behind the words (none, colour, faded, gradient, picture),
-the colours and the text size. Two things only songs have:
+Lyrics has eight templates in three packs (the same themes as Scripture's). **Classic**: **Black**, **White** (a solid
+band), **Faded** (see-through) and **No background** (the words alone, outlined so they read over video). **Modern**:
+**Rule** and **Clean**. **Sanctuary**: **Night** and **Parchment**. **Edit this look** changes any of them, as in
+Scripture: where on screen, what is behind the words (none, colour, faded, gradient, picture), the colours, the text
+size, the text alignment, the font and whether songs **Fade** or **Cut** between slides. Two things only songs have:
 
 - **Letters**: as written, **ALL CAPS**, or **First letter** (a capital at the start of every line).
 - **Use the Scripture background**: copies the background of the Scripture template in use, so songs and verses

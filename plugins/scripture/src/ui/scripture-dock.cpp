@@ -173,14 +173,25 @@ void ScriptureDock::build()
 
 	// How it looks on screen.
 	v->addWidget(label(page, lt("Laycue.Scripture.Look"), 11, 600, color::textTertiary));
+	// Packs: sets of templates that suit one theme. Choose a pack, then one of its templates.
+	packs_ = new Segmented(page);
+	QStringList packNames;
+	for (int p = 0; p < kScripturePackCount; ++p)
+		packNames << lt(scripturePackKey(p));
+	packs_->setItems(packNames);
+	connect(packs_, &Segmented::changed, this, [this](int pack) {
+		const std::vector<int> members = templatesOfPack(pack);
+		if (!members.empty())
+			useTemplate(members.front());
+	});
+	v->addWidget(packs_);
 	templates_ = new Segmented(page);
-	QStringList names;
-	for (const ScriptureTemplate &t : scriptureTemplates())
-		names << lt(t.nameKey);
-	templates_->setItems(names);
-	templates_->setCurrent(settings_.templateIndex);
-	connect(templates_, &Segmented::changed, this, &ScriptureDock::useTemplate);
+	connect(templates_, &Segmented::changed, this, [this](int position) {
+		if (position >= 0 && position < int(packMembers_.size()))
+			useTemplate(packMembers_[size_t(position)]);
+	});
 	v->addWidget(templates_);
+	showTemplates();
 	// Every template can be changed: background (colour, gradient or picture), colours and text size.
 	editRow_ = new RowButton(page);
 	editRow_->setTitle(lt("Laycue.Slides.EditLook"));
@@ -188,6 +199,7 @@ void ScriptureDock::build()
 	v->addWidget(editRow_);
 	slides::StyleEditor::Options options;
 	options.accentLabel = lt("Laycue.Scripture.ReferenceColour");
+	options.showDecor = true;
 	editor_ = new slides::StyleEditor(options, page);
 	editor_->setStyle(settings_.styles[size_t(settings_.templateIndex)]);
 	connect(editor_, &slides::StyleEditor::changed, this, [this](const slides::SlideStyle &style) {
@@ -480,8 +492,31 @@ void ScriptureDock::useTemplate(int index)
 		return;
 	settings_.templateIndex = index;
 	editor_->setStyle(settings_.styles[size_t(index)]);
+	showTemplates();
 	save();
 	push();
+}
+
+// Shows the pack the chosen template belongs to, and that pack's templates.
+void ScriptureDock::showTemplates()
+{
+	const int index = std::clamp(settings_.templateIndex, 0, int(scriptureTemplates().size()) - 1);
+	const int pack = scriptureTemplates()[size_t(index)].pack;
+	packMembers_ = templatesOfPack(pack);
+	QStringList names;
+	int position = 0;
+	for (size_t i = 0; i < packMembers_.size(); ++i) {
+		names << lt(scriptureTemplates()[size_t(packMembers_[i])].nameKey);
+		if (packMembers_[i] == index)
+			position = int(i);
+	}
+	packs_->blockSignals(true);
+	templates_->blockSignals(true);
+	packs_->setCurrent(pack);
+	templates_->setItems(names);
+	templates_->setCurrent(position);
+	packs_->blockSignals(false);
+	templates_->blockSignals(false);
 }
 
 void ScriptureDock::updateStatus()
