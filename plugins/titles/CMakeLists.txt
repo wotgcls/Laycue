@@ -3,6 +3,8 @@ laycue_add_plugin(
   SOURCES
     src/plugin-main.cpp
     src/core/easing.cpp
+    src/core/qr.cpp
+    src/core/qr.hpp
     src/core/easing.hpp
     src/core/ticker.cpp
     src/core/ticker.hpp

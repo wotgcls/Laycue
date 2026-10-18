@@ -402,6 +402,67 @@ std::vector<TitleTemplate> buildAll()
 		all.push_back(t);
 	}
 
+	// ---- Quick Link: a link as a QR code, with a title, a description and a tag (five looks) ----
+	{
+		auto t = make("quick-link-card", Category::Announce,
+			      {rgb(0xF6, 0xF1, 0xE7), kGiveOrange, kInk, rgb(0x4A, 0x47, 0x42)},
+			      F::BarlowCondensedBold, F::BarlowRegular, M::Slide, M::Slide);
+		t.palette.shape2 = kWhite;
+		t.palette.ink = kInk;
+		t.usesTag = true;
+		t.usesNote = true;
+		t.usesShape2 = true;
+		t.usesInk = true;
+		all.push_back(t);
+	}
+	{
+		auto t = make("quick-link-bar", Category::Announce,
+			      {withAlpha(kNavy, 245), kAmber, kWhite, rgb(0xC9, 0xD6, 0xEA)},
+			      F::BarlowCondensedBold, F::BarlowRegular, M::Rise, M::Rise);
+		t.palette.shape2 = kWhite;
+		t.palette.ink = kInk;
+		t.usesTag = true;
+		t.usesNote = true;
+		t.usesShape2 = true;
+		t.usesInk = true;
+		all.push_back(t);
+	}
+	{
+		auto t = make("quick-link-poster", Category::Announce,
+			      {kWhite, kGivePurple, kInk, rgb(0x4A, 0x47, 0x42)},
+			      F::BebasNeue, F::BarlowRegular, M::Pop, M::Fade);
+		t.palette.shape2 = kWhite;
+		t.palette.ink = kInk;
+		t.usesTag = true;
+		t.usesNote = true;
+		t.usesShape2 = true;
+		t.usesInk = true;
+		all.push_back(t);
+	}
+	{
+		auto t = make("quick-link-glass", Category::Announce,
+			      {withAlpha(kInk, 150), kGreen, kWhite, rgb(0xDD, 0xE3, 0xEC)},
+			      F::OutfitBold, F::OutfitRegular, M::Fade, M::Fade);
+		t.palette.shape2 = kWhite;
+		t.palette.ink = kInk;
+		t.usesTag = true;
+		t.usesNote = true;
+		t.usesShape2 = true;
+		t.usesInk = true;
+		all.push_back(t);
+	}
+	{
+		auto t = make("quick-link-dots", Category::Announce,
+			      {kCream, kRed, kInk, rgb(0x4A, 0x47, 0x42)},
+			      F::OutfitExtraBold, F::OutfitRegular, M::Pop, M::Fade);
+		t.palette.shape2 = kWhite;
+		t.palette.ink = kInk;
+		t.usesTag = true;
+		t.usesNote = true;
+		t.usesShape2 = true;
+		t.usesInk = true;
+		all.push_back(t);
+	}
 	// ---- Notes: sermon notes and key points ----
 	const Rgba kNavyCard = rgb(0x14, 0x21, 0x3D), kGoldNote = rgb(0xFC, 0xA3, 0x11);
 	{

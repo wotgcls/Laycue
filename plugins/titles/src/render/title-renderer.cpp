@@ -1,6 +1,7 @@
 #include "render/title-renderer.hpp"
 
 #include "core/easing.hpp"
+#include "core/qr.hpp"
 #include "render/brand-icons.hpp"
 
 #include <QFileInfo>
@@ -17,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <functional>
 #include <vector>
 
@@ -2731,6 +2733,243 @@ void logoGlassDisc(Ctx &c)
 	c.p.restore();
 }
 
+// ---- Quick Link: a link turned into a QR code, beside a title, a description and a tag ----------------------
+// Fields: line 1 = title, line 2 = description, tag = the small label (SCAN ME), note = the link itself.
+
+// The QR code of a link, worked out once and kept (it is asked for on every frame of an animation).
+const QrCode &qrFor(const QString &link)
+{
+	static thread_local QString key;
+	static thread_local QrCode code;
+	if (link != key) {
+		key = link;
+		code = encodeQr(link.trimmed().toStdString());
+	}
+	return code;
+}
+
+// "https://www.example.com/give/" -> "example.com/give": what people read under the code.
+QString shortLink(QString link)
+{
+	link = link.trimmed();
+	for (const char *prefix : {"https://", "http://"}) {
+		if (link.startsWith(QLatin1String(prefix), Qt::CaseInsensitive))
+			link = link.mid(int(strlen(prefix)));
+	}
+	if (link.startsWith(QLatin1String("www."), Qt::CaseInsensitive))
+		link = link.mid(4);
+	while (link.endsWith(QLatin1Char('/')))
+		link.chop(1);
+	return link;
+}
+
+// The code on a light tile. The tile includes the empty margin of four squares that scanners need, so keep the
+// colours far apart (dark on light). `dots` draws the squares as round dots, except in the three big corner marks.
+void drawQr(Ctx &c, const QRectF &tile, const QColor &light, const QColor &dark, bool dots, double radius)
+{
+	const QrCode &code = qrFor(c.x.note);
+	fillRect(c.p, tile, light, radius);
+	if (code.empty()) {
+		drawText(c.p, tile, QStringLiteral("LINK"), c.font(c.t.display, tile.width() * 0.16),
+			 withOpacity(dark, 0.35), Qt::AlignCenter);
+		return;
+	}
+	const double cell = tile.width() / double(code.size + 8);
+	const double left = tile.left() + 4 * cell, top = tile.top() + (tile.height() - cell * code.size) / 2.0;
+	auto inMark = [&](int x, int y) {
+		return (x < 7 && y < 7) || (x >= code.size - 7 && y < 7) || (x < 7 && y >= code.size - 7);
+	};
+	QPainterPath path;
+	for (int y = 0; y < code.size; ++y) {
+		for (int x = 0; x < code.size; ++x) {
+			if (!code.dark(x, y))
+				continue;
+			const QRectF m(left + x * cell, top + y * cell, cell, cell);
+			if (dots && !inMark(x, y))
+				path.addEllipse(m.adjusted(cell * 0.07, cell * 0.07, -cell * 0.07, -cell * 0.07));
+			else
+				path.addRect(m);
+		}
+	}
+	c.p.save();
+	c.p.setRenderHint(QPainter::Antialiasing, true);
+	c.p.setPen(Qt::NoPen);
+	c.p.setBrush(dark);
+	c.p.drawPath(path);
+	c.p.restore();
+}
+
+// A small rounded label with tracked capitals, in the accent colour. Returns its width.
+double drawChip(Ctx &c, double x, double y, const QString &label, const QColor &fill, const QColor &ink, double delay)
+{
+	if (!c.has(label))
+		return 0.0;
+	const QFont f = c.font(FontFace::BarlowCondensedBold, 24);
+	const QString text = label.toUpper();
+	const double w = textWidth(f, text) + 3.0 * text.size() + 38;
+	c.p.save();
+	c.p.setOpacity(c.p.opacity() * c.part(delay, 0.4));
+	fillRect(c.p, QRectF(x, y, w, 40), fill, 20);
+	drawText(c.p, QRectF(x + 2, y, w, 40), text, f, ink, Qt::AlignCenter, 1.0, 3.0);
+	c.p.restore();
+	return w;
+}
+
+// The words beside or under a code: title, description (up to `lines` lines) and the short link. Returns the
+// bottom of what was drawn.
+double quickWords(Ctx &c, double x, double y, double w, double titlePx, double descPx, int lines, const QColor &title,
+		  const QColor &desc, const QColor &link, Qt::Alignment align = Qt::AlignLeft)
+{
+	const QFont ft = fitFont(c, c.t.display, titlePx, titlePx * 0.55, c.x.line1, w);
+	const double th = titlePx * 1.15;
+	drawText(c.p, QRectF(x, y, w, th), c.x.line1, ft, title, align | Qt::AlignVCenter, c.part(0.2, 0.4));
+	y += th + 6;
+	if (c.has(c.x.line2)) {
+		const Wrapped d = fitWrapped(c, c.t.body, descPx, descPx * 0.7, c.x.line2, w, lines, 1.3);
+		for (int i = 0; i < d.lines.size(); ++i)
+			drawText(c.p, QRectF(x, y + i * d.lineHeight, w, d.lineHeight), d.lines[i], d.font, desc,
+				 align | Qt::AlignVCenter, c.part(0.3, 0.4));
+		y += d.lineHeight * d.lines.size() + 8;
+	}
+	if (c.has(c.x.note)) {
+		const QFont fl = c.font(FontFace::BarlowSemiBold, descPx * 0.9);
+		drawText(c.p, QRectF(x, y, w, descPx * 1.3), elided(fl, shortLink(c.x.note), w), fl, link,
+			 align | Qt::AlignVCenter, c.part(0.4, 0.4));
+		y += descPx * 1.3;
+	}
+	return y;
+}
+
+// Quick Link 1, Card: a cream card, the code on the left, words on the right, an accent line down the edge.
+void quickLinkCard(Ctx &c)
+{
+	const double w = 900, h = 300, pad = 30, qr = h - 2 * pad;
+	const double y = c.bottom() - h, e = c.part(0.0, 0.55);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft - 10, y - 30, (w + 40) * e, h + 60));
+	solidShape(c, QRectF(kLeft, y, w, h), c.panel, 28);
+	fillRect(c.p, QRectF(kLeft, y + 28, 8, h - 56), c.accent);
+	drawQr(c, QRectF(kLeft + pad + 10, y + pad, qr, qr), c.shape2, c.ink, false, 18);
+	const double tx = kLeft + pad + 10 + qr + 36, tw = w - (tx - kLeft) - pad;
+	double ty = y + pad - 6;
+	if (c.has(c.x.tag)) {
+		drawChip(c, tx, ty, c.x.tag, c.accent, QColor(255, 255, 255), 0.15);
+		ty += 52;
+	}
+	quickWords(c, tx, ty, tw, 54, 26, 3, c.text, c.sub, c.accent);
+	c.p.restore();
+}
+
+// Quick Link 2, Bar: a slim dark bar across the lower third, the code standing out of its left end.
+void quickLinkBar(Ctx &c)
+{
+	const double w = 1700, h = 190, qr = 230;
+	const double y = c.bottom() - h, e = c.part(0.0, 0.5);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft - 10, y - qr, (w + 40) * e, h + qr + 60));
+	solidShape(c, QRectF(kLeft, y, w, h), c.panel, 22);
+	fillRect(c.p, QRectF(kLeft, y, w, 8), c.accent, 4);
+	drawQr(c, QRectF(kLeft + 24, y + h - qr - 14 + 0.0, qr, qr), c.shape2, c.ink, false, 16);
+	const double tx = kLeft + 24 + qr + 40, tw = w - (tx - kLeft) - 260;
+	quickWords(c, tx, y + 26, tw, 60, 26, 2, c.text, c.sub, c.accent);
+	if (c.has(c.x.tag)) {
+		const QFont f = c.font(FontFace::BarlowCondensedBold, 34);
+		const QString text = c.x.tag.toUpper();
+		const double cw = textWidth(f, text) + 3.0 * text.size() + 56;
+		const QRectF chip(kLeft + w - cw - 30, y + (h - 70) / 2, cw, 70);
+		c.p.save();
+		c.p.setOpacity(c.p.opacity() * c.part(0.3, 0.4));
+		fillRect(c.p, chip, c.accent, 35);
+		drawText(c.p, chip, text, f, QColor(255, 255, 255), Qt::AlignCenter, 1.0, 3.0);
+		c.p.restore();
+	}
+	c.p.restore();
+}
+
+// Quick Link 3, Poster: a tall card, a tab on top, the code in the middle, the words underneath, centred.
+void quickLinkPoster(Ctx &c)
+{
+	const double w = 440, pad = 36, qr = w - 2 * pad, tabH = 64;
+	const double h = tabH + 24 + qr + 24 + 190;
+	const double y = c.bottom() - h, e = c.part(0.0, 0.55);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft - 10, y + h * (1 - e) - 10, w + 20, h * e + 60));
+	solidShape(c, QRectF(kLeft, y, w, h), c.panel, 30);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y, w, tabH));
+	fillRect(c.p, QRectF(kLeft, y, w, tabH + 30), c.accent, 30);
+	c.p.restore();
+	drawText(c.p, QRectF(kLeft, y, w, tabH), c.x.tag.toUpper(), c.font(FontFace::BarlowCondensedBold, 34),
+		 QColor(255, 255, 255), Qt::AlignCenter, c.part(0.15, 0.4), 4.0);
+	drawQr(c, QRectF(kLeft + pad, y + tabH + 24, qr, qr), c.shape2, c.ink, false, 20);
+	quickWords(c, kLeft + pad, y + tabH + 24 + qr + 14, qr, 46, 24, 3, c.text, c.sub, c.accent, Qt::AlignHCenter);
+	c.p.restore();
+}
+
+// Quick Link 4, Glass: a frosted dark panel with a pale edge; the code sits on a white tile at its right.
+void quickLinkGlass(Ctx &c)
+{
+	const double w = 1000, h = 290, pad = 34, qr = h - 2 * pad;
+	const double y = c.bottom() - h, e = c.part(0.0, 0.55);
+	c.p.save();
+	c.p.setOpacity(c.p.opacity() * e);
+	c.p.translate(0, 26 * (1 - e));
+	const QRectF panel(kLeft, y, w, h);
+	fillRect(c.p, panel, c.panel, 34);
+	QLinearGradient sheen(panel.topLeft(), panel.bottomRight());
+	sheen.setColorAt(0.0, QColor(255, 255, 255, 70));
+	sheen.setColorAt(0.45, QColor(255, 255, 255, 8));
+	sheen.setColorAt(1.0, QColor(255, 255, 255, 30));
+	c.p.setPen(QPen(QColor(255, 255, 255, 120), 2));
+	c.p.setBrush(sheen);
+	c.p.setRenderHint(QPainter::Antialiasing, true);
+	c.p.drawRoundedRect(panel.adjusted(1, 1, -1, -1), 34, 34);
+	double ty = y + pad;
+	if (c.has(c.x.tag)) {
+		drawChip(c, kLeft + pad + 6, ty, c.x.tag, c.accent, QColor(20, 20, 26), 0.15);
+		ty += 52;
+	}
+	quickWords(c, kLeft + pad + 6, ty, w - 2 * pad - qr - 40, 54, 26, 3, c.text, c.sub, c.accent);
+	drawQr(c, QRectF(kLeft + w - pad - qr, y + pad, qr, qr), c.shape2, c.ink, false, 22);
+	c.p.restore();
+}
+
+// Quick Link 5, Dots: a round-dot code in a ring, a round "scan me" badge on its corner, words underneath.
+void quickLinkDots(Ctx &c)
+{
+	const double w = 400, pad = 30, qr = w - 2 * pad;
+	const double h = pad + qr + 20 + 180;
+	const double y = c.bottom() - h, e = c.partBack(0.0, 0.6);
+	c.p.save();
+	c.p.translate(0, 40 * (1 - c.part(0.0, 0.5)));
+	c.p.setOpacity(c.p.opacity() * std::min(1.0, e));
+	solidShape(c, QRectF(kLeft, y, w, h), c.panel, 36);
+	c.p.setRenderHint(QPainter::Antialiasing, true);
+	c.p.setPen(QPen(c.accent, 6));
+	c.p.setBrush(Qt::NoBrush);
+	c.p.drawRoundedRect(QRectF(kLeft + pad - 8, y + pad - 8, qr + 16, qr + 16), 30, 30);
+	drawQr(c, QRectF(kLeft + pad, y + pad, qr, qr), c.shape2, c.ink, true, 24);
+	if (c.has(c.x.tag)) {
+		const double d = 118;
+		const QRectF badge(kLeft + w - d + 22, y - d / 2 + 6, d, d);
+		c.p.save();
+		c.p.translate(badge.center());
+		c.p.rotate(10);
+		c.p.translate(-badge.center());
+		c.p.setPen(Qt::NoPen);
+		c.p.setBrush(c.accent);
+		c.p.drawEllipse(badge);
+		const Wrapped t = fitWrapped(c, FontFace::BarlowCondensedBold, 32, 20, c.x.tag.toUpper(), d - 26, 2, 1.0);
+		for (int i = 0; i < t.lines.size(); ++i)
+			drawText(c.p, QRectF(badge.left(), badge.center().y() - t.lineHeight * t.lines.size() / 2 + i * t.lineHeight,
+					     d, t.lineHeight),
+				 t.lines[i], t.font, QColor(255, 255, 255), Qt::AlignCenter);
+		c.p.restore();
+	}
+	quickWords(c, kLeft + pad, y + pad + qr + 14, qr, 42, 22, 2, c.text, c.sub, c.accent, Qt::AlignHCenter);
+	c.p.restore();
+}
+
 // ---- Logo + wordmark ------------------------------------------------------------------------------------
 
 // A stand-in lockup (a round mark and a word) for when no logo picture has been chosen yet.
@@ -3465,6 +3704,11 @@ const std::vector<StyleInfo> &styles()
 		{"logo-glass-cube", logoGlassCube},
 		{"logo-glass-disc", logoGlassDisc},
 		{"logo-lockup", logoLockup},
+		{"quick-link-card", quickLinkCard},
+		{"quick-link-bar", quickLinkBar},
+		{"quick-link-poster", quickLinkPoster},
+		{"quick-link-glass", quickLinkGlass},
+		{"quick-link-dots", quickLinkDots},
 		{"notes-card", notesCard},
 		{"notes-points", notesPoints},
 		{"notes-key", notesKey},
@@ -3531,6 +3775,8 @@ double regionDesignHeight(const TitleTemplate &tpl, int canvasWidth, int canvasH
 		return 300.0;
 	if (tpl.id.rfind("notes-", 0) == 0)
 		return 760.0;
+	if (tpl.id.rfind("quick-link-", 0) == 0)
+		return 780.0;
 	if (tpl.id == "big-quote" || tpl.id == "series-title")
 		return kTallRegionHeight;
 	return kRegionHeight;

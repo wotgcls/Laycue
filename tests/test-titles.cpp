@@ -1,6 +1,7 @@
 #include "check.hpp"
 
 #include "core/easing.hpp"
+#include "core/qr.hpp"
 #include "core/ticker.hpp"
 #include "core/title-clock.hpp"
 #include "core/title-templates.hpp"
@@ -129,10 +130,10 @@ TEST_CASE("titles: the ticker wraps and says how many copies fill the view")
 	CHECK(ticker.offset() >= 0.0);
 }
 
-TEST_CASE("titles: there are 68 built-in templates with unique ids and sensible values")
+TEST_CASE("titles: there are 73 built-in templates with unique ids and sensible values")
 {
 	const auto &all = builtInTemplates();
-	CHECK_EQ(int(all.size()), 68);
+	CHECK_EQ(int(all.size()), 73);
 	std::set<std::string> ids;
 	for (const auto &t : all) {
 		ids.insert(t.id);
@@ -142,7 +143,7 @@ TEST_CASE("titles: there are 68 built-in templates with unique ids and sensible 
 		if (t.tickerSpeed > 0.0)
 			CHECK(t.category == Category::Ticker);
 	}
-	CHECK_EQ(int(ids.size()), 68);
+	CHECK_EQ(int(ids.size()), 73);
 	CHECK(findTemplate("nope") == nullptr);
 }
 
@@ -630,4 +631,34 @@ TEST_CASE("titles: kept titles live on their own layer and follow its rename")
 		keepTitle(lib, "Bulk", c);
 	}
 	CHECK_EQ(lib.banks["Bulk"].size(), kMaxKept);
+}
+
+TEST_CASE("titles: a link becomes a QR code of the right size, with its fixed marks and a steady pattern")
+{
+	CHECK(encodeQr("").empty());
+	CHECK_EQ(encodeQr("x").size, 21);                                     // version 1
+	CHECK_EQ(encodeQr("https://example.com/give").size, 25);              // version 2
+	CHECK_EQ(encodeQr(std::string("https://example.com/") + std::string(100, 'x')).size, 45); // version 7
+	CHECK(encodeQr(std::string(400, 'x')).empty());                       // too long for any version we make
+
+	const QrCode code = encodeQr("https://example.com/give", 0);
+	// The three big corner marks: a dark ring, a light ring, a dark centre.
+	for (int corner = 0; corner < 3; ++corner) {
+		const int ox = corner == 1 ? code.size - 7 : 0, oy = corner == 2 ? code.size - 7 : 0;
+		CHECK(code.dark(ox, oy) && code.dark(ox + 6, oy + 6) && code.dark(ox + 3, oy + 3));
+		CHECK(!code.dark(ox + 1, oy + 1) && !code.dark(ox + 5, oy + 5));
+	}
+	// The dotted lines between the marks alternate dark and light.
+	for (int i = 8; i < code.size - 8; ++i) {
+		CHECK_EQ(code.dark(i, 6), i % 2 == 0);
+		CHECK_EQ(code.dark(6, i), i % 2 == 0);
+	}
+	// The first two rows, kept from a build that a scanner read correctly (a guard against changing the layout).
+	const char *rows[] = {"1111111001001111001111111", "1000001010000011101000001"};
+	for (int y = 0; y < 2; ++y)
+		for (int x = 0; x < 25; ++x)
+			CHECK_EQ(code.dark(x, y), rows[y][x] == '1');
+	// The same link always gives the same code; a different link gives a different one.
+	CHECK(encodeQr("https://example.com/give").modules == encodeQr("https://example.com/give").modules);
+	CHECK(encodeQr("https://example.com/give").modules != encodeQr("https://example.com/gift").modules);
 }

@@ -57,6 +57,7 @@ add_executable(
   "${NETWORK_SRC}/core/report.cpp"
   "${NETWORK_SRC}/core/network-settings.cpp"
   "${TITLES_SRC}/core/easing.cpp"
+  "${TITLES_SRC}/core/qr.cpp"
   "${TITLES_SRC}/core/library.cpp"
   "${TITLES_SRC}/core/title-clock.cpp"
   "${TITLES_SRC}/core/ticker.cpp"
