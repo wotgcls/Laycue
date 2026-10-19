@@ -98,6 +98,11 @@ jobs:
             echo "    ${file##*/}: $(sha256sum "${file}" | cut -d " " -f 1)" >> ${{ github.workspace }}/CHECKSUMS.txt
           done
 
+          # "Check for updates" in the panels downloads an installer and its .sha256 file from the release.
+          for installer in ${{ github.workspace }}/@(*-windows-x64-Installer.exe|*.pkg|*.deb); do
+            echo "$(sha256sum "${installer}" | cut -d ' ' -f 1)  ${installer##*/}" > "${installer}.sha256"
+          done
+
       - name: Create Release 🛫
         if: fromJSON(steps.check.outputs.validTag)
         id: create_release
@@ -110,41 +115,9 @@ jobs:
           body_path: ${{ github.workspace }}/CHECKSUMS.txt
           files: |
             ${{ github.workspace }}/*.exe
+            ${{ github.workspace }}/*.sha256
             ${{ github.workspace }}/*.zip
             ${{ github.workspace }}/*.pkg
             ${{ github.workspace }}/*.deb
             ${{ github.workspace }}/*.ddeb
             ${{ github.workspace }}/*.tar.xz
-
-      - name: Publish Update For "Check For Updates" 📣
-        # Copies the installers to the public releases repository that the plugins check, so an installed Laycue
-        # can find and download them. Needs the secret RELEASES_TOKEN (see docs/UPDATES.md); skipped without it.
-        if: fromJSON(steps.check.outputs.validTag) && env.RELEASES_TOKEN != ''
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-          RELEASES_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-          RELEASES_REPO: wotgcls/laycue-releases
-          VERSION: ${{ steps.check.outputs.version }}
-          PRERELEASE: ${{ steps.check.outputs.prerelease }}
-        run: |
-          : Publish Update For "Check For Updates" 📣
-          shopt -s nullglob
-          files=()
-          for installer in *-windows-x64-Installer.exe *.pkg *.deb; do
-            echo "$(sha256sum "${installer}" | cut -d ' ' -f 1)  ${installer}" > "${installer}.sha256"
-            files+=("${installer}" "${installer}.sha256")
-          done
-          if [[ ${#files[@]} -eq 0 ]]; then
-            echo "No installers found to publish"
-            exit 1
-          fi
-          notes="Laycue ${VERSION}"
-          if [[ -f RELEASE_NOTES.md ]]; then
-            notes="$(cat RELEASE_NOTES.md)"
-          fi
-          flags=()
-          if [[ "${PRERELEASE}" == 'true' ]]; then
-            flags+=(--prerelease)
-          fi
-          gh release create "${VERSION}" "${files[@]}" --repo "${RELEASES_REPO}" \
-            --title "Laycue ${VERSION}" --notes "${notes}" "${flags[@]}"
