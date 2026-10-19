@@ -4,6 +4,7 @@
 #include <obs.hpp>
 #include <plugin-support.h>
 
+#include <algorithm>
 #include <cstring>
 
 namespace laycue {
@@ -139,6 +140,32 @@ std::vector<TransitionChoice> transitionChoices()
 		out.push_back({name, id && std::strncmp(id, "laycue_", 7) == 0});
 	}
 	obs_frontend_source_list_free(&transitions);
+	return out;
+}
+
+std::vector<MissingTransition> missingLaycueTransitions()
+{
+	std::vector<std::string> present;
+	obs_frontend_source_list transitions = {};
+	obs_frontend_get_transitions(&transitions);
+	for (size_t i = 0; i < transitions.sources.num; ++i) {
+		obs_source_t *transition = transitions.sources.array[i];
+		const char *id = transition ? obs_source_get_unversioned_id(transition) : nullptr;
+		if (id)
+			present.emplace_back(id);
+	}
+	obs_frontend_source_list_free(&transitions);
+
+	std::vector<MissingTransition> out;
+	const char *id = nullptr;
+	for (size_t i = 0; obs_enum_transition_types(i, &id); ++i) {
+		if (!id || std::strncmp(id, "laycue_", 7) != 0)
+			continue;
+		if (std::find(present.begin(), present.end(), id) != present.end())
+			continue;
+		const char *name = obs_source_get_display_name(id);
+		out.push_back({id, name ? name : id});
+	}
 	return out;
 }
 

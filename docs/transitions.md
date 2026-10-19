@@ -4,6 +4,11 @@ Laycue Scenes adds nine scene transitions to OBS's own transition list (the **Sc
 are native OBS transitions, so they work with Studio Mode, hotkeys and the T-bar like the built-in ones, and their
 length is OBS's transition **Duration**.
 
+The quickest way to add one: in the Laycue panel's **Shots** tab, click **Transition: … ▾** and pick
+**+ Add Laycue Push to OBS…** (or any other). Laycue opens OBS's own add step, so you type a name (or press OK),
+then set the colours and logo. The new transition is selected for Go Live and saved with your scene collection.
+Transitions already in OBS's list are picked from the same menu.
+
 | Transition | What it does |
 |---|---|
 | **Laycue Push** | The new shot pushes the old one off to the left, with a band of brand colour between them. |

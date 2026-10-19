@@ -942,13 +942,39 @@ void LaycueDock::pickTransition()
 			});
 		}
 	}
-	if (!anyLaycue) {
-		// OBS has no way for a plugin to add to its list, so Laycue's transitions are added there once, by hand.
+	// Laycue's kinds not in OBS's list yet: picking one runs OBS's own "add transition" step (name, then
+	// properties), the same as + in the Scene Transitions dock, so OBS sets it up and saves it.
+	const std::vector<MissingTransition> missing = missingLaycueTransitions();
+	if (!missing.empty()) {
+		menu.addSeparator();
+		for (const MissingTransition &kind : missing) {
+			QAction *action = menu.addAction(text("Laycue.Transition.Add").arg(fromStd(kind.name)));
+			const std::string id = kind.id;
+			connect(action, &QAction::triggered, this, [this, id]() { addObsTransition(id); });
+		}
+	} else if (!anyLaycue) {
 		menu.addSeparator();
 		QAction *how = menu.addAction(text("Laycue.Transition.HowToAdd"));
 		how->setEnabled(false);
 	}
 	menu.exec(transitionButton_->mapToGlobal(QPoint(0, transitionButton_->height())));
+}
+
+void LaycueDock::addObsTransition(const std::string &id)
+{
+	try {
+		auto *main = static_cast<QObject *>(obs_frontend_get_main_window());
+		// OBS's private AddTransition(const char *) slot; called directly so `id` outlives the call.
+		const bool ok = main && QMetaObject::invokeMethod(main, "AddTransition", Qt::DirectConnection,
+								  Q_ARG(const char *, id.c_str()));
+		if (!ok) {
+			obs_log(LOG_WARNING, "Could not open OBS's add-transition step for %s", id.c_str());
+			showToast(text("Laycue.Transition.HowToAdd"));
+		}
+		updateTransitionLabel();
+	} catch (...) {
+		obs_log(LOG_ERROR, "Adding a transition failed");
+	}
 }
 
 void LaycueDock::updatePictureTargets()

@@ -102,7 +102,8 @@ private:
 	void arrangePictures(bool wide);
 	void updateStateUi();
 	void updateTransitionLabel();
-	void pickTransition(); // the menu of OBS's transitions under the stage buttons
+	void pickTransition();                        // the menu of OBS's transitions under the stage buttons
+	void addObsTransition(const std::string &id); // OBS's own add step for one of Laycue's transitions
 	void updatePictureTargets();
 	void pullPictures();
 	void updateOverlays(const Snapshot &snapshot);

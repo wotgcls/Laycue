@@ -43,4 +43,11 @@ struct TransitionChoice {
 };
 std::vector<TransitionChoice> transitionChoices();
 
+// Laycue's transition kinds that are not in OBS's Scene Transitions list yet, as {id, display name}.
+struct MissingTransition {
+	std::string id;
+	std::string name;
+};
+std::vector<MissingTransition> missingLaycueTransitions();
+
 } // namespace laycue
