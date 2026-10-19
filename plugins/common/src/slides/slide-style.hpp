@@ -80,9 +80,9 @@ struct SlideStyle {
 	bool operator==(const SlideStyle &o) const
 	{
 		return layout == o.layout && fill == o.fill && color1 == o.color1 && color2 == o.color2 &&
-		       color3 == o.color3 && picture == o.picture && text == o.text && accent == o.accent && textCase == o.textCase &&
-		       sizePercent == o.sizePercent && align == o.align && font == o.font && decor == o.decor &&
-		       transition == o.transition;
+		       color3 == o.color3 && picture == o.picture && text == o.text && accent == o.accent &&
+		       textCase == o.textCase && sizePercent == o.sizePercent && align == o.align && font == o.font &&
+		       decor == o.decor && transition == o.transition;
 	}
 	bool operator!=(const SlideStyle &o) const { return !(*this == o); }
 };

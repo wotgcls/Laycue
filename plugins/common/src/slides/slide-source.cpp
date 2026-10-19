@@ -107,7 +107,9 @@ constexpr double kDecorInterval = 1.0 / 30.0;
 
 bool hasWords(const Content &c)
 {
-	const auto blank = [](const std::string &t) { return t.find_first_not_of(" \t\r\n") == std::string::npos; };
+	const auto blank = [](const std::string &t) {
+		return t.find_first_not_of(" \t\r\n") == std::string::npos;
+	};
 	return !blank(c.text) || !blank(c.caption);
 }
 
@@ -273,13 +275,15 @@ void tick(void *data, float seconds)
 				if (decorBox.isEmpty())
 					s->decor.clear();
 				else
-					s->decor.set(renderDecor(now.style, s->animSeconds, decorBox.size(), s->opacity),
+					s->decor.set(renderDecor(now.style, s->animSeconds, decorBox.size(),
+								 s->opacity),
 						     decorBox);
 				const QRect backBox = backdropRect(now.style, W, H);
 				if (backBox.isEmpty())
 					s->backdrop.clear();
 				else
-					s->backdrop.set(renderBackdrop(now.style, s->animSeconds, W, H, 0.25, s->opacity),
+					s->backdrop.set(renderBackdrop(now.style, s->animSeconds, W, H, 0.25,
+								       s->opacity),
 							backBox);
 			}
 		} else {

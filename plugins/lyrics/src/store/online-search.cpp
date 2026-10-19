@@ -164,31 +164,32 @@ void OnlineSearch::tryWords(const OnlineSong &song, std::vector<WordsTry> tries,
 	const WordsTry attempt = tries[index];
 	const QUrl url(QString::fromStdString(attempt.ovh ? ovhLyricsUrl(attempt.artist, attempt.text)
 							  : onlineSearchUrl(attempt.text)));
-	get(url, wordsReply_, [this, song, tries, index, attempt](bool ok, const QByteArray &body, const QString &error) {
-		if (ok && attempt.ovh) {
-			const QString words =
-				QJsonDocument::fromJson(body).object().value(QStringLiteral("lyrics")).toString();
-			if (!words.trimmed().isEmpty()) {
-				OnlineSong withWords = song;
-				withWords.needsWords = false;
-				withWords.plainLyrics = cleanOvhLyrics(words.toStdString());
-				emit wordsReady(withWords);
-				return;
-			}
-		} else if (ok) {
-			for (const OnlineSong &candidate : parseLrclib(body)) {
-				if (songFromOnline(candidate).sections.empty())
-					continue;
-				OnlineSong withWords = candidate;
-				withWords.title = song.title;
-				withWords.artist = song.artist;
-				withWords.needsWords = false;
-				emit wordsReady(withWords);
-				return;
-			}
-		}
-		tryWords(song, tries, index + 1, ok ? QStringLiteral("no words") : error);
-	});
+	get(url, wordsReply_,
+	    [this, song, tries, index, attempt](bool ok, const QByteArray &body, const QString &error) {
+		    if (ok && attempt.ovh) {
+			    const QString words =
+				    QJsonDocument::fromJson(body).object().value(QStringLiteral("lyrics")).toString();
+			    if (!words.trimmed().isEmpty()) {
+				    OnlineSong withWords = song;
+				    withWords.needsWords = false;
+				    withWords.plainLyrics = cleanOvhLyrics(words.toStdString());
+				    emit wordsReady(withWords);
+				    return;
+			    }
+		    } else if (ok) {
+			    for (const OnlineSong &candidate : parseLrclib(body)) {
+				    if (songFromOnline(candidate).sections.empty())
+					    continue;
+				    OnlineSong withWords = candidate;
+				    withWords.title = song.title;
+				    withWords.artist = song.artist;
+				    withWords.needsWords = false;
+				    emit wordsReady(withWords);
+				    return;
+			    }
+		    }
+		    tryWords(song, tries, index + 1, ok ? QStringLiteral("no words") : error);
+	    });
 }
 
 } // namespace laycue::lyrics

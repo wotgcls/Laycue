@@ -636,10 +636,10 @@ TEST_CASE("titles: kept titles live on their own layer and follow its rename")
 TEST_CASE("titles: a link becomes a QR code of the right size, with its fixed marks and a steady pattern")
 {
 	CHECK(encodeQr("").empty());
-	CHECK_EQ(encodeQr("x").size, 21);                                     // version 1
-	CHECK_EQ(encodeQr("https://example.com/give").size, 25);              // version 2
+	CHECK_EQ(encodeQr("x").size, 21);                                                         // version 1
+	CHECK_EQ(encodeQr("https://example.com/give").size, 25);                                  // version 2
 	CHECK_EQ(encodeQr(std::string("https://example.com/") + std::string(100, 'x')).size, 45); // version 7
-	CHECK(encodeQr(std::string(400, 'x')).empty());                       // too long for any version we make
+	CHECK(encodeQr(std::string(400, 'x')).empty()); // too long for any version we make
 
 	const QrCode code = encodeQr("https://example.com/give", 0);
 	// The three big corner marks: a dark ring, a light ring, a dark centre.

@@ -22,10 +22,14 @@ namespace {
 constexpr double kPi = 3.14159265358979323846; // M_PI is not defined by default on MSVC
 
 // The family name of each bundled typeface, filled in by loadSlideFonts() from what Qt reports.
-QString g_families[kFontCount] = {QStringLiteral("Outfit"),           QStringLiteral("Barlow"),
-				  QStringLiteral("Barlow Condensed"), QStringLiteral("Libre Baskerville"),
-				  QStringLiteral("Bebas Neue"),       QStringLiteral("Anton"),
-				  QStringLiteral("Archivo"),          QStringLiteral("Playfair Display"),
+QString g_families[kFontCount] = {QStringLiteral("Outfit"),
+				  QStringLiteral("Barlow"),
+				  QStringLiteral("Barlow Condensed"),
+				  QStringLiteral("Libre Baskerville"),
+				  QStringLiteral("Bebas Neue"),
+				  QStringLiteral("Anton"),
+				  QStringLiteral("Archivo"),
+				  QStringLiteral("Playfair Display"),
 				  QStringLiteral("Cormorant Garamond")};
 
 // The typeface a slide is being drawn in (the slide is drawn on one thread at a time, so this is safe).
@@ -231,9 +235,9 @@ Geometry geometryOf(const SlideStyle &s, bool hasCaption, int W, int H)
 	}
 	case Layout::Rule: {
 		const double w = W * 0.64, h = H * 0.29;
-		const double x = s.align == int(Align::Right) ? W - W * 0.06 - w
-				 : s.align == int(Align::Centre)      ? (W - w) / 2.0
-								      : W * 0.06;
+		const double x = s.align == int(Align::Right)    ? W - W * 0.06 - w
+				 : s.align == int(Align::Centre) ? (W - w) / 2.0
+								 : W * 0.06;
 		g.area = QRectF(x, H * 0.64, w, h);
 		g.radius = 10 * k;
 		const double room = (hasCaption ? 62 : 28) * k;
@@ -281,7 +285,8 @@ Geometry geometryOf(const SlideStyle &s, bool hasCaption, int W, int H)
 		g.area = QRectF(0, H * 0.78, W, H * 0.22);
 		const double pad = H * 0.035;
 		g.caption = QRectF(W * 0.04, g.area.top() + pad + 10 * k, W * 0.24, g.area.height() - 2 * pad - 10 * k);
-		g.text = QRectF(W * 0.31 + 30 * k, g.caption.top() + 16 * k, W * 0.62 - 60 * k, g.caption.height() - 32 * k);
+		g.text = QRectF(W * 0.31 + 30 * k, g.caption.top() + 16 * k, W * 0.62 - 60 * k,
+				g.caption.height() - 32 * k);
 		g.maxPx = 34 * k * size;
 		g.minPx = 14 * k;
 		g.weight = 700;
@@ -677,7 +682,8 @@ void drawNotes(QPainter &p, double S, double t, const QColor &accent)
 	for (int i = 0; i < 6; ++i) {
 		const double period = 4.0 + 0.6 * i;
 		const double u = std::fmod(t / period + i * 0.23, 1.0);
-		const double x = S * (0.18 + 0.6 * std::fmod(i * 0.37 + 0.11, 1.0)) + std::sin(u * 2.0 * kPi + i) * S * 0.06;
+		const double x =
+			S * (0.18 + 0.6 * std::fmod(i * 0.37 + 0.11, 1.0)) + std::sin(u * 2.0 * kPi + i) * S * 0.06;
 		const double y = S * (0.92 - 0.78 * u);
 		const double size = S * (0.2 + 0.05 * (i % 2));
 		QColor c = i % 2 ? accent : lighter(accent);
@@ -1013,7 +1019,7 @@ QImage renderSlide(const SlideRequest &r)
 			p.setFont(fontOf(26 * k, 700));
 			const double pillW = QFontMetricsF(p.font()).horizontalAdvance(r.caption) + 36 * k;
 			const double left = s.align == int(Align::Right) ? g.area.right() - 28 * k - pillW
-									  : g.area.left() + 28 * k;
+									 : g.area.left() + 28 * k;
 			const QRectF pill(left, g.area.top() - 20 * k, pillW, 40 * k);
 			QPainterPath pp;
 			pp.addRoundedRect(pill, 20 * k, 20 * k);
@@ -1033,7 +1039,7 @@ QImage renderSlide(const SlideRequest &r)
 			tabFont.setItalic(true);
 			const double tabW = QFontMetricsF(tabFont).horizontalAdvance(r.caption) + 56 * k;
 			const double left = s.align == int(Align::Right) ? g.area.right() - 28 * k - tabW
-									  : g.area.left() + 28 * k;
+									 : g.area.left() + 28 * k;
 			const QRectF tab(left, g.area.top() - 52 * k, tabW, 52 * k);
 			QLinearGradient tg(tab.topLeft(), tab.bottomRight());
 			tg.setColorAt(0, lighter(accent));

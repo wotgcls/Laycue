@@ -249,7 +249,9 @@ int penalty(const Grid &g)
 {
 	const int n = g.size;
 	int result = 0;
-	auto d = [&](int x, int y) { return g.dark[g.at(x, y)] != 0; };
+	auto d = [&](int x, int y) {
+		return g.dark[g.at(x, y)] != 0;
+	};
 	for (int pass = 0; pass < 2; ++pass) {
 		for (int a = 0; a < n; ++a) {
 			int run = 1;

@@ -212,8 +212,8 @@ void ScriptureDock::build()
 	slides::StyleEditor::Options options;
 	options.accentLabel = lt("Laycue.Scripture.ReferenceColour");
 	using slides::Decor;
-	options.decors = {int(Decor::None),  int(Decor::OpenBible), int(Decor::GlowBible), int(Decor::Scroll),
-			  int(Decor::Dove),  int(Decor::Cross),     int(Decor::Sunrise)};
+	options.decors = {int(Decor::None), int(Decor::OpenBible), int(Decor::GlowBible), int(Decor::Scroll),
+			  int(Decor::Dove), int(Decor::Cross),     int(Decor::Sunrise)};
 	editor_ = new slides::StyleEditor(options, page);
 	editor_->setStyle(settings_.styles[size_t(settings_.templateIndex)]);
 	connect(editor_, &slides::StyleEditor::changed, this, [this](const slides::SlideStyle &style) {

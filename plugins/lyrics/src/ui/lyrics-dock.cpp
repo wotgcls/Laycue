@@ -497,8 +497,7 @@ void LyricsDock::rebuildResults()
 // words there and press Paste, which makes a new song from them.
 void LyricsDock::addWebRow(const QString &query)
 {
-	resultsLayout_->addWidget(
-		innerLabel(resultsBox_, lt("Laycue.Lyrics.WebHint"), 10, 600, color::textTertiary));
+	resultsLayout_->addWidget(innerLabel(resultsBox_, lt("Laycue.Lyrics.WebHint"), 10, 600, color::textTertiary));
 	auto *row = new QWidget(resultsBox_);
 	auto *h = new QHBoxLayout(row);
 	h->setContentsMargins(0, 0, 0, 0);
@@ -506,16 +505,19 @@ void LyricsDock::addWebRow(const QString &query)
 	const QByteArray words = QUrl::toPercentEncoding(query);
 	const QByteArray withLyrics = QUrl::toPercentEncoding(query + QStringLiteral(" lyrics"));
 	const std::vector<std::pair<QString, QString>> sites = {
-		{QStringLiteral("Google"), QStringLiteral("https://www.google.com/search?q=") + QString::fromLatin1(withLyrics)},
+		{QStringLiteral("Google"),
+		 QStringLiteral("https://www.google.com/search?q=") + QString::fromLatin1(withLyrics)},
 		{QStringLiteral("Genius"), QStringLiteral("https://genius.com/search?q=") + QString::fromLatin1(words)},
-		{QStringLiteral("Musixmatch"), QStringLiteral("https://www.musixmatch.com/search/") + QString::fromLatin1(words)},
+		{QStringLiteral("Musixmatch"),
+		 QStringLiteral("https://www.musixmatch.com/search/") + QString::fromLatin1(words)},
 		{QStringLiteral("AZLyrics"),
 		 QStringLiteral("https://search.azlyrics.com/search.php?q=") + QString::fromLatin1(words)},
 	};
 	for (const auto &site : sites) {
 		auto *open = button(row, site.first, "laycueSecondary");
 		const QString address = site.second;
-		connect(open, &QAbstractButton::clicked, this, [address]() { QDesktopServices::openUrl(QUrl(address)); });
+		connect(open, &QAbstractButton::clicked, this,
+			[address]() { QDesktopServices::openUrl(QUrl(address)); });
 		h->addWidget(open);
 	}
 	resultsLayout_->addWidget(row);

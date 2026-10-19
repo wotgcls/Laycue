@@ -45,9 +45,9 @@ class StyleEditor : public QWidget {
 
 public:
 	struct Options {
-		bool showCase = false; // the ALL CAPS / First letter choice (songs)
+		bool showCase = false;   // the ALL CAPS / First letter choice (songs)
 		std::vector<int> decors; // the looping pictures offered (Decor values, None first); empty = none
-		QString accentLabel;   // what the second colour is for: "Reference", "Song name"
+		QString accentLabel;     // what the second colour is for: "Reference", "Song name"
 	};
 
 	StyleEditor(const Options &options, QWidget *parent = nullptr);

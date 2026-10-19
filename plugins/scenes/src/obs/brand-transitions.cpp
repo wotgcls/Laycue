@@ -523,17 +523,17 @@ obs_properties_t *properties(void *)
 	return props;
 }
 
-template <int I> void *createKind(obs_data_t *settings, obs_source_t *source)
+template<int I> void *createKind(obs_data_t *settings, obs_source_t *source)
 {
 	return create(settings, source, kTransitions[I].kind);
 }
 
-template <int I> const char *nameOf(void *)
+template<int I> const char *nameOf(void *)
 {
 	return obs_module_text(kTransitions[I].nameKey);
 }
 
-template <int I> void registerOne()
+template<int I> void registerOne()
 {
 	obs_source_info info = {};
 	info.id = kTransitions[I].id;

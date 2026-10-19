@@ -405,7 +405,8 @@ std::vector<TitleTemplate> buildAll()
 	// ---- Artsy name bars, glowing titles ----
 	{
 		auto t = make("name-lime-slant", Category::People,
-			      {rgb(0xC5, 0xE0, 0x2E), rgb(0x3B, 0x82, 0xF6), rgb(0x14, 0x16, 0x1C), rgb(0x2A, 0x30, 0x20)},
+			      {rgb(0xC5, 0xE0, 0x2E), rgb(0x3B, 0x82, 0xF6), rgb(0x14, 0x16, 0x1C),
+			       rgb(0x2A, 0x30, 0x20)},
 			      F::OutfitBold, F::OutfitSemiBold, M::Wipe, M::Wipe);
 		t.palette.shape3 = rgb(0x14, 0x16, 0x1C);
 		t.palette.ink = kWhite;
@@ -416,14 +417,15 @@ std::vector<TitleTemplate> buildAll()
 	}
 	{
 		auto t = make("name-edge-line", Category::People,
-			      {withAlpha(rgb(0x1E, 0x23, 0x2B), 225), rgb(0x3B, 0x82, 0xF6), kWhite, rgb(0xC5, 0xE0, 0x2E)},
+			      {withAlpha(rgb(0x1E, 0x23, 0x2B), 225), rgb(0x3B, 0x82, 0xF6), kWhite,
+			       rgb(0xC5, 0xE0, 0x2E)},
 			      F::OutfitBold, F::OutfitSemiBold, M::Slide, M::Slide);
 		all.push_back(t);
 	}
 	{
 		auto t = make("name-blue-slant", Category::People,
-			      {rgb(0x4A, 0x90, 0xE2), kWhite, kWhite, rgb(0xE3, 0xEE, 0xFF)},
-			      F::OutfitBold, F::OutfitSemiBold, M::Wipe, M::Wipe);
+			      {rgb(0x4A, 0x90, 0xE2), kWhite, kWhite, rgb(0xE3, 0xEE, 0xFF)}, F::OutfitBold,
+			      F::OutfitSemiBold, M::Wipe, M::Wipe);
 		t.palette.shape3 = kWhite;
 		t.palette.ink = rgb(0x4A, 0x90, 0xE2);
 		t.usesShape3 = true;
@@ -433,8 +435,8 @@ std::vector<TitleTemplate> buildAll()
 	}
 	{
 		auto t = make("name-bracket", Category::People,
-			      {rgb(0x14, 0x9C, 0xA8), rgb(0x5F, 0xD3, 0xDB), kWhite, kWhite},
-			      F::OutfitExtraBold, F::BarlowCondensedBold, M::Pop, M::Fade);
+			      {rgb(0x14, 0x9C, 0xA8), rgb(0x5F, 0xD3, 0xDB), kWhite, kWhite}, F::OutfitExtraBold,
+			      F::BarlowCondensedBold, M::Pop, M::Fade);
 		t.palette.shape2 = rgb(0xF4, 0xEE, 0xE3);
 		t.palette.ink = rgb(0x11, 0x11, 0x10);
 		t.usesShape2 = true;
@@ -443,20 +445,20 @@ std::vector<TitleTemplate> buildAll()
 	}
 	{
 		auto t = make("name-red-stack", Category::People,
-			      {withAlpha(kInk, 0), rgb(0xE5, 0x23, 0x2B), kWhite, kWhite},
-			      F::BebasNeue, F::BarlowCondensedBold, M::Rise, M::Fade);
+			      {withAlpha(kInk, 0), rgb(0xE5, 0x23, 0x2B), kWhite, kWhite}, F::BebasNeue,
+			      F::BarlowCondensedBold, M::Rise, M::Fade);
 		all.push_back(t);
 	}
 	{
 		auto t = make("name-red-box", Category::People,
-			      {withAlpha(kInk, 0), rgb(0xE5, 0x23, 0x2B), kWhite, kWhite},
-			      F::BebasNeue, F::BarlowCondensedSemiBold, M::Rise, M::Fade);
+			      {withAlpha(kInk, 0), rgb(0xE5, 0x23, 0x2B), kWhite, kWhite}, F::BebasNeue,
+			      F::BarlowCondensedSemiBold, M::Rise, M::Fade);
 		all.push_back(t);
 	}
 	{
 		auto t = make("name-role-box", Category::People,
-			      {withAlpha(kInk, 0), rgb(0xD7, 0x1F, 0x3A), kWhite, kWhite},
-			      F::OutfitExtraBold, F::BarlowSemiBold, M::Slide, M::Fade);
+			      {withAlpha(kInk, 0), rgb(0xD7, 0x1F, 0x3A), kWhite, kWhite}, F::OutfitExtraBold,
+			      F::BarlowSemiBold, M::Slide, M::Fade);
 		t.palette.shape2 = kWhite;
 		t.palette.ink = rgb(0xB3, 0x16, 0x2E);
 		t.usesShape2 = true;
@@ -464,8 +466,7 @@ std::vector<TitleTemplate> buildAll()
 		all.push_back(t);
 	}
 	{
-		auto t = make("name-heavy-light", Category::People,
-			      {rgb(0x0E, 0x0E, 0x10), kWhite, kWhite, kWhite},
+		auto t = make("name-heavy-light", Category::People, {rgb(0x0E, 0x0E, 0x10), kWhite, kWhite, kWhite},
 			      F::OutfitExtraBold, F::BarlowSemiBold, M::Wipe, M::Fade);
 		t.palette.shape2 = kWhite;
 		t.palette.ink = rgb(0x0E, 0x0E, 0x10);
@@ -475,8 +476,8 @@ std::vector<TitleTemplate> buildAll()
 	}
 	{
 		auto t = make("glow-headline", Category::Announce,
-			      {rgb(0x5B, 0x21, 0xB6), rgb(0xE1, 0x1D, 0x74), kWhite, kWhite},
-			      F::OutfitExtraBold, F::OutfitExtraBold, M::Fade, M::Fade);
+			      {rgb(0x5B, 0x21, 0xB6), rgb(0xE1, 0x1D, 0x74), kWhite, kWhite}, F::OutfitExtraBold,
+			      F::OutfitExtraBold, M::Fade, M::Fade);
 		t.palette.shape2 = rgb(0x25, 0x63, 0xEB);
 		t.usesShape2 = true;
 		t.pulseSeconds = 6.0; // the colours keep moving
@@ -484,16 +485,15 @@ std::vector<TitleTemplate> buildAll()
 	}
 	{
 		auto t = make("glow-name", Category::People,
-			      {rgb(0x5B, 0x21, 0xB6), rgb(0xE1, 0x1D, 0x74), kWhite, kWhite},
-			      F::OutfitExtraBold, F::OutfitExtraBold, M::Fade, M::Fade);
+			      {rgb(0x5B, 0x21, 0xB6), rgb(0xE1, 0x1D, 0x74), kWhite, kWhite}, F::OutfitExtraBold,
+			      F::OutfitExtraBold, M::Fade, M::Fade);
 		t.palette.shape2 = rgb(0x25, 0x63, 0xEB);
 		t.usesShape2 = true;
 		t.pulseSeconds = 6.0; // the colours keep moving
 		all.push_back(t);
 	}
 	{
-		auto t = make("logo-spin3d", Category::Live,
-			      {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
+		auto t = make("logo-spin3d", Category::Live, {withAlpha(kInk, 0), kOrange, kWhite, kWhite},
 			      F::OutfitBold, F::OutfitBold, M::Fade, M::Fade);
 		t.palette.ink = kWhite;
 		t.anchorTop = true;
@@ -506,8 +506,8 @@ std::vector<TitleTemplate> buildAll()
 	// ---- Quick Link: a link as a QR code, with a title, a description and a tag (five looks) ----
 	{
 		auto t = make("quick-link-card", Category::Announce,
-			      {rgb(0xF6, 0xF1, 0xE7), kGiveOrange, kInk, rgb(0x4A, 0x47, 0x42)},
-			      F::BarlowCondensedBold, F::BarlowRegular, M::Slide, M::Slide);
+			      {rgb(0xF6, 0xF1, 0xE7), kGiveOrange, kInk, rgb(0x4A, 0x47, 0x42)}, F::BarlowCondensedBold,
+			      F::BarlowRegular, M::Slide, M::Slide);
 		t.palette.shape2 = kWhite;
 		t.palette.ink = kInk;
 		t.usesTag = true;
@@ -518,8 +518,8 @@ std::vector<TitleTemplate> buildAll()
 	}
 	{
 		auto t = make("quick-link-bar", Category::Announce,
-			      {withAlpha(kNavy, 245), kAmber, kWhite, rgb(0xC9, 0xD6, 0xEA)},
-			      F::BarlowCondensedBold, F::BarlowRegular, M::Rise, M::Rise);
+			      {withAlpha(kNavy, 245), kAmber, kWhite, rgb(0xC9, 0xD6, 0xEA)}, F::BarlowCondensedBold,
+			      F::BarlowRegular, M::Rise, M::Rise);
 		t.palette.shape2 = kWhite;
 		t.palette.ink = kInk;
 		t.usesTag = true;
@@ -530,8 +530,8 @@ std::vector<TitleTemplate> buildAll()
 	}
 	{
 		auto t = make("quick-link-poster", Category::Announce,
-			      {kWhite, kGivePurple, kInk, rgb(0x4A, 0x47, 0x42)},
-			      F::BebasNeue, F::BarlowRegular, M::Pop, M::Fade);
+			      {kWhite, kGivePurple, kInk, rgb(0x4A, 0x47, 0x42)}, F::BebasNeue, F::BarlowRegular,
+			      M::Pop, M::Fade);
 		t.palette.shape2 = kWhite;
 		t.palette.ink = kInk;
 		t.usesTag = true;
@@ -542,8 +542,8 @@ std::vector<TitleTemplate> buildAll()
 	}
 	{
 		auto t = make("quick-link-glass", Category::Announce,
-			      {withAlpha(kInk, 150), kGreen, kWhite, rgb(0xDD, 0xE3, 0xEC)},
-			      F::OutfitBold, F::OutfitRegular, M::Fade, M::Fade);
+			      {withAlpha(kInk, 150), kGreen, kWhite, rgb(0xDD, 0xE3, 0xEC)}, F::OutfitBold,
+			      F::OutfitRegular, M::Fade, M::Fade);
 		t.palette.shape2 = kWhite;
 		t.palette.ink = kInk;
 		t.usesTag = true;
@@ -553,8 +553,7 @@ std::vector<TitleTemplate> buildAll()
 		all.push_back(t);
 	}
 	{
-		auto t = make("quick-link-dots", Category::Announce,
-			      {kCream, kRed, kInk, rgb(0x4A, 0x47, 0x42)},
+		auto t = make("quick-link-dots", Category::Announce, {kCream, kRed, kInk, rgb(0x4A, 0x47, 0x42)},
 			      F::OutfitExtraBold, F::OutfitRegular, M::Pop, M::Fade);
 		t.palette.shape2 = kWhite;
 		t.palette.ink = kInk;

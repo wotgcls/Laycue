@@ -39,8 +39,8 @@ constexpr int kFontRows[3][3] = {
 	{int(Font::Modern), int(Font::Clean), int(Font::Archivo)},
 	{int(Font::Classic), int(Font::Playfair), int(Font::Cormorant)},
 };
-constexpr const char *kFontNames[kFontCount] = {"Outfit", "Barlow",   "Condensed", "Baskerville", "Bebas",
-						 "Anton",  "Archivo", "Playfair",  "Cormorant"};
+constexpr const char *kFontNames[kFontCount] = {"Outfit", "Barlow",  "Condensed", "Baskerville", "Bebas",
+						"Anton",  "Archivo", "Playfair",  "Cormorant"};
 
 QWidget *row(QWidget *parent, QHBoxLayout *&layout)
 {
@@ -135,7 +135,8 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 	v->addWidget(innerLabel(this, lt("Laycue.Slides.Behind"), 11, 600, color::textTertiary));
 	fill_ = new Segmented(this);
 	fill_->setItems({lt("Laycue.Slides.FillNone"), lt("Laycue.Slides.FillColour"), lt("Laycue.Slides.FillFaded"),
-			 lt("Laycue.Slides.FillGradient"), lt("Laycue.Slides.FillPicture"), lt("Laycue.Slides.FillMoving")});
+			 lt("Laycue.Slides.FillGradient"), lt("Laycue.Slides.FillPicture"),
+			 lt("Laycue.Slides.FillMoving")});
 	connect(fill_, &Segmented::changed, this, [this](int index) {
 		if (index == int(Fill::Picture) && style_.picture.empty()) {
 			choosePicture(); // a picture fill needs a picture
@@ -251,10 +252,11 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 	decors_ = options.decors;
 	if (!decors_.empty()) {
 		static const char *const names[kDecorCount] = {
-			"Laycue.Slides.AnimationNone",   "Laycue.Slides.AnimationOpenBible", "Laycue.Slides.AnimationGlowBible",
-			"Laycue.Slides.AnimationScroll", "Laycue.Slides.AnimationDove",      "Laycue.Slides.AnimationCross",
-			"Laycue.Slides.AnimationSunrise", "Laycue.Slides.AnimationNotes",    "Laycue.Slides.AnimationEqualizer",
-			"Laycue.Slides.AnimationVinyl"};
+			"Laycue.Slides.AnimationNone",      "Laycue.Slides.AnimationOpenBible",
+			"Laycue.Slides.AnimationGlowBible", "Laycue.Slides.AnimationScroll",
+			"Laycue.Slides.AnimationDove",      "Laycue.Slides.AnimationCross",
+			"Laycue.Slides.AnimationSunrise",   "Laycue.Slides.AnimationNotes",
+			"Laycue.Slides.AnimationEqualizer", "Laycue.Slides.AnimationVinyl"};
 		v->addWidget(innerLabel(this, lt("Laycue.Slides.Animation"), 11, 600, color::textTertiary));
 		QStringList first, rest;
 		for (size_t i = 0; i < decors_.size(); ++i)

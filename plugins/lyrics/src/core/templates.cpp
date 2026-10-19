@@ -11,8 +11,8 @@ using slides::Font;
 using slides::Layout;
 
 slides::SlideStyle style(Layout layout, Fill fill, uint32_t background, uint32_t background2, uint32_t text,
-			 uint32_t accent, Align align = Align::Centre, Font font = Font::Modern, Decor decor = Decor::None,
-			 uint32_t c3 = 0x7B2FF7)
+			 uint32_t accent, Align align = Align::Centre, Font font = Font::Modern,
+			 Decor decor = Decor::None, uint32_t c3 = 0x7B2FF7)
 {
 	slides::SlideStyle s;
 	s.decor = int(decor);
@@ -33,7 +33,8 @@ slides::SlideStyle style(Layout layout, Fill fill, uint32_t background, uint32_t
 const char *lyricsPackKey(int pack)
 {
 	static const char *const keys[kLyricsPackCount] = {"Laycue.Lyrics.Pack.Classic", "Laycue.Lyrics.Pack.Modern",
-							   "Laycue.Lyrics.Pack.Sanctuary", "Laycue.Lyrics.Pack.Worship"};
+							   "Laycue.Lyrics.Pack.Sanctuary",
+							   "Laycue.Lyrics.Pack.Worship"};
 	return keys[pack < 0 ? 0 : (pack >= kLyricsPackCount ? kLyricsPackCount - 1 : pack)];
 }
 

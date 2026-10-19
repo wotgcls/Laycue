@@ -2755,10 +2755,10 @@ void nameLimeSlant(Ctx &c)
 	c.p.fillPath(slantedBar(block, 30, 0), c.shape3);
 	fillRect(c.p, QRectF(block.right() - 2, y, 8, h), c.accent);
 	drawLogoOrMark(c, logoImage(c.x.logoPath), block.adjusted(36, 18, -14, -18), c.accent, c.ink, c.part(0.3, 0.4));
-	drawText(c.p, QRectF(kLeft + 34, y + 12, w, 52), c.x.line1.toUpper(), f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
-		 c.part(0.2, 0.4));
-	drawText(c.p, QRectF(kLeft + 34, y + 62, w, 32), c.x.line2.toUpper(), f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
-		 c.part(0.3, 0.4));
+	drawText(c.p, QRectF(kLeft + 34, y + 12, w, 52), c.x.line1.toUpper(), f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.2, 0.4));
+	drawText(c.p, QRectF(kLeft + 34, y + 62, w, 32), c.x.line2.toUpper(), f2, c.sub,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.3, 0.4));
 	c.p.restore();
 }
 
@@ -2775,10 +2775,10 @@ void nameEdgeLine(Ctx &c)
 	c.p.save();
 	c.p.setClipRect(QRectF(kLeft + 10, y, w * eBar, h));
 	fillRect(c.p, QRectF(kLeft + 10, y, w, h), c.panel);
-	drawText(c.p, QRectF(kLeft + 40, y + 12, w, 50), c.x.line1.toUpper(), f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
-		 c.part(0.3, 0.4));
-	drawText(c.p, QRectF(kLeft + 40, y + 60, w, 30), c.x.line2.toUpper(), f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
-		 c.part(0.4, 0.4));
+	drawText(c.p, QRectF(kLeft + 40, y + 12, w, 50), c.x.line1.toUpper(), f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.3, 0.4));
+	drawText(c.p, QRectF(kLeft + 40, y + 60, w, 30), c.x.line2.toUpper(), f2, c.sub,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.4, 0.4));
 	c.p.restore();
 }
 
@@ -2840,7 +2840,8 @@ void nameBracket(Ctx &c)
 	c.p.setBrush(Qt::NoBrush);
 	const QRectF frame = bar.adjusted(-gap, -gap, gap, gap);
 	for (const QPointF &corner : {frame.topLeft(), frame.topRight(), frame.bottomLeft(), frame.bottomRight()}) {
-		const double sx = corner.x() < frame.center().x() ? 1 : -1, sy = corner.y() < frame.center().y() ? 1 : -1;
+		const double sx = corner.x() < frame.center().x() ? 1 : -1,
+			     sy = corner.y() < frame.center().y() ? 1 : -1;
 		QPolygonF l;
 		l << QPointF(corner.x(), corner.y() + sy * arm) << corner << QPointF(corner.x() + sx * arm, corner.y());
 		c.p.drawPolyline(l);
@@ -2880,7 +2881,8 @@ void nameRedStack(Ctx &c)
 	}
 	for (int i = 0; i < role.lines.size(); ++i)
 		drawShadowText(c.p,
-			       QRectF(kLeft + 36, y + lineH * lines.size() + 12 + i * role.lineHeight, 700, role.lineHeight),
+			       QRectF(kLeft + 36, y + lineH * lines.size() + 12 + i * role.lineHeight, 700,
+				      role.lineHeight),
 			       role.lines[i], role.font, c.sub, Qt::AlignLeft | Qt::AlignVCenter, c.part(0.4, 0.4));
 }
 
@@ -2909,7 +2911,8 @@ void nameRedBox(Ctx &c)
 		const double a3 = c.part(0.4, 0.4);
 		drawShadowText(c.p, QRectF(kLeft, y + 96, roleW - 30, 34), c.x.line2.toUpper(), f2, c.sub,
 			       Qt::AlignLeft | Qt::AlignVCenter, a3);
-		fillRect(c.p, QRectF(kLeft + 90 * a3, y + 136, (roleW - 30) * a3 - 90 * a3, 3), withOpacity(c.sub, 0.85));
+		fillRect(c.p, QRectF(kLeft + 90 * a3, y + 136, (roleW - 30) * a3 - 90 * a3, 3),
+			 withOpacity(c.sub, 0.85));
 	}
 }
 
@@ -2935,7 +2938,8 @@ void nameRoleBox(Ctx &c)
 		fillRect(c.p, box, c.shape2);
 		c.p.save();
 		c.p.setClipRect(box);
-		drawText(c.p, QRectF(kLeft, box.top(), roleW, 44), c.x.line2.toUpper(), f2, c.ink, Qt::AlignCenter, 1.0, 3.0);
+		drawText(c.p, QRectF(kLeft, box.top(), roleW, 44), c.x.line2.toUpper(), f2, c.ink, Qt::AlignCenter, 1.0,
+			 3.0);
 		c.p.restore();
 	}
 }
@@ -3054,8 +3058,7 @@ void glowName(Ctx &c)
 	drawShadowText(c.p, QRectF(kLeft + 30 * (1 - a1), y, 1200, 84), c.x.line1.toUpper(), f1, c.text,
 		       Qt::AlignLeft | Qt::AlignVCenter, a1);
 	const QFontMetricsF fm(f2);
-	outlineText(c.p,
-		    QRectF(kLeft + 30 * (1 - a2), y + 84, fm.horizontalAdvance(c.x.line2.toUpper()), 52),
+	outlineText(c.p, QRectF(kLeft + 30 * (1 - a2), y + 84, fm.horizontalAdvance(c.x.line2.toUpper()), 52),
 		    c.x.line2.toUpper(), f2, c.text, 2.0, a2);
 }
 
@@ -3334,10 +3337,13 @@ void quickLinkDots(Ctx &c)
 		c.p.setPen(Qt::NoPen);
 		c.p.setBrush(c.accent);
 		c.p.drawEllipse(badge);
-		const Wrapped t = fitWrapped(c, FontFace::BarlowCondensedBold, 32, 20, c.x.tag.toUpper(), d - 26, 2, 1.0);
+		const Wrapped t =
+			fitWrapped(c, FontFace::BarlowCondensedBold, 32, 20, c.x.tag.toUpper(), d - 26, 2, 1.0);
 		for (int i = 0; i < t.lines.size(); ++i)
-			drawText(c.p, QRectF(badge.left(), badge.center().y() - t.lineHeight * t.lines.size() / 2 + i * t.lineHeight,
-					     d, t.lineHeight),
+			drawText(c.p,
+				 QRectF(badge.left(),
+					badge.center().y() - t.lineHeight * t.lines.size() / 2 + i * t.lineHeight, d,
+					t.lineHeight),
 				 t.lines[i], t.font, QColor(255, 255, 255), Qt::AlignCenter);
 		c.p.restore();
 	}
