@@ -67,6 +67,8 @@ private:
 	void deleteSong();
 	void importSong();
 	void searchOnline();
+	void addWebRow(const QString &query); // Google, Genius, Musixmatch, AZLyrics in the browser, then Paste
+	void pasteWords(const QString &title);  // a new song from the words on the clipboard
 	void addOnline(size_t index);
 	void addFound(const OnlineSong &found);
 	void useTemplate(int index);

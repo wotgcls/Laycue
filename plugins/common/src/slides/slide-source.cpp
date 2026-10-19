@@ -29,6 +29,55 @@ struct Content {
 	bool operator!=(const Content &o) const { return !(*this == o); }
 };
 
+// A picture drawn over part of the canvas: `frame` is stretched over `box`.
+struct Layer {
+	QImage frame;
+	QRect box;
+	bool upload = false;
+	gs_texture_t *texture = nullptr;
+	uint32_t textureW = 0, textureH = 0;
+
+	void set(const QImage &image, const QRect &where)
+	{
+		frame = image.isNull() ? QImage() : image.convertToFormat(QImage::Format_RGBA8888);
+		box = where;
+		upload = true;
+	}
+	void clear() { frame = QImage(); }
+	// Graphics thread only.
+	void draw(gs_eparam_t *image)
+	{
+		if (frame.isNull() || box.isEmpty())
+			return;
+		const uint32_t w = uint32_t(frame.width()), h = uint32_t(frame.height());
+		if (!texture || textureW != w || textureH != h) {
+			if (texture)
+				gs_texture_destroy(texture);
+			const uint8_t *bits = frame.constBits();
+			texture = gs_texture_create(w, h, GS_RGBA, 1, &bits, GS_DYNAMIC);
+			textureW = w;
+			textureH = h;
+			upload = false;
+		} else if (upload) {
+			gs_texture_set_image(texture, frame.constBits(), uint32_t(frame.bytesPerLine()), false);
+			upload = false;
+		}
+		if (!texture)
+			return;
+		gs_matrix_push();
+		gs_matrix_translate3f(float(box.x()), float(box.y()), 0.0f);
+		gs_effect_set_texture(image, texture);
+		gs_draw_sprite(texture, 0, uint32_t(box.width()), uint32_t(box.height()));
+		gs_matrix_pop();
+	}
+	void destroy()
+	{
+		if (texture)
+			gs_texture_destroy(texture);
+		texture = nullptr;
+	}
+};
+
 struct SlideSource {
 	obs_source_t *source = nullptr;
 	std::mutex mutex;
@@ -46,14 +95,12 @@ struct SlideSource {
 	gs_texture_t *texture = nullptr;
 	uint32_t textureW = 0, textureH = 0;
 	uint32_t canvasW = 1920, canvasH = 1080;
-	// The looping Bible picture beside the words: its own small picture and texture, redrawn 30 times a second.
-	QImage decorFrame;
-	QRect decorBox;
-	double decorSeconds = 0.0;
-	double decorSince = 1.0;
-	bool decorUpload = false;
-	gs_texture_t *decorTexture = nullptr;
-	uint32_t decorTextureW = 0, decorTextureH = 0;
+	// What moves while the words are up, each its own picture and texture, redrawn 30 times a second: the
+	// moving colours under the slide, and the looping picture beside the words.
+	Layer backdrop;
+	Layer decor;
+	double animSeconds = 0.0;
+	double animSince = 1.0;
 };
 
 constexpr double kDecorInterval = 1.0 / 30.0;
@@ -114,12 +161,12 @@ void *create(obs_data_t *settings, obs_source_t *source)
 void destroy(void *data)
 {
 	auto *s = static_cast<SlideSource *>(data);
-	if (s->texture || s->decorTexture) {
+	if (s->texture || s->decor.texture || s->backdrop.texture) {
 		obs_enter_graphics();
 		if (s->texture)
 			gs_texture_destroy(s->texture);
-		if (s->decorTexture)
-			gs_texture_destroy(s->decorTexture);
+		s->decor.destroy();
+		s->backdrop.destroy();
 		obs_leave_graphics();
 	}
 	delete s;
@@ -213,25 +260,31 @@ void tick(void *data, float seconds)
 			s->frameOpacity = s->opacity;
 			s->uploadPending = true;
 		}
-		// The looping picture: redrawn on its own while the words are up.
+		// What moves: redrawn on its own while the words are up.
 		const Content &now = s->showing;
-		if (now.style.decor != int(Decor::None) && hasWords(now) && s->opacity > 0.0) {
-			s->decorSeconds += std::max(0.0, double(seconds));
-			s->decorSince += std::max(0.0, double(seconds));
-			if (s->decorSince >= kDecorInterval || s->decorFrame.isNull() || s->opacity < 1.0) {
-				s->decorSince = 0.0;
-				const QRect box = decorRect(now.style, int(s->canvasW), int(s->canvasH));
-				if (box.isEmpty()) {
-					s->decorFrame = QImage();
-				} else {
-					s->decorBox = box;
-					s->decorFrame = renderDecor(now.style, s->decorSeconds, box.size(), s->opacity)
-								.convertToFormat(QImage::Format_RGBA8888);
-					s->decorUpload = true;
-				}
+		if (isAnimated(now.style) && hasWords(now) && s->opacity > 0.0) {
+			s->animSeconds += std::max(0.0, double(seconds));
+			s->animSince += std::max(0.0, double(seconds));
+			if (s->animSince >= kDecorInterval || s->opacity < 1.0 ||
+			    (s->decor.frame.isNull() && s->backdrop.frame.isNull())) {
+				s->animSince = 0.0;
+				const int W = int(s->canvasW), H = int(s->canvasH);
+				const QRect decorBox = decorRect(now.style, W, H);
+				if (decorBox.isEmpty())
+					s->decor.clear();
+				else
+					s->decor.set(renderDecor(now.style, s->animSeconds, decorBox.size(), s->opacity),
+						     decorBox);
+				const QRect backBox = backdropRect(now.style, W, H);
+				if (backBox.isEmpty())
+					s->backdrop.clear();
+				else
+					s->backdrop.set(renderBackdrop(now.style, s->animSeconds, W, H, 0.25, s->opacity),
+							backBox);
 			}
-		} else if (!s->decorFrame.isNull()) {
-			s->decorFrame = QImage();
+		} else {
+			s->decor.clear();
+			s->backdrop.clear();
 		}
 	} catch (...) {
 		obs_log(LOG_ERROR, "Slide source: could not draw a frame");
@@ -245,6 +298,8 @@ void render(void *data, gs_effect_t *effect)
 		std::lock_guard<std::mutex> lock(s->mutex);
 		if (s->frame.isNull() || !effect || s->frameOpacity <= 0.0)
 			return;
+		gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
+		s->backdrop.draw(image); // the moving colours go under the words
 		const uint32_t w = uint32_t(s->frame.width()), h = uint32_t(s->frame.height());
 		if (!s->texture || s->textureW != w || s->textureH != h) {
 			if (s->texture)
@@ -261,32 +316,9 @@ void render(void *data, gs_effect_t *effect)
 		}
 		if (!s->texture)
 			return;
-		gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
 		gs_effect_set_texture(image, s->texture);
 		gs_draw_sprite(s->texture, 0, w, h);
-		if (!s->decorFrame.isNull() && !s->decorBox.isEmpty()) {
-			const uint32_t dw = uint32_t(s->decorFrame.width()), dh = uint32_t(s->decorFrame.height());
-			if (!s->decorTexture || s->decorTextureW != dw || s->decorTextureH != dh) {
-				if (s->decorTexture)
-					gs_texture_destroy(s->decorTexture);
-				const uint8_t *bits = s->decorFrame.constBits();
-				s->decorTexture = gs_texture_create(dw, dh, GS_RGBA, 1, &bits, GS_DYNAMIC);
-				s->decorTextureW = dw;
-				s->decorTextureH = dh;
-				s->decorUpload = false;
-			} else if (s->decorUpload) {
-				gs_texture_set_image(s->decorTexture, s->decorFrame.constBits(),
-						     uint32_t(s->decorFrame.bytesPerLine()), false);
-				s->decorUpload = false;
-			}
-			if (s->decorTexture) {
-				gs_matrix_push();
-				gs_matrix_translate3f(float(s->decorBox.x()), float(s->decorBox.y()), 0.0f);
-				gs_effect_set_texture(image, s->decorTexture);
-				gs_draw_sprite(s->decorTexture, 0, dw, dh);
-				gs_matrix_pop();
-			}
-		}
+		s->decor.draw(image);
 	} catch (...) {
 		obs_log(LOG_ERROR, "Slide source: could not draw");
 	}

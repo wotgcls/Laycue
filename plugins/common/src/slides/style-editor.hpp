@@ -9,6 +9,8 @@
 #include <QColor>
 #include <QWidget>
 
+#include <vector>
+
 class QLabel;
 
 namespace laycue::ui {
@@ -44,7 +46,7 @@ class StyleEditor : public QWidget {
 public:
 	struct Options {
 		bool showCase = false; // the ALL CAPS / First letter choice (songs)
-		bool showDecor = false; // the looping Bible picture (verses)
+		std::vector<int> decors; // the looping pictures offered (Decor values, None first); empty = none
 		QString accentLabel;   // what the second colour is for: "Reference", "Song name"
 	};
 
@@ -63,15 +65,19 @@ private:
 	void choosePicture();
 
 	SlideStyle style_;
-	ui::Segmented *layout_ = nullptr;
+	ui::Segmented *layout_ = nullptr;  // Bar, Card, Full, Tab
+	ui::Segmented *layout2_ = nullptr; // Rule, Quote, Split, Torn
 	ui::Segmented *fill_ = nullptr;
 	ui::Segmented *case_ = nullptr;
 	ui::Segmented *align_ = nullptr;
 	ui::Segmented *font_ = nullptr;
 	ui::Segmented *transition_ = nullptr;
-	ui::Segmented *decor_ = nullptr;
+	ui::Segmented *decor_ = nullptr;  // the first four looping pictures
+	ui::Segmented *decor2_ = nullptr; // the rest
+	std::vector<int> decors_;
 	ColourSwatch *colour1_ = nullptr;
 	ColourSwatch *colour2_ = nullptr;
+	ColourSwatch *colour3_ = nullptr;
 	ColourSwatch *text_ = nullptr;
 	ColourSwatch *accent_ = nullptr;
 	QWidget *pictureRow_ = nullptr;

@@ -1,5 +1,5 @@
-// Asks the online lyrics sources for songs matching a name: LRCLIB first, then lyrics.ovh when LRCLIB has few
-// matches. Answers arrive as signals; nothing blocks the panel.
+// Asks the online lyrics sources for songs matching a name: LRCLIB and lyrics.ovh, and when a song has no words,
+// several more spellings of it on both. Answers arrive as signals; nothing blocks the panel.
 #pragma once
 
 #include "core/online.hpp"
@@ -11,6 +11,7 @@
 #include <QUrl>
 
 #include <functional>
+#include <string>
 #include <vector>
 
 namespace laycue::net {
@@ -41,6 +42,14 @@ private:
 	// One GET; `done(ok, body, error)` runs when it ends, unless a newer request of the same kind replaced it.
 	void get(const QUrl &url, QPointer<net::Reply> &slot,
 		 std::function<void(bool, const QByteArray &, const QString &)> done);
+
+	// One way of asking for a song's words: lyrics.ovh by singer and title, or an LRCLIB search.
+	struct WordsTry {
+		bool ovh = false;
+		std::string artist;
+		std::string text; // the title (lyrics.ovh) or the search words (LRCLIB)
+	};
+	void tryWords(const OnlineSong &song, std::vector<WordsTry> tries, size_t index, const QString &reason);
 
 	net::Http *http_ = nullptr;
 	QPointer<net::Reply> searchReply_;

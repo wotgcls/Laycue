@@ -113,6 +113,39 @@ Song songFromOnline(const OnlineSong &found)
 			     plain ? found.plainLyrics : plainFromSynced(found.syncedLyrics));
 }
 
+std::string cleanSongTitle(const std::string &title)
+{
+	std::string out;
+	int depth = 0;
+	for (char c : title) {
+		if (c == '(' || c == '[') {
+			++depth;
+			continue;
+		}
+		if ((c == ')' || c == ']') && depth > 0) {
+			--depth;
+			continue;
+		}
+		if (depth == 0)
+			out += c;
+	}
+	// Cut at " feat", " ft." or " - " ("Song - Live at ...").
+	std::string lower;
+	for (char c : out)
+		lower += char(std::tolower(static_cast<unsigned char>(c)));
+	size_t cut = out.size();
+	for (const char *mark : {" feat", " ft.", " ft ", " - ", " | "}) {
+		const size_t at = lower.find(mark);
+		if (at != std::string::npos && at > 0)
+			cut = std::min(cut, at);
+	}
+	out = out.substr(0, cut);
+	const size_t a = out.find_first_not_of(" \t");
+	if (a == std::string::npos)
+		return title;
+	return out.substr(a, out.find_last_not_of(" \t") - a + 1);
+}
+
 std::vector<OnlineSong> listResults(const std::vector<OnlineSong> &all)
 {
 	std::vector<OnlineSong> out;

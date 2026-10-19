@@ -18,6 +18,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #include "features/app.hpp"
 #include "features/hotkeys.hpp"
+#include "obs/brand-transitions.hpp"
 #include "ui/laycue-dock.hpp"
 
 #include "ui/laycue-menu.hpp"
@@ -65,6 +66,7 @@ void onFrontendEvent(enum obs_frontend_event event, void *)
 bool obs_module_load(void)
 {
 	try {
+		laycue::registerBrandTransitions(); // in OBS's transition list, whether or not the panel opens
 		g_app = std::make_unique<laycue::App>();
 		auto *mainWindow = static_cast<QMainWindow *>(obs_frontend_get_main_window());
 		auto *dock = new laycue::LaycueDock(*g_app, mainWindow);

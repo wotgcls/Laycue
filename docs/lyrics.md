@@ -27,11 +27,17 @@ more). Your library is kept in `songs.json` in OBS's plugin config folder.
 ## Searching online
 
 Type a song's name (adding the singer helps: "Excess Love Mercy Chinwo"). If it isn't in your songs, **Enter** (or
-**Search online for "…"**) asks LRCLIB (https://lrclib.net), a free community lyrics site with millions of songs. When
-LRCLIB has fewer than five matches, lyrics.ovh (another free site) is asked too; its songs get their words when you pick
-one. Tap a
-result and it is added to your songs and opened, ready to edit and show. After that it is in your library and works
-without the internet.
+**Search online for "…"**) asks LRCLIB (https://lrclib.net) and lyrics.ovh, two free lyrics sites, and lists
+everything they find. Tap a result and it is added to your songs and opened, ready to edit and show. After that it is
+in your library and works without the internet.
+
+When a song is listed without its words, Laycue tries several more spellings on both sites (without "(Live)" or
+"feat. ...", with and without the singer) before saying so.
+
+Genius, Musixmatch and AZLyrics have far more songs, but they offer no free way for a program to read their words, and
+copying them automatically would break their terms. So under the results there are buttons that open the song on
+**Google**, **Genius**, **Musixmatch** or **AZLyrics** in your browser: copy the words there and press **Paste words as
+a new song**. The song is saved in your library like any other.
 
 - Laycue only asks LRCLIB when you search; nothing else is sent. It needs a secure (https) connection; OBS on Windows
   uses Windows' own web client for that.
@@ -44,9 +50,10 @@ Code: `core/online.*` (the address, turning an answer into a song, choosing usef
 
 ## Templates and how they look
 
-Lyrics has eight templates in three packs (the same themes as Scripture's). **Classic**: **Black**, **White** (a solid
+Lyrics has twelve templates in four packs (the same themes as Scripture's). **Classic**: **Black**, **White** (a solid
 band), **Faded** (see-through) and **No background** (the words alone, outlined so they read over video). **Modern**:
-**Rule** and **Clean**. **Sanctuary**: **Night** and **Parchment**. **Edit this look** changes any of them, as in
+**Rule** and **Clean**. **Sanctuary**: **Night** and **Parchment**. **Worship**: **Notes**, **Equaliser** and **Record**
+(a moving music picture beside the words) and **Aurora** (moving colours). **Edit this look** changes any of them, as in
 Scripture: where on screen, what is behind the words (none, colour, faded, gradient, picture), the colours, the text
 size, the text alignment, the font and whether songs **Fade** or **Cut** between slides. Two things only songs have:
 

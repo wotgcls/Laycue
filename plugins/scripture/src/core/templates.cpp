@@ -11,9 +11,10 @@ using slides::Font;
 using slides::Layout;
 
 slides::SlideStyle style(Layout layout, Fill fill, uint32_t c1, uint32_t c2, uint32_t text, uint32_t accent,
-			 Align align, Font font, Decor decor = Decor::None)
+			 Align align, Font font, Decor decor = Decor::None, uint32_t c3 = 0x7B2FF7)
 {
 	slides::SlideStyle s;
+	s.color3 = c3;
 	s.layout = int(layout);
 	s.fill = int(fill);
 	s.color1 = c1;
@@ -32,7 +33,8 @@ const char *scripturePackKey(int pack)
 {
 	static const char *const keys[kScripturePackCount] = {"Laycue.Scripture.Pack.Classic",
 							      "Laycue.Scripture.Pack.Modern",
-							      "Laycue.Scripture.Pack.Sanctuary"};
+							      "Laycue.Scripture.Pack.Sanctuary",
+							      "Laycue.Scripture.Pack.LivingWord"};
 	return keys[pack < 0 ? 0 : (pack >= kScripturePackCount ? kScripturePackCount - 1 : pack)];
 }
 
@@ -77,6 +79,22 @@ const std::vector<ScriptureTemplate> &scriptureTemplates()
 		{"Laycue.Scripture.T.Royal", 2,
 		 style(Layout::Rule, Fill::Gradient, 0x2D1252, 0x5B1F7A, 0xFFFFFF, 0xF0C75E, Align::Left, Font::Classic,
 		       Decor::GlowBible)},
+		// Living Word: lower thirds with something alive in them.
+		{"Laycue.Scripture.T.Sunrise", 3,
+		 style(Layout::Split, Fill::Solid, 0x56708A, 0xF2B54A, 0xF4F1EA, 0xF3D9A2, Align::Left, Font::Compact,
+		       Decor::Sunrise)},
+		{"Laycue.Scripture.T.Torn", 3,
+		 style(Layout::Torn, Fill::Gradient, 0x3B0FB8, 0x7A2BF2, 0xFFFFFF, 0xB79CFF, Align::Left, Font::Compact,
+		       Decor::Scroll)},
+		{"Laycue.Scripture.T.Dove", 3,
+		 style(Layout::Tab, Fill::SeeThrough, 0x0A1424, 0x0A1424, 0xFFFFFF, 0x4BA3F2, Align::Left, Font::Clean,
+		       Decor::Dove)},
+		{"Laycue.Scripture.T.Cross", 3,
+		 style(Layout::Rule, Fill::SeeThrough, 0x120C06, 0x120C06, 0xFFFFFF, 0xE8B04A, Align::Left, Font::Classic,
+		       Decor::Cross)},
+		{"Laycue.Scripture.T.Aurora", 3,
+		 style(Layout::LowerThird, Fill::Moving, 0x1A0B4A, 0xC2185B, 0xFFFFFF, 0xFFD54F, Align::Centre,
+		       Font::Modern, Decor::None, 0x3D5AFE)},
 	};
 	return all;
 }

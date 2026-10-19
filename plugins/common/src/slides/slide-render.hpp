@@ -31,6 +31,12 @@ QString applyCase(const QString &text, TextCase textCase);
 QRect decorRect(const SlideStyle &style, int canvasWidth, int canvasHeight);
 QImage renderDecor(const SlideStyle &style, double seconds, const QSize &size, double opacity);
 
+// The moving colours (Fill::Moving): where they go on the canvas (empty for any other fill), and one frame of them
+// drawn at `scale` of full size (they are soft, so a quarter is plenty) at `opacity`, to be stretched over that place.
+QRect backdropRect(const SlideStyle &style, int canvasWidth, int canvasHeight);
+QImage renderBackdrop(const SlideStyle &style, double seconds, int canvasWidth, int canvasHeight, double scale,
+		      double opacity);
+
 // The whole canvas: transparent except the slide. An empty request gives a transparent picture. Never throws.
 QImage renderSlide(const SlideRequest &request);
 

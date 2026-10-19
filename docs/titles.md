@@ -15,7 +15,7 @@ a plugin rather than an HTML pack.
   so the title never feels slow to clear.
 - Fonts are bundled (OFL licensed) so a title looks the same on every machine.
 
-## The 73 templates
+## The 84 templates
 Seven categories: **People** (name bars), **Worship** (series titles, song lyrics, quotes), **Announce**, **News** (tabbed
 headline bars), **Live** (an on-air badge and bar with a pulsing light), **Social** (YouTube, Instagram, TikTok, Facebook,
 Mixlr and a generic handle, each with the platform's icon, see `ICONS.md`; plus **Subscribe + Bell**, below) and **Tickers**. Scripture templates were

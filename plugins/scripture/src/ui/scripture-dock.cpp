@@ -31,7 +31,11 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 
+#include <QKeySequence>
+#include <QShortcut>
+
 #include <algorithm>
+#include <utility>
 
 namespace laycue::scripture {
 
@@ -53,6 +57,14 @@ ScriptureDock::ScriptureDock(QWidget *parent) : QWidget(parent)
 {
 	setObjectName("LaycueScriptureDock");
 	setMinimumWidth(340);
+	// Left and Right step through the verses or lines while the panel has focus (text boxes keep them for typing).
+	setFocusPolicy(Qt::StrongFocus);
+	for (const auto &[key, direction] : {std::make_pair(Qt::Key_Right, 1), std::make_pair(Qt::Key_Left, -1)}) {
+		auto *shortcut = new QShortcut(QKeySequence(key), this);
+		shortcut->setContext(Qt::WidgetWithChildrenShortcut);
+		const int d = direction;
+		connect(shortcut, &QShortcut::activated, this, [this, d]() { step(d); });
+	}
 	loadBrandFonts();
 	slides::loadSlideFonts();
 	settings_ = loadSettings();
@@ -199,7 +211,9 @@ void ScriptureDock::build()
 	v->addWidget(editRow_);
 	slides::StyleEditor::Options options;
 	options.accentLabel = lt("Laycue.Scripture.ReferenceColour");
-	options.showDecor = true;
+	using slides::Decor;
+	options.decors = {int(Decor::None),  int(Decor::OpenBible), int(Decor::GlowBible), int(Decor::Scroll),
+			  int(Decor::Dove),  int(Decor::Cross),     int(Decor::Sunrise)};
 	editor_ = new slides::StyleEditor(options, page);
 	editor_->setStyle(settings_.styles[size_t(settings_.templateIndex)]);
 	connect(editor_, &slides::StyleEditor::changed, this, [this](const slides::SlideStyle &style) {
@@ -283,6 +297,7 @@ void ScriptureDock::go()
 	save();
 	shown_ = true; // Enter means "put it up"
 	showVerse(ref);
+	setFocus(); // so Left and Right step through the verses straight away
 }
 
 // ---- Showing -----------------------------------------------------------------------------------------------

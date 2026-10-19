@@ -238,7 +238,11 @@ bool ReferenceBox::eventFilter(QObject *watched, QEvent *event)
 		return true;
 	}
 	if (edit == book_) {
-		const QString book = book_->text();
+		// Only what stays counts: selected letters (the old book after a verse, or the filled-in end of a
+		// name) are about to be typed over, so "1" over a selected "Matthew" starts "1 Corinthians".
+		QString book = book_->text();
+		if (book_->hasSelectedText())
+			book.remove(book_->selectionStart(), book_->selectedText().size());
 		bool letters = false;
 		for (const QChar c : book)
 			letters = letters || c.isLetter();

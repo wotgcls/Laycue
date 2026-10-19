@@ -34,6 +34,8 @@ laycue_add_plugin(
     src/obs/pushback-scene.cpp
     src/obs/layout-scene.cpp
     src/obs/scene-util.cpp
+    src/obs/brand-transitions.cpp
+    src/obs/brand-transitions.hpp
     src/obs/pushback-scene.hpp
     src/ui/view-takeover.cpp
     src/ui/tabs/overlays-tab.cpp

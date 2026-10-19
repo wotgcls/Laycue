@@ -195,3 +195,12 @@ TEST_CASE("lyrics: the second online source")
 	listed.artist = "Mercy Chinwo";
 	CHECK_EQ(listResults({listed}).size(), size_t(1));
 }
+
+TEST_CASE("lyrics: song titles lose the parts sites spell differently")
+{
+	CHECK_EQ(cleanSongTitle("Way Maker (Live) [feat. Someone]"), std::string("Way Maker"));
+	CHECK_EQ(cleanSongTitle("Excess Love feat. Mercy Chinwo"), std::string("Excess Love"));
+	CHECK_EQ(cleanSongTitle("Jehovah Nissi - Live at the Cathedral"), std::string("Jehovah Nissi"));
+	CHECK_EQ(cleanSongTitle("Plain Title"), std::string("Plain Title"));
+	CHECK_EQ(cleanSongTitle("(Intro)"), std::string("(Intro)")); // nothing left: keep it as it was
+}

@@ -106,18 +106,27 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 
 	v->addWidget(innerLabel(this, lt("Laycue.Slides.Where"), 11, 600, color::textTertiary));
 	layout_ = new Segmented(this);
+	// Two rows that share one choice.
 	layout_->setItems({lt("Laycue.Slides.LowerThird"), lt("Laycue.Slides.Card"), lt("Laycue.Slides.FullScreen"),
-			   lt("Laycue.Slides.Tab"), lt("Laycue.Slides.Rule"), lt("Laycue.Slides.Quote")});
+			   lt("Laycue.Slides.Tab")});
 	connect(layout_, &Segmented::changed, this, [this](int index) {
 		style_.layout = index;
 		emitChanged();
 	});
 	v->addWidget(layout_);
+	layout2_ = new Segmented(this);
+	layout2_->setItems({lt("Laycue.Slides.Rule"), lt("Laycue.Slides.Quote"), lt("Laycue.Slides.Split"),
+			    lt("Laycue.Slides.Torn")});
+	connect(layout2_, &Segmented::changed, this, [this](int index) {
+		style_.layout = 4 + index;
+		emitChanged();
+	});
+	v->addWidget(layout2_);
 
 	v->addWidget(innerLabel(this, lt("Laycue.Slides.Behind"), 11, 600, color::textTertiary));
 	fill_ = new Segmented(this);
 	fill_->setItems({lt("Laycue.Slides.FillNone"), lt("Laycue.Slides.FillColour"), lt("Laycue.Slides.FillFaded"),
-			 lt("Laycue.Slides.FillGradient"), lt("Laycue.Slides.FillPicture")});
+			 lt("Laycue.Slides.FillGradient"), lt("Laycue.Slides.FillPicture"), lt("Laycue.Slides.FillMoving")});
 	connect(fill_, &Segmented::changed, this, [this](int index) {
 		if (index == int(Fill::Picture) && style_.picture.empty()) {
 			choosePicture(); // a picture fill needs a picture
@@ -142,6 +151,12 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 		emitChanged();
 	});
 	colours->addWidget(colour2_, 1);
+	colour3_ = new ColourSwatch(lt("Laycue.Slides.ColourThird"), this);
+	connect(colour3_, &ColourSwatch::colourChosen, this, [this](const QColor &c) {
+		style_.color3 = fromQColor(c);
+		emitChanged();
+	});
+	colours->addWidget(colour3_, 1);
 
 	QHBoxLayout *picture = nullptr;
 	pictureRow_ = row(this, picture);
@@ -218,16 +233,33 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 	});
 	v->addWidget(transition_);
 
-	if (options.showDecor) {
+	decors_ = options.decors;
+	if (!decors_.empty()) {
+		static const char *const names[kDecorCount] = {
+			"Laycue.Slides.AnimationNone",   "Laycue.Slides.AnimationOpenBible", "Laycue.Slides.AnimationGlowBible",
+			"Laycue.Slides.AnimationScroll", "Laycue.Slides.AnimationDove",      "Laycue.Slides.AnimationCross",
+			"Laycue.Slides.AnimationSunrise", "Laycue.Slides.AnimationNotes",    "Laycue.Slides.AnimationEqualizer",
+			"Laycue.Slides.AnimationVinyl"};
 		v->addWidget(innerLabel(this, lt("Laycue.Slides.Animation"), 11, 600, color::textTertiary));
+		QStringList first, rest;
+		for (size_t i = 0; i < decors_.size(); ++i)
+			(i < 4 ? first : rest) << lt(names[std::clamp(decors_[i], 0, kDecorCount - 1)]);
 		decor_ = new Segmented(this);
-		decor_->setItems({lt("Laycue.Slides.AnimationNone"), lt("Laycue.Slides.AnimationOpenBible"),
-				  lt("Laycue.Slides.AnimationGlowBible")});
+		decor_->setItems(first);
 		connect(decor_, &Segmented::changed, this, [this](int index) {
-			style_.decor = index;
+			style_.decor = decors_[size_t(index)];
 			emitChanged();
 		});
 		v->addWidget(decor_);
+		if (!rest.isEmpty()) {
+			decor2_ = new Segmented(this);
+			decor2_->setItems(rest);
+			connect(decor2_, &Segmented::changed, this, [this](int index) {
+				style_.decor = decors_[size_t(index) + 4];
+				emitChanged();
+			});
+			v->addWidget(decor2_);
+		}
 	}
 
 	if (options.showCase) {
@@ -276,20 +308,32 @@ void StyleEditor::choosePicture()
 
 void StyleEditor::refresh()
 {
-	layout_->setCurrent(style_.layout);
+	layout_->setCurrent(style_.layout < 4 ? style_.layout : -1);
+	layout2_->setCurrent(style_.layout >= 4 ? style_.layout - 4 : -1);
 	fill_->setCurrent(style_.fill);
 	if (case_)
 		case_->setCurrent(style_.textCase);
 	align_->setCurrent(style_.align);
 	font_->setCurrent(style_.font);
 	transition_->setCurrent(style_.transition);
-	if (decor_)
-		decor_->setCurrent(style_.decor);
+	if (decor_) {
+		int position = -1;
+		for (size_t i = 0; i < decors_.size(); ++i) {
+			if (decors_[i] == style_.decor)
+				position = int(i);
+		}
+		decor_->setCurrent(position >= 0 && position < 4 ? position : -1);
+		if (decor2_)
+			decor2_->setCurrent(position >= 4 ? position - 4 : -1);
+	}
 	const Fill fill = Fill(style_.fill);
 	colour1_->setColour(toQColor(style_.color1));
 	colour2_->setColour(toQColor(style_.color2));
-	colour1_->setVisible(fill == Fill::Solid || fill == Fill::SeeThrough || fill == Fill::Gradient);
-	colour2_->setVisible(fill == Fill::Gradient);
+	colour3_->setColour(toQColor(style_.color3));
+	colour1_->setVisible(fill == Fill::Solid || fill == Fill::SeeThrough || fill == Fill::Gradient ||
+			     fill == Fill::Moving);
+	colour2_->setVisible(fill == Fill::Gradient || fill == Fill::Moving);
+	colour3_->setVisible(fill == Fill::Moving);
 	pictureRow_->setVisible(fill == Fill::Picture);
 	pictureName_->setText(QFileInfo(QString::fromStdString(style_.picture)).fileName());
 	text_->setColour(toQColor(style_.text));

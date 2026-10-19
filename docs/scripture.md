@@ -20,7 +20,7 @@ Hotkeys (OBS Settings → Hotkeys): show or hide, next verse, previous verse.
 
 ## Templates and how they look
 
-Scripture has **12 templates in three packs**, each pack suiting a theme. Choose a pack, then one of its four templates:
+Scripture has **17 templates in four packs**, each pack suiting a theme. Choose a pack, then one of its templates:
 
 - **Classic**: Bar, Card, Full screen and Clear (the words alone, outlined).
 - **Modern**: Tab (the reference in a coloured tab above a dark band), Rule (words beside a thick line), Clean (a light
@@ -29,18 +29,25 @@ Scripture has **12 templates in three packs**, each pack suiting a theme. Choose
   **looping Bible** beside the words for as long as the verse is on screen: an open Bible whose page turns, or a
   closed Bible with a gold cross that floats in turning rays of light. It sits on the side opposite the words, and the
   words make room for it.
+- **Living Word** (lower thirds that move): Sunrise (a sunrise tile, the reference on a cream block and the verse on
+  a slate block), Torn (a torn purple band, the reference in large letters on the left), Dove (a white dove beating
+  its wings), Cross (a gold cross in turning rays) and Aurora (soft colours rising from the bottom and drifting
+  slowly; choose the three colours under **Edit this look > Behind the words > Moving**).
 
-Lyrics has its own set of eight in the same three packs. Each template can be changed under **Edit this look**, and
+Lyrics has its own set of twelve in four packs. Each template can be changed under **Edit this look**, and
 the changes are kept per template:
 
-- **Where on screen**: bar, card, full screen, tab, rule or quote.
-- **Behind the words**: none, a colour, a faded (see-through) colour, a gradient (two colours), or your own picture.
+- **Where on screen**: bar, card, full screen, tab, rule, quote, split or torn.
+- **Behind the words**: none, a colour, a faded (see-through) colour, a gradient (two colours), your own picture, or
+  **Moving** (three colours that drift slowly past each other).
 - The colours of the words and of the reference, and the text size.
 - **Text alignment**: left, centre or right. The layout still decides where the box sits, so it stays tidy.
 - **Font**: Modern (Outfit), Clean (Barlow), Compact (Barlow Condensed), Classic (Libre Baskerville) or Display
   (Bebas Neue). All are bundled, so a verse looks the same on every computer.
 - **Between slides**: **Fade** (the old words fade out, the new fade in) or **Cut** (they swap at once).
-- **Looping animation**: none, Open Bible, or Glowing Bible.
+- **Looping animation**: none, Open Bible, Glowing Bible, Scroll, Dove, Cross or Sunrise.
+- **Left and Right arrow keys** step through the verses once one is on screen (click the panel first if a text box
+  has the cursor).
 - **Reset this template** goes back to how it came.
 
 The pictures are drawn by Laycue itself (`slides/slide-render.cpp`): no video files, nothing to download, and they cost a

@@ -2220,7 +2220,6 @@ void angularLogo(Ctx &c)
 	const double e = c.part(0.0, 0.6);
 	c.p.save();
 	c.p.setClipRect(QRectF(kLeft, y - 20, w * e, h + 40));
-	shadowUnder(c, QRectF(kLeft + 130, y + 20, w - 130, 70), 0);
 	c.p.setPen(Qt::NoPen);
 	c.p.setBrush(c.panel);
 	QPolygonF bar;
@@ -2395,16 +2394,6 @@ QImage waterWarp(const QImage &src, double amount, double phase)
 	return out;
 }
 
-void softShadow(Ctx &c, const QPointF &centre, double width, double alpha)
-{
-	c.p.setPen(Qt::NoPen);
-	QRadialGradient g(centre, width / 2.0);
-	g.setColorAt(0.0, QColor(0, 0, 0, int(alpha)));
-	g.setColorAt(1.0, QColor(0, 0, 0, 0));
-	c.p.setBrush(g);
-	c.p.drawEllipse(QRectF(centre.x() - width / 2.0, centre.y() - width * 0.09, width, width * 0.18));
-}
-
 void logoFx(Ctx &c, LogoFx fx)
 {
 	const QImage logo = logoImage(c.x.logoPath);
@@ -2436,7 +2425,6 @@ void logoFx(Ctx &c, LogoFx fx)
 	}
 	case LogoFx::Float: { // a slow drift up and down over a soft shadow
 		const double lift = std::sin(ph * 2.0 * kPi);
-		softShadow(c, QPointF(mid.x(), box.bottom() + 22), box.width() * (0.62 - 0.1 * lift), 90 - 30 * lift);
 		c.p.drawImage(box.translated(0, -10 * lift), layer);
 		break;
 	}
@@ -2474,7 +2462,6 @@ void logoFx(Ctx &c, LogoFx fx)
 		const double u = std::clamp(ph / 0.4, 0.0, 1.0);
 		const double arc = ph < 0.4 ? std::abs(std::sin(u * 2.0 * kPi)) * (1.0 - 0.55 * u) : 0.0;
 		const double squash = ph < 0.4 ? 0.07 * (1.0 - arc) * (1.0 - u) : 0.0;
-		softShadow(c, QPointF(mid.x(), box.bottom() + 22), box.width() * (0.7 - 0.25 * arc), 90 - 50 * arc);
 		c.p.translate(mid.x(), box.bottom());
 		c.p.scale(1.0 + squash * 0.8, 1.0 - squash);
 		c.p.translate(-mid.x(), -box.bottom());
@@ -2660,7 +2647,6 @@ void logoGlassCube(Ctx &c)
 	c.p.setRenderHint(QPainter::Antialiasing, true);
 	c.p.setRenderHint(QPainter::SmoothPixmapTransform, true);
 	c.p.setOpacity(c.p.opacity() * c.part(0.0, 0.6));
-	softShadow(c, QPointF(box.center().x(), box.bottom() + 14), box.width() * 0.8, 85);
 	glassPane(c, bottom, 0.2, turn, 0.8);
 	for (const Face &f : faces)
 		if (f.facing < 0)
@@ -2699,7 +2685,6 @@ void logoGlassDisc(Ctx &c)
 	c.p.setRenderHint(QPainter::Antialiasing, true);
 	c.p.setRenderHint(QPainter::SmoothPixmapTransform, true);
 	c.p.setOpacity(c.p.opacity() * c.part(0.0, 0.6));
-	softShadow(c, QPointF(box.center().x(), box.bottom() + 14), box.width() * 0.8, 85);
 	glassPane(c, back, 0.15, turn + 1.0, 0.8);
 	// The rim, a ring of narrow strips; the far ones first so the near ones sit on top.
 	struct Strip {
@@ -2730,6 +2715,384 @@ void logoGlassDisc(Ctx &c)
 	}
 	glassLogo(c, v, layer, box, turn, r * 0.7);
 	glassPane(c, front, std::abs(nz), turn, 1.0);
+	c.p.restore();
+}
+
+// ---- Artsy name bars (pastors and speakers) -------------------------------------------------------------------
+
+// "Philip Anthony Mantofa" -> {"Philip", "Anthony Mantofa"}: the first word, and the rest, for stacked names.
+QStringList nameLines(const QString &name)
+{
+	const QStringList words = name.simplified().split(QLatin1Char(' '), Qt::SkipEmptyParts);
+	if (words.size() <= 1)
+		return words;
+	return {words.front(), words.mid(1).join(QLatin1Char(' '))};
+}
+
+QPainterPath slantedBar(const QRectF &r, double slantLeft, double slantRight)
+{
+	QPainterPath path;
+	path.moveTo(r.left() + slantLeft, r.top());
+	path.lineTo(r.right(), r.top());
+	path.lineTo(r.right() - slantRight, r.bottom());
+	path.lineTo(r.left(), r.bottom());
+	path.closeSubpath();
+	return path;
+}
+
+// Name 1, Lime Slant: a bright bar with a slanted end, dark words, and a dark logo block with a coloured edge.
+void nameLimeSlant(Ctx &c)
+{
+	const QFont f1 = fitFont(c, c.t.display, 50, 30, c.x.line1.toUpper(), 760);
+	const QFont f2 = fitFont(c, c.t.body, 28, 18, c.x.line2.toUpper(), 760);
+	const double textW = std::max(textWidth(f1, c.x.line1.toUpper()), textWidth(f2, c.x.line2.toUpper()));
+	const double h = 104, logoW = 130, w = std::max(420.0, textW + 80);
+	const double y = c.bottom() - h, e = c.part(0.0, 0.55);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft - 10, y - 10, (w + logoW + 40) * e, h + 20));
+	c.p.fillPath(slantedBar(QRectF(kLeft, y, w + 30, h), 0, 30), c.panel);
+	const QRectF block(kLeft + w, y, logoW, h);
+	c.p.fillPath(slantedBar(block, 30, 0), c.shape3);
+	fillRect(c.p, QRectF(block.right() - 2, y, 8, h), c.accent);
+	drawLogoOrMark(c, logoImage(c.x.logoPath), block.adjusted(36, 18, -14, -18), c.accent, c.ink, c.part(0.3, 0.4));
+	drawText(c.p, QRectF(kLeft + 34, y + 12, w, 52), c.x.line1.toUpper(), f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
+		 c.part(0.2, 0.4));
+	drawText(c.p, QRectF(kLeft + 34, y + 62, w, 32), c.x.line2.toUpper(), f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
+		 c.part(0.3, 0.4));
+	c.p.restore();
+}
+
+// Name 2, Edge Line: a dark see-through bar with a coloured line on its left edge.
+void nameEdgeLine(Ctx &c)
+{
+	const QFont f1 = fitFont(c, c.t.display, 50, 30, c.x.line1.toUpper(), 900);
+	const QFont f2 = fitFont(c, c.t.body, 28, 18, c.x.line2.toUpper(), 900);
+	const double textW = std::max(textWidth(f1, c.x.line1.toUpper()), textWidth(f2, c.x.line2.toUpper()));
+	const double h = 100, w = std::max(380.0, textW + 70);
+	const double y = c.bottom() - h;
+	const double eLine = c.part(0.0, 0.35), eBar = c.part(0.15, 0.55);
+	fillRect(c.p, QRectF(kLeft, y + h * (1 - eLine), 10, h * eLine), c.accent);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft + 10, y, w * eBar, h));
+	fillRect(c.p, QRectF(kLeft + 10, y, w, h), c.panel);
+	drawText(c.p, QRectF(kLeft + 40, y + 12, w, 50), c.x.line1.toUpper(), f1, c.text, Qt::AlignLeft | Qt::AlignVCenter,
+		 c.part(0.3, 0.4));
+	drawText(c.p, QRectF(kLeft + 40, y + 60, w, 30), c.x.line2.toUpper(), f2, c.sub, Qt::AlignLeft | Qt::AlignVCenter,
+		 c.part(0.4, 0.4));
+	c.p.restore();
+}
+
+// Name 3, Blue Slant: a logo tile, then a slanted coloured bar with light words.
+void nameBlueSlant(Ctx &c)
+{
+	const QFont f1 = fitFont(c, c.t.display, 50, 30, c.x.line1.toUpper(), 800);
+	const QFont f2 = fitFont(c, c.t.body, 28, 18, c.x.line2.toUpper(), 800);
+	const double textW = std::max(textWidth(f1, c.x.line1.toUpper()), textWidth(f2, c.x.line2.toUpper()));
+	const double h = 104, tile = 110, w = std::max(400.0, textW + 90);
+	const double y = c.bottom() - h, e = c.part(0.0, 0.55);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft - 10, y - 10, (tile + w + 60) * e, h + 20));
+	c.p.fillPath(slantedBar(QRectF(kLeft, y, tile + 26, h), 26, 0), c.shape3);
+	drawLogoOrMark(c, logoImage(c.x.logoPath), QRectF(kLeft + 30, y + 16, tile - 26, h - 32), c.accent, c.ink,
+		       c.part(0.25, 0.4));
+	c.p.fillPath(slantedBar(QRectF(kLeft + tile + 10, y, w, h), 26, 26), c.panel);
+	drawText(c.p, QRectF(kLeft + tile + 54, y + 12, w, 52), c.x.line1.toUpper(), f1, c.text,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.3, 0.4));
+	drawText(c.p, QRectF(kLeft + tile + 54, y + 62, w, 32), c.x.line2.toUpper(), f2, c.sub,
+		 Qt::AlignLeft | Qt::AlignVCenter, c.part(0.4, 0.4));
+	c.p.restore();
+}
+
+// Fine dots that grow from one side to the other, like a printed halftone.
+void halftone(QPainter &p, const QRectF &r, const QColor &colour)
+{
+	p.save();
+	p.setClipRect(r);
+	p.setPen(Qt::NoPen);
+	p.setBrush(colour);
+	const double step = 9;
+	for (double y = r.top(); y < r.bottom() + step; y += step) {
+		for (double x = r.left(); x < r.right() + step; x += step) {
+			const double f = (x - r.left()) / std::max(1.0, r.width());
+			const double rad = step * 0.48 * (0.25 + 0.75 * (1.0 - std::abs(f - 0.5) * 2.0));
+			p.drawEllipse(QPointF(x + (int((y - r.top()) / step) % 2 ? step / 2 : 0), y), rad, rad);
+		}
+	}
+	p.restore();
+}
+
+// Name 4, Bracket Frame: corner brackets around a coloured bar with a lighter block behind part of the name, and
+// the role on a halftone tag under it.
+void nameBracket(Ctx &c)
+{
+	const QString name = c.x.line1.toUpper();
+	const QFont f1 = fitFont(c, c.t.display, 76, 40, name, 1000);
+	const QFont f2 = fitFont(c, c.t.body, 30, 18, c.x.line2.toUpper(), 600);
+	const double nameW = textWidth(f1, name);
+	const double h = 112, w = std::max(520.0, nameW + 120);
+	const double y = c.bottom() - h - 56, e = c.part(0.0, 0.5);
+	const QRectF bar(kLeft + 30, y, w, h);
+	// Brackets.
+	const double arm = 34, gap = 20;
+	c.p.save();
+	c.p.setOpacity(c.p.opacity() * c.part(0.0, 0.35));
+	c.p.setPen(QPen(c.shape2, 5, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
+	c.p.setBrush(Qt::NoBrush);
+	const QRectF frame = bar.adjusted(-gap, -gap, gap, gap);
+	for (const QPointF &corner : {frame.topLeft(), frame.topRight(), frame.bottomLeft(), frame.bottomRight()}) {
+		const double sx = corner.x() < frame.center().x() ? 1 : -1, sy = corner.y() < frame.center().y() ? 1 : -1;
+		QPolygonF l;
+		l << QPointF(corner.x(), corner.y() + sy * arm) << corner << QPointF(corner.x() + sx * arm, corner.y());
+		c.p.drawPolyline(l);
+	}
+	c.p.restore();
+	c.p.save();
+	c.p.setClipRect(QRectF(bar.left(), bar.top() - 4, bar.width() * e, bar.height() + 8));
+	fillRect(c.p, bar, c.panel);
+	fillRect(c.p, QRectF(bar.left() + w * 0.3, bar.top(), w * 0.34, h), withOpacity(c.shape2, 0.35));
+	drawText(c.p, bar, name, f1, c.text, Qt::AlignCenter, c.part(0.25, 0.4), 2.0);
+	c.p.restore();
+	if (c.has(c.x.line2)) {
+		const QString role = c.x.line2.toUpper();
+		const double rw = textWidth(f2, role) + 70;
+		const QRectF tag(bar.right() - rw - 30, bar.bottom() + 8, rw, 52);
+		c.p.save();
+		c.p.setOpacity(c.p.opacity() * c.part(0.4, 0.4));
+		halftone(c.p, tag, withOpacity(c.text, 0.7));
+		drawText(c.p, tag, role, f2, c.ink, Qt::AlignCenter, 1.0, 2.0);
+		c.p.restore();
+	}
+}
+
+// Name 5, Red Stack: a tall coloured line, the name stacked on two lines in tall capitals, the role under it.
+void nameRedStack(Ctx &c)
+{
+	const QStringList lines = nameLines(c.x.line1.toUpper());
+	const QFont f1 = c.font(c.t.display, 74);
+	const Wrapped role = fitWrapped(c, c.t.body, 26, 16, c.x.line2.toUpper(), 620, 2, 1.2);
+	const double lineH = 70, h = lineH * lines.size() + 16 + role.lineHeight * role.lines.size();
+	const double y = c.bottom() - h;
+	fillRect(c.p, QRectF(kLeft, y + h * (1 - c.part(0.0, 0.4)), 10, h * c.part(0.0, 0.4)), c.accent);
+	for (int i = 0; i < lines.size(); ++i) {
+		const double a = c.part(0.15 + 0.1 * i, 0.4);
+		drawShadowText(c.p, QRectF(kLeft + 34 + 30 * (1 - a), y + i * lineH, 1200, lineH), lines[i], f1, c.text,
+			       Qt::AlignLeft | Qt::AlignVCenter, a);
+	}
+	for (int i = 0; i < role.lines.size(); ++i)
+		drawShadowText(c.p,
+			       QRectF(kLeft + 36, y + lineH * lines.size() + 12 + i * role.lineHeight, 700, role.lineHeight),
+			       role.lines[i], role.font, c.sub, Qt::AlignLeft | Qt::AlignVCenter, c.part(0.4, 0.4));
+}
+
+// Name 6, Red Box: the first name in white, the rest in a coloured box under it, the role to the left on a line.
+void nameRedBox(Ctx &c)
+{
+	const QStringList lines = nameLines(c.x.line1.toUpper());
+	const QString first = lines.isEmpty() ? QString() : lines.front();
+	const QString rest = lines.size() > 1 ? lines.back() : QString();
+	const QFont f1 = c.font(c.t.display, 66);
+	const QFont f2 = fitFont(c, c.t.body, 24, 16, c.x.line2.toUpper(), 420);
+	const double roleW = c.has(c.x.line2) ? std::min(460.0, textWidth(f2, c.x.line2.toUpper()) + 40) : 0.0;
+	const double x = kLeft + roleW;
+	const double y = c.bottom() - 150;
+	const double a1 = c.part(0.1, 0.4), a2 = c.part(0.25, 0.45);
+	drawShadowText(c.p, QRectF(x + 20, y, 1000, 70), first, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter, a1);
+	if (!rest.isEmpty()) {
+		const double bw = textWidth(f1, rest) + 40;
+		c.p.save();
+		c.p.setClipRect(QRectF(x, y + 70, bw * a2, 78));
+		fillRect(c.p, QRectF(x, y + 70, bw, 78), c.accent);
+		drawText(c.p, QRectF(x + 20, y + 70, bw, 78), rest, f1, c.text, Qt::AlignLeft | Qt::AlignVCenter);
+		c.p.restore();
+	}
+	if (c.has(c.x.line2)) {
+		const double a3 = c.part(0.4, 0.4);
+		drawShadowText(c.p, QRectF(kLeft, y + 96, roleW - 30, 34), c.x.line2.toUpper(), f2, c.sub,
+			       Qt::AlignLeft | Qt::AlignVCenter, a3);
+		fillRect(c.p, QRectF(kLeft + 90 * a3, y + 136, (roleW - 30) * a3 - 90 * a3, 3), withOpacity(c.sub, 0.85));
+	}
+}
+
+// Name 7, Role Box: the name stacked in heavy capitals, the role in a light box to its left.
+void nameRoleBox(Ctx &c)
+{
+	const QStringList lines = nameLines(c.x.line1.toUpper());
+	const QFont f1 = c.font(c.t.display, 64);
+	const QFont f2 = fitFont(c, c.t.body, 24, 16, c.x.line2.toUpper(), 520);
+	double nameW = 0;
+	for (const QString &l : lines)
+		nameW = std::max(nameW, textWidth(f1, l));
+	const double lineH = 62, h = lineH * std::max<qsizetype>(1, lines.size());
+	const double y = c.bottom() - h;
+	const double roleW = c.has(c.x.line2) ? textWidth(f2, c.x.line2.toUpper()) + 3.0 * c.x.line2.size() + 60 : 0.0;
+	const double nameX = kLeft + roleW + 24;
+	for (int i = 0; i < lines.size(); ++i)
+		drawShadowText(c.p, QRectF(nameX, y + i * lineH, nameW + 10, lineH), lines[i], f1, c.text,
+			       Qt::AlignLeft | Qt::AlignVCenter, c.part(0.15 + 0.1 * i, 0.4));
+	if (roleW > 0) {
+		const double e = c.part(0.0, 0.5);
+		const QRectF box(kLeft + roleW * (1 - e), y + h / 2 - 22, roleW * e, 44);
+		fillRect(c.p, box, c.shape2);
+		c.p.save();
+		c.p.setClipRect(box);
+		drawText(c.p, QRectF(kLeft, box.top(), roleW, 44), c.x.line2.toUpper(), f2, c.ink, Qt::AlignCenter, 1.0, 3.0);
+		c.p.restore();
+	}
+}
+
+// Name 8, Heavy + Light: the first name heavy on a light plate, the rest light on a dark box, the role spaced
+// out underneath.
+void nameHeavyLight(Ctx &c)
+{
+	const QStringList lines = nameLines(c.x.line1.toUpper());
+	const QString first = lines.isEmpty() ? QString() : lines.front();
+	const QString rest = lines.size() > 1 ? lines.back() : QString();
+	const QFont heavy = c.font(FontFace::OutfitExtraBold, 64);
+	const QFont light = c.font(FontFace::OutfitRegular, 54);
+	const QFont f2 = fitFont(c, c.t.body, 24, 16, c.x.line2.toUpper(), 900);
+	const double w1 = textWidth(heavy, first) + 36, w2 = rest.isEmpty() ? 0.0 : textWidth(light, rest) + 44;
+	const double h = 84, y = c.bottom() - h - 50;
+	const double e = c.part(0.0, 0.55);
+	c.p.save();
+	c.p.setClipRect(QRectF(kLeft, y - 10, (w1 + w2 + 20) * e, h + 20));
+	fillRect(c.p, QRectF(kLeft, y, w1, h), c.shape2);
+	drawText(c.p, QRectF(kLeft, y, w1, h), first, heavy, c.ink, Qt::AlignCenter);
+	if (w2 > 0) {
+		fillRect(c.p, QRectF(kLeft + w1, y + 10, w2, h - 20), c.panel);
+		drawText(c.p, QRectF(kLeft + w1, y + 10, w2, h - 20), rest, light, c.text, Qt::AlignCenter, 1.0, 2.0);
+	}
+	c.p.restore();
+	drawShadowText(c.p, QRectF(kLeft + 6, y + h + 8, 1200, 40), c.x.line2.toUpper(), f2, c.sub,
+		       Qt::AlignLeft | Qt::AlignVCenter, c.part(0.4, 0.4), 6.0);
+}
+
+// ---- Glow: words on soft moving colours that rise from the bottom --------------------------------------------
+
+// Three soft patches of colour drifting past each other, fading out toward the top of `area`.
+void movingGlow(Ctx &c, const QRectF &area, double strength)
+{
+	const double t = c.tickerPx / 100.0;
+	const QColor colours[3] = {c.panel, c.accent, c.shape2};
+	c.p.save();
+	c.p.setClipRect(area);
+	c.p.setPen(Qt::NoPen);
+	for (int i = 0; i < 3; ++i) {
+		const QPointF centre(area.left() + area.width() * (0.5 + 0.38 * std::sin(t * 0.21 * (i + 1) + i * 2.1)),
+				     area.bottom() - area.height() * (0.25 + 0.18 * std::sin(t * 0.17 * (i + 2) + i)));
+		const double r = area.width() * (0.38 + 0.06 * std::sin(t * 0.3 + i));
+		QRadialGradient g(centre, r);
+		QColor col = colours[i];
+		col.setAlpha(int(200 * strength));
+		g.setColorAt(0.0, col);
+		col.setAlpha(0);
+		g.setColorAt(1.0, col);
+		c.p.setBrush(g);
+		c.p.drawEllipse(centre, r, r * 0.75);
+	}
+	c.p.restore();
+}
+
+// Draws `s` as an outline only (no fill), like the second line of a big title.
+void outlineText(QPainter &p, const QRectF &box, const QString &s, const QFont &font, const QColor &colour,
+		 double width, double opacity)
+{
+	if (s.isEmpty() || opacity <= 0.0)
+		return;
+	QPainterPath path;
+	const QFontMetricsF fm(font);
+	const double x = box.center().x() - fm.horizontalAdvance(s) / 2.0;
+	const double y = box.center().y() + (fm.ascent() - fm.descent()) / 2.0;
+	path.addText(QPointF(x, y), font, s);
+	p.save();
+	p.setOpacity(p.opacity() * opacity);
+	p.setRenderHint(QPainter::Antialiasing, true);
+	p.setBrush(Qt::NoBrush);
+	p.setPen(QPen(colour, width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+	p.drawPath(path);
+	p.restore();
+}
+
+// Glow Headline: big slanted words over moving colours, the second line drawn as an outline.
+void glowHeadline(Ctx &c)
+{
+	const double glowH = 330;
+	movingGlow(c, QRectF(0, c.H - glowH, kDesignWidth, glowH), c.part(0.0, 0.7));
+	QFont f1 = fitFont(c, c.t.display, 104, 50, c.x.line1.toUpper(), 1600);
+	f1.setItalic(true);
+	QFont f2 = fitFont(c, c.t.display, 96, 46, c.x.line2.toUpper(), 1500);
+	f2.setItalic(true);
+	const double y = c.bottom() - (c.has(c.x.line2) ? 220 : 120);
+	const double a1 = c.part(0.15, 0.45), a2 = c.part(0.3, 0.45);
+	drawShadowText(c.p, QRectF(0, y + 30 * (1 - a1), kDesignWidth, 110), c.x.line1.toUpper(), f1, c.text,
+		       Qt::AlignCenter, a1);
+	outlineText(c.p, QRectF(0, y + 110 + 30 * (1 - a2), kDesignWidth, 104), c.x.line2.toUpper(), f2, c.text, 3.0,
+		    a2);
+}
+
+// Glow Name: a name bar for a speaker over moving colours in the lower-left corner.
+void glowName(Ctx &c)
+{
+	movingGlow(c, QRectF(0, c.H - 300, 1200, 300), c.part(0.0, 0.7));
+	QFont f1 = fitFont(c, c.t.display, 76, 40, c.x.line1.toUpper(), 1100);
+	f1.setItalic(true);
+	QFont f2 = fitFont(c, c.t.display, 40, 24, c.x.line2.toUpper(), 1000);
+	f2.setItalic(true);
+	const double y = c.bottom() - 140;
+	const double a1 = c.part(0.15, 0.45), a2 = c.part(0.3, 0.45);
+	drawShadowText(c.p, QRectF(kLeft + 30 * (1 - a1), y, 1200, 84), c.x.line1.toUpper(), f1, c.text,
+		       Qt::AlignLeft | Qt::AlignVCenter, a1);
+	const QFontMetricsF fm(f2);
+	outlineText(c.p,
+		    QRectF(kLeft + 30 * (1 - a2), y + 84, fm.horizontalAdvance(c.x.line2.toUpper()), 52),
+		    c.x.line2.toUpper(), f2, c.text, 2.0, a2);
+}
+
+// ---- Logo 3D Spin: the logo as a thick coin turning in space -----------------------------------------------------
+
+void logoSpin3d(Ctx &c)
+{
+	const QImage logo = logoImage(c.x.logoPath);
+	const QRectF box = logoBox(c);
+	const QImage layer = logoLayer(c, logo, box);
+	const double turn = logoPhase(c) * 2.0 * kPi; // one whole turn per repeat, steady like a turntable
+	const QPointF mid = box.center();
+	const double half = box.width() / 2.0, depth = 14.0, dist = 520.0;
+	auto at = [&](double x, double y, double z) {
+		const double rx = x * std::cos(turn) + z * std::sin(turn);
+		const double rz = -x * std::sin(turn) + z * std::cos(turn);
+		const double p = dist / (dist - rz);
+		return QPointF(mid.x() + rx * p, mid.y() + y * p);
+	};
+	auto face = [&](double z) {
+		QPolygonF to;
+		to << at(-half, -half, z) << at(half, -half, z) << at(half, half, z) << at(-half, half, z);
+		return to;
+	};
+	c.p.save();
+	c.p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+	c.p.setOpacity(c.p.opacity() * c.part(0.0, 0.6));
+	// The thickness: darker copies from the back face to the front, then the lit front face on top.
+	const QPolygonF from(QRectF(0, 0, box.width(), box.height()));
+	const QPolygonF src({from[0], from[1], from[2], from[3]});
+	QImage dark = layer;
+	{
+		QPainter q(&dark);
+		q.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+		q.fillRect(dark.rect(), QColor(0, 0, 0, 150));
+	}
+	const bool frontVisible = std::cos(turn) >= 0.0;
+	const int steps = 10;
+	for (int i = 0; i <= steps; ++i) {
+		const double z = frontVisible ? -depth + depth * i / steps : depth - depth * i / steps;
+		const bool last = i == steps;
+		QTransform t;
+		if (std::abs(std::cos(turn)) < 0.02 || !QTransform::quadToQuad(src, face(z), t))
+			continue;
+		c.p.save();
+		c.p.setTransform(t, true);
+		c.p.drawImage(QRectF(0, 0, box.width(), box.height()), last ? layer : dark);
+		c.p.restore();
+	}
 	c.p.restore();
 }
 
@@ -3704,6 +4067,17 @@ const std::vector<StyleInfo> &styles()
 		{"logo-glass-cube", logoGlassCube},
 		{"logo-glass-disc", logoGlassDisc},
 		{"logo-lockup", logoLockup},
+		{"name-lime-slant", nameLimeSlant},
+		{"name-edge-line", nameEdgeLine},
+		{"name-blue-slant", nameBlueSlant},
+		{"name-bracket", nameBracket},
+		{"name-red-stack", nameRedStack},
+		{"name-red-box", nameRedBox},
+		{"name-role-box", nameRoleBox},
+		{"name-heavy-light", nameHeavyLight},
+		{"glow-headline", glowHeadline},
+		{"glow-name", glowName},
+		{"logo-spin3d", logoSpin3d},
 		{"quick-link-card", quickLinkCard},
 		{"quick-link-bar", quickLinkBar},
 		{"quick-link-poster", quickLinkPoster},

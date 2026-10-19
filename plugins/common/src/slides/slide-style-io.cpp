@@ -8,6 +8,7 @@ void writeStyle(obs_data_t *d, const SlideStyle &s)
 	obs_data_set_int(d, "fill", s.fill);
 	obs_data_set_int(d, "color1", s.color1);
 	obs_data_set_int(d, "color2", s.color2);
+	obs_data_set_int(d, "color3", s.color3);
 	obs_data_set_string(d, "picture", s.picture.c_str());
 	obs_data_set_int(d, "textColor", s.text);
 	obs_data_set_int(d, "accent", s.accent);
@@ -31,6 +32,7 @@ SlideStyle readStyle(obs_data_t *d)
 	s.fill = int(number("fill", s.fill));
 	s.color1 = uint32_t(number("color1", s.color1));
 	s.color2 = uint32_t(number("color2", s.color2));
+	s.color3 = uint32_t(number("color3", s.color3));
 	const char *picture = obs_data_get_string(d, "picture");
 	s.picture = picture ? picture : "";
 	s.text = uint32_t(number("textColor", s.text));

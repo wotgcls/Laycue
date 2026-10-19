@@ -44,6 +44,10 @@ std::string plainFromSynced(const std::string &synced);
 // The words as Laycue parts (blank lines between verses become parts). Title and artist come along.
 Song songFromOnline(const OnlineSong &found);
 
+// A song title without the parts sites spell differently: "(Live)", "[Official Video]", "feat. Someone", " - Live at
+// ...". "Way Maker (Live) [feat. X]" -> "Way Maker".
+std::string cleanSongTitle(const std::string &title);
+
 // Everything a search found, none left out: a song listed without words is marked so its words are looked for in
 // the other source when it is picked.
 std::vector<OnlineSong> listResults(const std::vector<OnlineSong> &all);

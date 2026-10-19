@@ -11,6 +11,7 @@
 #include <QVariant>
 #include <QMainWindow>
 #include <QMouseEvent>
+#include <QPalette>
 #include <QPainter>
 #include <QPointer>
 #include <QTimer>
@@ -30,7 +31,9 @@ QDockWidget *dockAround(QWidget *w)
 	return nullptr;
 }
 
-constexpr int kHeight = 24;
+constexpr int kHeader = 30; // the Laycue mark and name
+constexpr int kChips = 24;  // the row of panel names
+constexpr int kHeight = kHeader + kChips;
 
 } // namespace
 
@@ -38,6 +41,13 @@ PackSwitcher::PackSwitcher(QWidget *parent) : QWidget(parent)
 {
 	setFixedHeight(kHeight);
 	setCursor(Qt::PointingHandCursor);
+	const bool darkTheme = palette().color(QPalette::Window).lightness() < 128;
+	char *path = obs_module_file(darkTheme ? "brand/laycue-mark-on-dark.png" : "brand/laycue-mark-on-light.png");
+	if (path) {
+		mark_ = QPixmap(QString::fromUtf8(path));
+		bfree(path);
+	}
+	setAccessibleName(QStringLiteral("Laycue"));
 }
 
 QSize PackSwitcher::sizeHint() const
@@ -73,7 +83,7 @@ void PackSwitcher::layoutChips()
 	int x = size::shadowMargin;
 	for (Chip &chip : chips_) {
 		const int w = fm.horizontalAdvance(chip.name) + 20;
-		chip.rect = QRect(x, 0, w, kHeight);
+		chip.rect = QRect(x, kHeader, w, kChips);
 		x += w + 4;
 	}
 	update();
@@ -83,6 +93,21 @@ void PackSwitcher::paintEvent(QPaintEvent *)
 {
 	QPainter p(this);
 	p.setRenderHint(QPainter::Antialiasing);
+	p.setRenderHint(QPainter::SmoothPixmapTransform);
+	// The Laycue mark and name.
+	int x = size::shadowMargin + 4;
+	if (!mark_.isNull()) {
+		const int h = 22;
+		const int w = mark_.height() > 0 ? mark_.width() * h / mark_.height() : h;
+		p.drawPixmap(QRect(x, (kHeader - h) / 2, w, h), mark_);
+		x += w + 8;
+	}
+	QFont title = this->font();
+	title.setPixelSize(17);
+	title.setWeight(QFont::Bold);
+	p.setFont(title);
+	p.setPen(color::cream);
+	p.drawText(QRect(x, 0, width() - x, kHeader), Qt::AlignVCenter | Qt::AlignLeft, QStringLiteral("Laycue"));
 	QFont font = this->font();
 	font.setPixelSize(12);
 	font.setWeight(QFont::DemiBold);

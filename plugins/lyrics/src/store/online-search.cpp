@@ -138,37 +138,57 @@ void OnlineSearch::search(const QString &query)
 
 void OnlineSearch::fetchWords(const OnlineSong &song)
 {
-	get(QUrl(QString::fromStdString(ovhLyricsUrl(song.artist, song.title))), wordsReply_,
-	    [this, song](bool ok, const QByteArray &body, const QString &error) {
-		    const QString words =
-			    QJsonDocument::fromJson(body).object().value(QStringLiteral("lyrics")).toString();
-		    if (!ok || words.trimmed().isEmpty()) {
-			    // Not on lyrics.ovh: try LRCLIB by name before giving up.
-			    const QString reason = ok ? QStringLiteral("no words") : error;
-			    const QUrl byName(QString::fromStdString(onlineSearchUrl(song.artist + " " + song.title)));
-			    get(byName, wordsReply_,
-				[this, song, reason](bool ok2, const QByteArray &body2, const QString &) {
-					if (ok2) {
-						for (const OnlineSong &candidate : parseLrclib(body2)) {
-							if (songFromOnline(candidate).sections.empty())
-								continue;
-							OnlineSong withWords = candidate;
-							withWords.title = song.title;
-							withWords.artist = song.artist;
-							withWords.needsWords = false;
-							emit wordsReady(withWords);
-							return;
-						}
-					}
-					emit wordsFailed(song, reason);
-				});
-			    return;
-		    }
-		    OnlineSong withWords = song;
-		    withWords.needsWords = false;
-		    withWords.plainLyrics = cleanOvhLyrics(words.toStdString());
-		    emit wordsReady(withWords);
-	    });
+	// Every spelling worth trying, on both sites, until one has words: the title as listed, then without
+	// "(Live)" and "feat. ...", with and without the singer.
+	const std::string clean = cleanSongTitle(song.title);
+	std::vector<WordsTry> tries;
+	tries.push_back({true, song.artist, song.title});
+	if (clean != song.title)
+		tries.push_back({true, song.artist, clean});
+	for (const std::string &text : {song.artist + " " + song.title, song.artist + " " + clean, clean, song.title}) {
+		bool seen = false;
+		for (const WordsTry &t : tries)
+			seen = seen || (!t.ovh && t.text == text);
+		if (!seen)
+			tries.push_back({false, std::string(), text});
+	}
+	tryWords(song, tries, 0, QStringLiteral("no words"));
+}
+
+void OnlineSearch::tryWords(const OnlineSong &song, std::vector<WordsTry> tries, size_t index, const QString &reason)
+{
+	if (index >= tries.size()) {
+		emit wordsFailed(song, reason);
+		return;
+	}
+	const WordsTry attempt = tries[index];
+	const QUrl url(QString::fromStdString(attempt.ovh ? ovhLyricsUrl(attempt.artist, attempt.text)
+							  : onlineSearchUrl(attempt.text)));
+	get(url, wordsReply_, [this, song, tries, index, attempt](bool ok, const QByteArray &body, const QString &error) {
+		if (ok && attempt.ovh) {
+			const QString words =
+				QJsonDocument::fromJson(body).object().value(QStringLiteral("lyrics")).toString();
+			if (!words.trimmed().isEmpty()) {
+				OnlineSong withWords = song;
+				withWords.needsWords = false;
+				withWords.plainLyrics = cleanOvhLyrics(words.toStdString());
+				emit wordsReady(withWords);
+				return;
+			}
+		} else if (ok) {
+			for (const OnlineSong &candidate : parseLrclib(body)) {
+				if (songFromOnline(candidate).sections.empty())
+					continue;
+				OnlineSong withWords = candidate;
+				withWords.title = song.title;
+				withWords.artist = song.artist;
+				withWords.needsWords = false;
+				emit wordsReady(withWords);
+				return;
+			}
+		}
+		tryWords(song, tries, index + 1, ok ? QStringLiteral("no words") : error);
+	});
 }
 
 } // namespace laycue::lyrics

@@ -99,7 +99,7 @@ constexpr int kMinSizePercent = 50;
 constexpr int kMaxSizePercent = 150;
 inline bool supportsPlacement(const TitleTemplate &t)
 {
-	return t.tickerSpeed <= 0.0 && !t.fullHeight && t.id != "thank-you";
+	return t.tickerSpeed <= 0.0 && !t.fullHeight && t.id != "thank-you" && t.id != "glow-headline";
 }
 
 // Shape width choices for the name lower thirds: the template's own width, a shape that hugs the text, or a

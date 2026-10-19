@@ -5,14 +5,18 @@ namespace laycue::lyrics {
 namespace {
 
 using slides::Align;
+using slides::Decor;
 using slides::Fill;
 using slides::Font;
 using slides::Layout;
 
 slides::SlideStyle style(Layout layout, Fill fill, uint32_t background, uint32_t background2, uint32_t text,
-			 uint32_t accent, Align align = Align::Centre, Font font = Font::Modern)
+			 uint32_t accent, Align align = Align::Centre, Font font = Font::Modern, Decor decor = Decor::None,
+			 uint32_t c3 = 0x7B2FF7)
 {
 	slides::SlideStyle s;
+	s.decor = int(decor);
+	s.color3 = c3;
 	s.layout = int(layout);
 	s.fill = int(fill);
 	s.color1 = background;
@@ -29,7 +33,7 @@ slides::SlideStyle style(Layout layout, Fill fill, uint32_t background, uint32_t
 const char *lyricsPackKey(int pack)
 {
 	static const char *const keys[kLyricsPackCount] = {"Laycue.Lyrics.Pack.Classic", "Laycue.Lyrics.Pack.Modern",
-							   "Laycue.Lyrics.Pack.Sanctuary"};
+							   "Laycue.Lyrics.Pack.Sanctuary", "Laycue.Lyrics.Pack.Worship"};
 	return keys[pack < 0 ? 0 : (pack >= kLyricsPackCount ? kLyricsPackCount - 1 : pack)];
 }
 
@@ -56,6 +60,19 @@ const std::vector<LyricsTemplate> &lyricsTemplates()
 		       Font::Classic)},
 		{"Laycue.Lyrics.T.Parchment", 2,
 		 style(Layout::Card, Fill::Solid, 0xF3E9D2, 0xF3E9D2, 0x2B2118, 0x9A3B26, Align::Left, Font::Classic)},
+		// Worship: a moving music picture beside the words, or moving colours.
+		{"Laycue.Lyrics.T.Notes", 3,
+		 style(Layout::LowerThird, Fill::Gradient, 0x12082E, 0x2A0F5C, 0xFFFFFF, 0xFFC94D, Align::Left,
+		       Font::Modern, Decor::Notes)},
+		{"Laycue.Lyrics.T.Equalizer", 3,
+		 style(Layout::Tab, Fill::SeeThrough, 0x07090F, 0x07090F, 0xFFFFFF, 0x2FD18B, Align::Left, Font::Clean,
+		       Decor::Equalizer)},
+		{"Laycue.Lyrics.T.Vinyl", 3,
+		 style(Layout::Card, Fill::Gradient, 0x1B1B22, 0x34202E, 0xFFFFFF, 0xFF5C8A, Align::Left, Font::Modern,
+		       Decor::Vinyl)},
+		{"Laycue.Lyrics.T.Aurora", 3,
+		 style(Layout::LowerThird, Fill::Moving, 0x1A0B4A, 0xC2185B, 0xFFFFFF, 0xFFD54F, Align::Centre,
+		       Font::Modern, Decor::None, 0x3D5AFE)},
 	};
 	return all;
 }

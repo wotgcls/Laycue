@@ -19,8 +19,11 @@
 #include <obs-module.h>
 #include <plugin-support.h>
 
+#include <QClipboard>
+#include <QDesktopServices>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
@@ -33,9 +36,14 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QStackedWidget>
+#include <QUrl>
 #include <QVBoxLayout>
 
+#include <QKeySequence>
+#include <QShortcut>
+
 #include <algorithm>
+#include <utility>
 
 namespace laycue::lyrics {
 
@@ -111,6 +119,14 @@ LyricsDock::LyricsDock(QWidget *parent) : QWidget(parent)
 {
 	setObjectName("LaycueLyricsDock");
 	setMinimumWidth(280);
+	// Left and Right step through the lines of the song while the panel has focus (text boxes keep them for typing).
+	setFocusPolicy(Qt::StrongFocus);
+	for (const auto &[key, direction] : {std::make_pair(Qt::Key_Right, 1), std::make_pair(Qt::Key_Left, -1)}) {
+		auto *shortcut = new QShortcut(QKeySequence(key), this);
+		shortcut->setContext(Qt::WidgetWithChildrenShortcut);
+		const int d = direction;
+		connect(shortcut, &QShortcut::activated, this, [this, d]() { step(d); });
+	}
 	loadBrandFonts();
 	slides::loadSlideFonts();
 	settings_ = loadSettings();
@@ -306,6 +322,8 @@ QWidget *LyricsDock::buildMain()
 	v->addWidget(editRow_);
 	slides::StyleEditor::Options options;
 	options.showCase = true;
+	options.decors = {int(slides::Decor::None), int(slides::Decor::Notes), int(slides::Decor::Equalizer),
+			  int(slides::Decor::Vinyl)};
 	options.accentLabel = lt("Laycue.Lyrics.SongNameColour");
 	editor_ = new slides::StyleEditor(options, page);
 	editor_->setStyle(settings_.styles[size_t(settings_.templateIndex)]);
@@ -453,6 +471,7 @@ void LyricsDock::rebuildResults()
 	}
 	if (!onlineError_.isEmpty()) {
 		resultsLayout_->addWidget(innerLabel(resultsBox_, onlineError_, 11, 500, color::overlay));
+		addWebRow(typed);
 		return;
 	}
 	for (size_t i = 0; i < onlineResults_.size(); ++i) {
@@ -471,6 +490,50 @@ void LyricsDock::rebuildResults()
 			innerLabel(resultsBox_, lt("Laycue.Lyrics.OnlineNone"), 11, 400, color::textTertiary));
 	resultsLayout_->addWidget(
 		innerLabel(resultsBox_, lt("Laycue.Lyrics.OnlineLicence"), 10, 400, color::textTertiary));
+	addWebRow(typed);
+}
+
+// The big lyrics sites have no free way for a program to read their words, so they open in the browser: copy the
+// words there and press Paste, which makes a new song from them.
+void LyricsDock::addWebRow(const QString &query)
+{
+	resultsLayout_->addWidget(
+		innerLabel(resultsBox_, lt("Laycue.Lyrics.WebHint"), 10, 600, color::textTertiary));
+	auto *row = new QWidget(resultsBox_);
+	auto *h = new QHBoxLayout(row);
+	h->setContentsMargins(0, 0, 0, 0);
+	h->setSpacing(4);
+	const QByteArray words = QUrl::toPercentEncoding(query);
+	const QByteArray withLyrics = QUrl::toPercentEncoding(query + QStringLiteral(" lyrics"));
+	const std::vector<std::pair<QString, QString>> sites = {
+		{QStringLiteral("Google"), QStringLiteral("https://www.google.com/search?q=") + QString::fromLatin1(withLyrics)},
+		{QStringLiteral("Genius"), QStringLiteral("https://genius.com/search?q=") + QString::fromLatin1(words)},
+		{QStringLiteral("Musixmatch"), QStringLiteral("https://www.musixmatch.com/search/") + QString::fromLatin1(words)},
+		{QStringLiteral("AZLyrics"),
+		 QStringLiteral("https://search.azlyrics.com/search.php?q=") + QString::fromLatin1(words)},
+	};
+	for (const auto &site : sites) {
+		auto *open = button(row, site.first, "laycueSecondary");
+		const QString address = site.second;
+		connect(open, &QAbstractButton::clicked, this, [address]() { QDesktopServices::openUrl(QUrl(address)); });
+		h->addWidget(open);
+	}
+	resultsLayout_->addWidget(row);
+	auto *paste = button(resultsBox_, lt("Laycue.Lyrics.PasteWords"), "laycuePrimary");
+	connect(paste, &QAbstractButton::clicked, this, [this, query]() { pasteWords(query); });
+	resultsLayout_->addWidget(paste);
+}
+
+void LyricsDock::pasteWords(const QString &title)
+{
+	const QString words = QGuiApplication::clipboard()->text().trimmed();
+	if (words.isEmpty()) {
+		toast(lt("Laycue.Lyrics.PasteNothing"));
+		return;
+	}
+	edit(true);
+	editTitle_->setText(title);
+	editText_->setPlainText(words);
 }
 
 void LyricsDock::searchOnline()
@@ -596,6 +659,8 @@ void LyricsDock::showSlide(int index)
 	push();
 	rebuildSlides();
 	updateStatus();
+	if (shown_)
+		setFocus(); // so Left and Right step through the lines straight away
 }
 
 void LyricsDock::push()
@@ -636,6 +701,8 @@ void LyricsDock::toggleShown()
 	push();
 	rebuildSlides();
 	updateStatus();
+	if (shown_)
+		setFocus();
 }
 
 void LyricsDock::step(int direction)

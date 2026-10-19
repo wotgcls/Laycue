@@ -130,10 +130,10 @@ TEST_CASE("titles: the ticker wraps and says how many copies fill the view")
 	CHECK(ticker.offset() >= 0.0);
 }
 
-TEST_CASE("titles: there are 73 built-in templates with unique ids and sensible values")
+TEST_CASE("titles: there are 84 built-in templates with unique ids and sensible values")
 {
 	const auto &all = builtInTemplates();
-	CHECK_EQ(int(all.size()), 73);
+	CHECK_EQ(int(all.size()), 84);
 	std::set<std::string> ids;
 	for (const auto &t : all) {
 		ids.insert(t.id);
@@ -143,7 +143,7 @@ TEST_CASE("titles: there are 73 built-in templates with unique ids and sensible 
 		if (t.tickerSpeed > 0.0)
 			CHECK(t.category == Category::Ticker);
 	}
-	CHECK_EQ(int(ids.size()), 73);
+	CHECK_EQ(int(ids.size()), 84);
 	CHECK(findTemplate("nope") == nullptr);
 }
 
