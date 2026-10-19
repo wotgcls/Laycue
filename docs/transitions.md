@@ -1,6 +1,6 @@
 # Branded transitions (Laycue Scenes)
 
-Laycue Scenes adds seven scene transitions to OBS's own transition list (the **Scene Transitions** dock, **+**). They
+Laycue Scenes adds nine scene transitions to OBS's own transition list (the **Scene Transitions** dock, **+**). They
 are native OBS transitions, so they work with Studio Mode, hotkeys and the T-bar like the built-in ones, and their
 length is OBS's transition **Duration**.
 
@@ -12,6 +12,8 @@ length is OBS's transition **Duration**.
 | **Laycue Split Doors** | The old shot splits down the middle and slides apart, with brand-colour edges on the doors. |
 | **Laycue Logo Sting** | A brand panel rises over the picture, your logo pops on it, and it lifts away to show the new shot. |
 | **Laycue Card Stack** | The old shot steps back and dims; the new one slides up over it like a card. |
+| **Laycue Move** | Cameras and pictures that are in both shots glide from where they were to where they will be (for example from a single shot into a split layout); the rest cross-fades. Sources inside a nested scene move too. |
+| **Laycue Morph** | The old shot swells and melts into the new one, which settles in from slightly smaller, with a touch of brand colour. |
 | **Laycue Stripes** | Bands of the two brand colours slide in one after another, the logo shows, then they slide on out. |
 
 ## Branding

@@ -27,6 +27,10 @@ const FileSpec kFiles[] = {
 	{FontFace::OutfitSemiBold, "Outfit-SemiBold.ttf", "SemiBold"},
 	{FontFace::OutfitBold, "Outfit-Bold.ttf", "Bold"},
 	{FontFace::OutfitExtraBold, "Outfit-ExtraBold.ttf", "ExtraBold"},
+	{FontFace::Anton, "Anton-Regular.ttf", "Regular"},
+	{FontFace::PlayfairDisplay, "PlayfairDisplay.ttf", "Regular"},
+	{FontFace::CormorantGaramond, "CormorantGaramond.ttf", "Regular"},
+	{FontFace::Archivo, "Archivo.ttf", "Regular"}, // from the pack's shared fonts
 };
 
 } // namespace

@@ -36,6 +36,10 @@ enum class FontFace {
 	OutfitSemiBold,
 	OutfitBold,
 	OutfitExtraBold,
+	Anton,             // bold broadcast capitals
+	PlayfairDisplay,   // premium serif
+	CormorantGaramond, // premium serif
+	Archivo,           // modern sans
 };
 
 // What a template is for: how the gallery groups them.

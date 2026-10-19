@@ -19,9 +19,26 @@ constexpr int kFillCount = 6;
 enum class TextCase { AsWritten = 0, Upper = 1, FirstLetter = 2 };
 // How the words line up inside their box. It is a loose alignment: the box itself is placed by the layout.
 enum class Align { Left = 0, Centre = 1, Right = 2 };
-// The bundled typefaces: modern, clean, compact, classic serif and tall display capitals.
-enum class Font { Modern = 0, Clean = 1, Compact = 2, Classic = 3, Display = 4 };
-constexpr int kFontCount = 5;
+// The bundled typefaces. Bold broadcast capitals: Display (Bebas Neue), Anton, Compact (Barlow Condensed). Modern
+// sans: Modern (Outfit), Clean (Barlow), Archivo. Premium serif: Classic (Libre Baskerville), Playfair Display,
+// Cormorant Garamond. The numbers are saved, so new ones go at the end.
+enum class Font {
+	Modern = 0,
+	Clean = 1,
+	Compact = 2,
+	Classic = 3,
+	Display = 4,
+	Anton = 5,
+	Archivo = 6,
+	Playfair = 7,
+	Cormorant = 8
+};
+constexpr int kFontCount = 9;
+// Fonts that only look right in capitals: the words are shown in capitals with them.
+inline bool capitalsOnly(int font)
+{
+	return font == int(Font::Display) || font == int(Font::Anton);
+}
 // A small looping picture beside the words while the slide is on screen. The first ones suit verses, the last three
 // suit songs.
 enum class Decor {

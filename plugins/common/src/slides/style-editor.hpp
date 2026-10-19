@@ -70,7 +70,9 @@ private:
 	ui::Segmented *fill_ = nullptr;
 	ui::Segmented *case_ = nullptr;
 	ui::Segmented *align_ = nullptr;
-	ui::Segmented *font_ = nullptr;
+	ui::Segmented *font_ = nullptr;  // bold broadcast capitals
+	ui::Segmented *font2_ = nullptr; // modern sans
+	ui::Segmented *font3_ = nullptr; // premium serif
 	ui::Segmented *transition_ = nullptr;
 	ui::Segmented *decor_ = nullptr;  // the first four looping pictures
 	ui::Segmented *decor2_ = nullptr; // the rest

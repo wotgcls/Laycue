@@ -22,9 +22,11 @@ namespace {
 constexpr double kPi = 3.14159265358979323846; // M_PI is not defined by default on MSVC
 
 // The family name of each bundled typeface, filled in by loadSlideFonts() from what Qt reports.
-QString g_families[kFontCount] = {QStringLiteral("Outfit"), QStringLiteral("Barlow"),
+QString g_families[kFontCount] = {QStringLiteral("Outfit"),           QStringLiteral("Barlow"),
 				  QStringLiteral("Barlow Condensed"), QStringLiteral("Libre Baskerville"),
-				  QStringLiteral("Bebas Neue")};
+				  QStringLiteral("Bebas Neue"),       QStringLiteral("Anton"),
+				  QStringLiteral("Archivo"),          QStringLiteral("Playfair Display"),
+				  QStringLiteral("Cormorant Garamond")};
 
 // The typeface a slide is being drawn in (the slide is drawn on one thread at a time, so this is safe).
 thread_local int t_font = int(Font::Modern);
@@ -49,9 +51,9 @@ QColor onColour(const QColor &c)
 // The tall display capitals and the serif only come in one weight each, so the others are not faked.
 int weightFor(int wanted)
 {
-	if (t_font == int(Font::Display))
+	if (t_font == int(Font::Display) || t_font == int(Font::Anton))
 		return QFont::Normal;
-	if (t_font == int(Font::Classic))
+	if (t_font == int(Font::Classic) || t_font == int(Font::Playfair) || t_font == int(Font::Cormorant))
 		return wanted >= 700 ? QFont::Bold : QFont::Normal;
 	return wanted;
 }
@@ -799,6 +801,10 @@ void loadSlideFonts()
 		{"fonts/BarlowCondensed-SemiBold.ttf", "fonts/BarlowCondensed-Bold.ttf"},
 		{"fonts/LibreBaskerville.ttf", "fonts/LibreBaskerville-Italic.ttf"},
 		{"fonts/BebasNeue-Regular.ttf"},
+		{"fonts/Anton-Regular.ttf"},
+		{"fonts/Archivo.ttf"},
+		{"fonts/PlayfairDisplay.ttf"},
+		{"fonts/CormorantGaramond.ttf"},
 	};
 	for (size_t f = 0; f < files.size() && f < size_t(kFontCount); ++f) {
 		for (const char *file : files[f]) {
@@ -972,7 +978,7 @@ QImage renderSlide(const SlideRequest &r)
 		s.fill = int(Fill::Gradient);
 	t_font = s.font;
 	const double k = H / 1080.0; // canvas scale
-	const QString text = applyCase(r.text, TextCase(s.textCase));
+	const QString text = capitalsOnly(s.font) ? r.text.toUpper() : applyCase(r.text, TextCase(s.textCase));
 	const QColor textColour = rgb(s.text), accent = rgb(s.accent);
 	const bool bare = s.fill == int(Fill::None);
 	const bool hasCaption = !r.caption.isEmpty();

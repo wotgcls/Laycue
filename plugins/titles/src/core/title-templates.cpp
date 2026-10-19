@@ -916,6 +916,14 @@ const char *faceName(FontFace f)
 		return "outfit-bold";
 	case FontFace::OutfitExtraBold:
 		return "outfit-extrabold";
+	case FontFace::Anton:
+		return "anton";
+	case FontFace::PlayfairDisplay:
+		return "playfair-display";
+	case FontFace::CormorantGaramond:
+		return "cormorant-garamond";
+	case FontFace::Archivo:
+		return "archivo";
 	}
 	return "barlow";
 }
@@ -926,7 +934,8 @@ bool faceFromName(const std::string &name, FontFace &out)
 	     {FontFace::BarlowCondensedMedium, FontFace::BarlowCondensedSemiBold, FontFace::BarlowCondensedBold,
 	      FontFace::BarlowRegular, FontFace::BarlowSemiBold, FontFace::BebasNeue, FontFace::Baskerville,
 	      FontFace::BaskervilleItalic, FontFace::OutfitRegular, FontFace::OutfitSemiBold, FontFace::OutfitBold,
-	      FontFace::OutfitExtraBold}) {
+	      FontFace::OutfitExtraBold, FontFace::Anton, FontFace::PlayfairDisplay, FontFace::CormorantGaramond,
+	      FontFace::Archivo}) {
 		if (name == faceName(f)) {
 			out = f;
 			return true;

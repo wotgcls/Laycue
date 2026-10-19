@@ -33,6 +33,15 @@ uint32_t fromQColor(const QColor &c)
 	return (uint32_t(c.red()) << 16) | (uint32_t(c.green()) << 8) | uint32_t(c.blue());
 }
 
+// The fonts by row, and the name each shows in (its own family name, so you see what you get).
+constexpr int kFontRows[3][3] = {
+	{int(Font::Display), int(Font::Anton), int(Font::Compact)},
+	{int(Font::Modern), int(Font::Clean), int(Font::Archivo)},
+	{int(Font::Classic), int(Font::Playfair), int(Font::Cormorant)},
+};
+constexpr const char *kFontNames[kFontCount] = {"Outfit", "Barlow",   "Condensed", "Baskerville", "Bebas",
+						 "Anton",  "Archivo", "Playfair",  "Cormorant"};
+
 QWidget *row(QWidget *parent, QHBoxLayout *&layout)
 {
 	auto *w = new QWidget(parent);
@@ -215,14 +224,20 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 	v->addWidget(align_);
 
 	v->addWidget(innerLabel(this, lt("Laycue.Slides.Font"), 11, 600, color::textTertiary));
-	font_ = new Segmented(this);
-	font_->setItems({lt("Laycue.Slides.FontModern"), lt("Laycue.Slides.FontClean"), lt("Laycue.Slides.FontCompact"),
-			 lt("Laycue.Slides.FontClassic"), lt("Laycue.Slides.FontDisplay")});
-	connect(font_, &Segmented::changed, this, [this](int index) {
-		style_.font = index;
-		emitChanged();
-	});
-	v->addWidget(font_);
+	// Three rows that share one choice: bold broadcast capitals, modern sans, premium serif.
+	for (int group = 0; group < 3; ++group) {
+		auto *row = new Segmented(this);
+		QStringList names;
+		for (int f : kFontRows[group])
+			names << QString::fromLatin1(kFontNames[f]);
+		row->setItems(names);
+		connect(row, &Segmented::changed, this, [this, group](int index) {
+			style_.font = kFontRows[group][index];
+			emitChanged();
+		});
+		v->addWidget(row);
+		(group == 0 ? font_ : group == 1 ? font2_ : font3_) = row;
+	}
 
 	v->addWidget(innerLabel(this, lt("Laycue.Slides.Between"), 11, 600, color::textTertiary));
 	transition_ = new Segmented(this);
@@ -314,7 +329,15 @@ void StyleEditor::refresh()
 	if (case_)
 		case_->setCurrent(style_.textCase);
 	align_->setCurrent(style_.align);
-	font_->setCurrent(style_.font);
+	Segmented *fontRows[3] = {font_, font2_, font3_};
+	for (int group = 0; group < 3; ++group) {
+		int position = -1;
+		for (int i = 0; i < 3; ++i) {
+			if (kFontRows[group][i] == style_.font)
+				position = i;
+		}
+		fontRows[group]->setCurrent(position);
+	}
 	transition_->setCurrent(style_.transition);
 	if (decor_) {
 		int position = -1;

@@ -2971,24 +2971,36 @@ void nameHeavyLight(Ctx &c)
 // Three soft patches of colour drifting past each other, fading out toward the top of `area`.
 void movingGlow(Ctx &c, const QRectF &area, double strength)
 {
+	// The colours are soft, so they are drawn at an eighth of the size and stretched: this runs every frame while
+	// the title is up, and a full-size picture of three large gradients would cost several milliseconds each time.
 	const double t = c.tickerPx / 100.0;
 	const QColor colours[3] = {c.panel, c.accent, c.shape2};
-	c.p.save();
-	c.p.setClipRect(area);
-	c.p.setPen(Qt::NoPen);
-	for (int i = 0; i < 3; ++i) {
-		const QPointF centre(area.left() + area.width() * (0.5 + 0.38 * std::sin(t * 0.21 * (i + 1) + i * 2.1)),
-				     area.bottom() - area.height() * (0.25 + 0.18 * std::sin(t * 0.17 * (i + 2) + i)));
-		const double r = area.width() * (0.38 + 0.06 * std::sin(t * 0.3 + i));
-		QRadialGradient g(centre, r);
-		QColor col = colours[i];
-		col.setAlpha(int(200 * strength));
-		g.setColorAt(0.0, col);
-		col.setAlpha(0);
-		g.setColorAt(1.0, col);
-		c.p.setBrush(g);
-		c.p.drawEllipse(centre, r, r * 0.75);
+	constexpr double kScale = 0.125;
+	QImage small(std::max(8, int(area.width() * kScale)), std::max(8, int(area.height() * kScale)),
+		     QImage::Format_ARGB32_Premultiplied);
+	small.fill(Qt::transparent);
+	{
+		QPainter q(&small);
+		q.setRenderHint(QPainter::Antialiasing, true);
+		q.setPen(Qt::NoPen);
+		const double w = small.width(), h = small.height();
+		for (int i = 0; i < 3; ++i) {
+			const QPointF centre(w * (0.5 + 0.38 * std::sin(t * 0.21 * (i + 1) + i * 2.1)),
+					     h - h * (0.25 + 0.18 * std::sin(t * 0.17 * (i + 2) + i)));
+			const double r = w * (0.38 + 0.06 * std::sin(t * 0.3 + i));
+			QRadialGradient g(centre, r);
+			QColor col = colours[i];
+			col.setAlpha(int(200 * std::clamp(strength, 0.0, 1.0)));
+			g.setColorAt(0.0, col);
+			col.setAlpha(0);
+			g.setColorAt(1.0, col);
+			q.setBrush(g);
+			q.drawEllipse(centre, r, r * 0.75);
+		}
 	}
+	c.p.save();
+	c.p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+	c.p.drawImage(area, small);
 	c.p.restore();
 }
 
