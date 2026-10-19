@@ -125,4 +125,21 @@ TransitionInfo currentTransition()
 	return info;
 }
 
+std::vector<TransitionChoice> transitionChoices()
+{
+	std::vector<TransitionChoice> out;
+	obs_frontend_source_list transitions = {};
+	obs_frontend_get_transitions(&transitions);
+	for (size_t i = 0; i < transitions.sources.num; ++i) {
+		obs_source_t *transition = transitions.sources.array[i];
+		const char *name = transition ? obs_source_get_name(transition) : nullptr;
+		const char *id = transition ? obs_source_get_unversioned_id(transition) : nullptr;
+		if (!name)
+			continue;
+		out.push_back({name, id && std::strncmp(id, "laycue_", 7) == 0});
+	}
+	obs_frontend_source_list_free(&transitions);
+	return out;
+}
+
 } // namespace laycue

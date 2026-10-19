@@ -15,6 +15,7 @@
 #include <QPainter>
 #include <QPointer>
 #include <QTimer>
+#include <QVBoxLayout>
 
 #include <algorithm>
 
@@ -163,6 +164,16 @@ void PackSwitcher::mousePressEvent(QMouseEvent *event)
 	} catch (...) {
 		blog(LOG_ERROR, "Laycue: could not switch panels");
 	}
+}
+
+QWidget *packHeader(QWidget *parent)
+{
+	auto *strip = new QWidget(parent);
+	auto *v = new QVBoxLayout(strip);
+	v->setContentsMargins(size::margin - size::shadowMargin, 6, size::margin - size::shadowMargin, 2);
+	v->setSpacing(0);
+	v->addWidget(new PackSwitcher(strip));
+	return strip;
 }
 
 } // namespace laycue::ui

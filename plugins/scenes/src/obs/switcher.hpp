@@ -3,6 +3,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace laycue {
 
@@ -34,5 +35,12 @@ struct TransitionInfo {
 	int durationMs = 0;
 };
 TransitionInfo currentTransition();
+
+// The transitions in OBS's Scene Transitions list, in order; `laycue` marks Laycue's own (Move, Push...).
+struct TransitionChoice {
+	std::string name;
+	bool laycue = false;
+};
+std::vector<TransitionChoice> transitionChoices();
 
 } // namespace laycue

@@ -11,6 +11,7 @@
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
 #include "ui/pack-switcher.hpp"
+#include "ui/stage-splitter.hpp"
 #include "ui/labels.hpp"
 #include "ui/pages/add-pushback-page.hpp"
 #include "ui/pages/helpers.hpp"
@@ -226,7 +227,6 @@ QWidget *LaycueDock::buildHome()
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 0, size::shadowMargin, 0);
 	header->setSpacing(size::gap - 2);
-	header->addWidget(ui::brandMark(home));
 	tabs_ = new Segmented(home);
 	tabs_->setItems({text("Laycue.Tab.Shots"), text("Laycue.Tab.Pushbacks"), text("Laycue.Tab.Overlays")});
 	tabs_->setAccessibleName(text("Laycue.Tab.Accessible"));
@@ -314,7 +314,11 @@ QWidget *LaycueDock::buildHome()
 	connect(goLiveButton_, &QAbstractButton::clicked, this, [this]() { goLive(false); });
 	buttons->addWidget(goLiveButton_, 3);
 	stageLayout->addLayout(buttons);
-	root->addWidget(stage_);
+	// Which transition Go Live uses: OBS's own and Laycue's (Move, Push, Logo Sting...), chosen right here.
+	transitionButton_ = new ActionButton(QString(), ActionButton::Kind::Secondary, stage_);
+	transitionButton_->setToolTip(text("Laycue.Transition.ChooseTip"));
+	connect(transitionButton_, &QAbstractButton::clicked, this, &LaycueDock::pickTransition);
+	stageLayout->addWidget(transitionButton_);
 
 	// The tabs: one raised surface holding whichever tab is showing.
 	auto *tabSurface = new Surface(1, home);
@@ -461,7 +465,8 @@ QWidget *LaycueDock::buildHome()
 	tabScroll_->viewport()->installEventFilter(this); // re-size cards when the list width changes
 	tabSurfaceLayout->addWidget(tabScroll_);
 	tabSurface->setPadding(12, 12, 8, 8);
-	root->addWidget(tabSurface, 1);
+	// The stage on top, the shots below; drag the bar between them to give either more room.
+	root->addWidget(ui::stageSplitter(stage_, tabSurface, home), 1);
 
 	return home;
 }
@@ -591,6 +596,7 @@ void LaycueDock::handleFrontendEvent(enum obs_frontend_event event)
 
 	case OBS_FRONTEND_EVENT_TRANSITION_CHANGED:
 	case OBS_FRONTEND_EVENT_TRANSITION_DURATION_CHANGED:
+	case OBS_FRONTEND_EVENT_TRANSITION_LIST_CHANGED:
 		if (transitionToRestore_.empty()) // don't flash "Cut" on Go Live during a Cut
 			updateTransitionLabel();
 		break;
@@ -908,6 +914,41 @@ void LaycueDock::updateTransitionLabel()
 	if (transition.durationMs > 0)
 		detail += QStringLiteral(" · %1 s").arg(transition.durationMs / 1000.0, 0, 'f', 1);
 	goLiveButton_->setDetail(detail);
+	if (transitionButton_)
+		transitionButton_->setText(text("Laycue.Transition.Button").arg(fromStd(transition.name)));
+}
+
+void LaycueDock::pickTransition()
+{
+	QMenu menu(this);
+	const std::string current = currentTransition().name;
+	bool anyLaycue = false;
+	const std::vector<TransitionChoice> choices = transitionChoices();
+	for (int pass = 0; pass < 2; ++pass) {
+		// OBS's own first, then Laycue's, with a line between.
+		if (pass == 1 && !menu.isEmpty())
+			menu.addSeparator();
+		for (const TransitionChoice &choice : choices) {
+			if (choice.laycue != (pass == 1))
+				continue;
+			anyLaycue = anyLaycue || choice.laycue;
+			QAction *action = menu.addAction(fromStd(choice.name));
+			action->setCheckable(true);
+			action->setChecked(choice.name == current);
+			const std::string name = choice.name;
+			connect(action, &QAction::triggered, this, [this, name]() {
+				restoreTransition(name); // selects it in OBS
+				updateTransitionLabel();
+			});
+		}
+	}
+	if (!anyLaycue) {
+		// OBS has no way for a plugin to add to its list, so Laycue's transitions are added there once, by hand.
+		menu.addSeparator();
+		QAction *how = menu.addAction(text("Laycue.Transition.HowToAdd"));
+		how->setEnabled(false);
+	}
+	menu.exec(transitionButton_->mapToGlobal(QPoint(0, transitionButton_->height())));
 }
 
 void LaycueDock::updatePictureTargets()

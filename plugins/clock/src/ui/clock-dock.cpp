@@ -188,6 +188,7 @@ void ClockDock::build()
 	contentLayout->setSpacing(0);
 
 	// If the panel is shorter than everything needs, it scrolls.
+	contentLayout->addWidget(packHeader(content)); // stays on top while the page scrolls
 	scroll_ = new QScrollArea(content);
 	scroll_->setWidgetResizable(true);
 	scroll_->setFrameShape(QFrame::NoFrame);
@@ -213,11 +214,9 @@ void ClockDock::rebuild()
 	pageLayout_->setSpacing(6);
 
 	// Header.
-	pageLayout_->addWidget(new PackSwitcher(page_));
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 2, size::shadowMargin, 2);
 	header->setSpacing(size::gapSmall);
-	header->addWidget(brandMark(page_));
 	header->addWidget(innerLabel(page_, lt("Laycue.Clock.Heading"), 17, 700, color::cream));
 	header->addStretch(1);
 	statusLabel_ = innerLabel(page_, QString(), 12, 600, color::textSecondary);

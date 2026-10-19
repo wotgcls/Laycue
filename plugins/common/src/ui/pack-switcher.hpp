@@ -36,4 +36,7 @@ private:
 	QPixmap mark_; // the Laycue mark, for this panel's light or dark theme
 };
 
+// The switcher in a strip with the panel's side margins, for the top of a panel above whatever scrolls.
+QWidget *packHeader(QWidget *parent);
+
 } // namespace laycue::ui

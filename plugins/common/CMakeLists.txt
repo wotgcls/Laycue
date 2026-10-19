@@ -47,6 +47,8 @@ target_sources(
     src/ui/text.hpp
     src/ui/tokens.cpp
     src/ui/tokens.hpp
+    src/ui/stage-splitter.cpp
+    src/ui/stage-splitter.hpp
     src/ui/update-card.cpp
     src/ui/update-card.hpp
     src/update/updater.cpp

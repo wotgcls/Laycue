@@ -2,6 +2,7 @@
 
 #include "ui/controls.hpp"
 #include "ui/labels.hpp"
+#include "ui/pages/helpers.hpp"
 #include "ui/tokens.hpp"
 
 #include <QAbstractButton>
@@ -117,11 +118,8 @@ void OverlaysTab::setRows(const std::vector<OverlayRow> &rows, const QString &sc
 void OverlaysTab::rebuild()
 {
 	built_ = true;
-	while (QLayoutItem *item = root_->takeAt(0)) {
-		if (item->widget())
-			item->widget()->deleteLater();
-		delete item;
-	}
+	// Includes the overlay cards inside the grid: deleting the grid alone left them on screen under the new ones.
+	page::clear(root_);
 
 	auto addSetup = [&](const QString &text, const char *object) {
 		if (locked_)

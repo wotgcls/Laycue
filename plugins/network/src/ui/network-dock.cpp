@@ -5,6 +5,7 @@
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
 #include "ui/pack-switcher.hpp"
+#include "ui/stage-splitter.hpp"
 #include "ui/live-chart.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/style.hpp"
@@ -277,6 +278,7 @@ void NetworkDock::buildUi()
 	auto *contentLayout = new QVBoxLayout(content_);
 	contentLayout->setContentsMargins(0, 0, 0, 0);
 	contentLayout->setSpacing(0);
+	contentLayout->addWidget(packHeader(content_)); // stays on top
 	pages_ = new QStackedWidget(content_);
 	contentLayout->addWidget(pages_);
 
@@ -285,11 +287,9 @@ void NetworkDock::buildUi()
 	root->setContentsMargins(size::margin - size::shadowMargin, 6, size::margin - size::shadowMargin, 4);
 	root->setSpacing(4);
 
-	root->addWidget(new PackSwitcher(home_));
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 2, size::shadowMargin, 2);
 	header->setSpacing(size::gapSmall);
-	header->addWidget(brandMark(home_));
 	header->addWidget(makeLabel(home_, lt("Laycue.Network.Heading"), 17, 700, color::cream));
 	header->addStretch(1);
 	pill_ = new HealthPill(home_);
@@ -300,7 +300,6 @@ void NetworkDock::buildUi()
 	heroLayout_ = new QVBoxLayout(hero_);
 	heroLayout_->setSpacing(4);
 	hero_->setPadding(12, 8, 12, 10);
-	root->addWidget(hero_);
 
 	auto *tabSurface = new Surface(1, home_);
 	auto *tv = new QVBoxLayout(tabSurface);
@@ -338,14 +337,9 @@ void NetworkDock::buildUi()
 	hl->addStretch(1);
 	scroll_->setWidget(host);
 	tv->addWidget(scroll_, 1);
-	root->addWidget(tabSurface, 1);
-	// If the panel is shorter than everything needs, the page scrolls instead of squeezing the tabs away.
-	auto *homeScroll = new QScrollArea(pages_);
-	homeScroll->setWidgetResizable(true);
-	homeScroll->setFrameShape(QFrame::NoFrame);
-	homeScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	homeScroll->setWidget(home_);
-	pages_->addWidget(homeScroll);
+	// The live reading on top, the tabs below; drag the bar between them to give either more room.
+	root->addWidget(stageSplitter(hero_, tabSurface, home_), 1);
+	pages_->addWidget(home_);
 
 	toast_ = new QWidget(content_);
 	toast_->setObjectName("laycueToast");

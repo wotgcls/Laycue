@@ -107,6 +107,7 @@ void ScriptureDock::build()
 	auto *contentLayout = new QVBoxLayout(content);
 	contentLayout->setContentsMargins(0, 0, 0, 0);
 	contentLayout->setSpacing(0);
+	contentLayout->addWidget(packHeader(content)); // stays on top while the page scrolls
 	auto *scroll = new QScrollArea(content);
 	scroll->setWidgetResizable(true);
 	scroll->setFrameShape(QFrame::NoFrame);
@@ -124,10 +125,8 @@ void ScriptureDock::build()
 	v->setContentsMargins(8, 8, 8, 12);
 	v->setSpacing(size::gapSmall + 2);
 
-	v->addWidget(new PackSwitcher(page));
 	auto *header = new QHBoxLayout();
 	header->setSpacing(size::gapSmall);
-	header->addWidget(brandMark(page));
 	header->addWidget(innerLabel(page, lt("Laycue.Scripture.Heading"), 17, 700, color::cream));
 	header->addStretch(1);
 	status_ = innerLabel(page, QString(), 12, 600, color::textTertiary);

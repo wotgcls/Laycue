@@ -11,6 +11,7 @@
 #include "ui/logo-parts-dialog.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/style.hpp"
+#include "ui/stage-splitter.hpp"
 #include "ui/text.hpp"
 #include "ui/title-widgets.hpp"
 #include "ui/update-card.hpp"
@@ -189,6 +190,7 @@ void TitlesDock::buildUi()
 	auto *contentLayout = new QVBoxLayout(content_);
 	contentLayout->setContentsMargins(0, 0, 0, 0);
 	contentLayout->setSpacing(0);
+	contentLayout->addWidget(packHeader(content_)); // stays on top
 	pages_ = new QStackedWidget(content_);
 	contentLayout->addWidget(pages_);
 
@@ -198,11 +200,9 @@ void TitlesDock::buildUi()
 	root->setSpacing(4);
 
 	// Header: the name and whether a title is on air.
-	root->addWidget(new PackSwitcher(home_));
 	auto *header = new QHBoxLayout();
 	header->setContentsMargins(size::shadowMargin, 2, size::shadowMargin, 2);
 	header->setSpacing(size::gapSmall);
-	header->addWidget(brandMark(home_));
 	header->addWidget(makeLabel(home_, lt("Laycue.Titles.Heading"), 17, 700, color::cream));
 	header->addStretch(1);
 	statusDot_ = new StatusDot(home_);
@@ -212,16 +212,11 @@ void TitlesDock::buildUi()
 	header->addWidget(statusLabel_, 0, Qt::AlignVCenter);
 	root->addLayout(header);
 
-	root->addWidget(buildStage());
-	root->addWidget(buildTabs(), 1);
-
-	// If the panel is shorter than everything needs, the page scrolls instead of squeezing the templates.
-	auto *homeScroll = new QScrollArea(pages_);
-	homeScroll->setWidgetResizable(true);
-	homeScroll->setFrameShape(QFrame::NoFrame);
-	homeScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	homeScroll->setWidget(home_);
-	pages_->addWidget(homeScroll);
+	// The title being made on top, the templates below; drag the bar between them to give either more room.
+	QWidget *stage = buildStage();
+	QWidget *tabs = buildTabs();
+	root->addWidget(stageSplitter(stage, tabs, home_), 1);
+	pages_->addWidget(home_);
 
 	toast_ = new QWidget(content_);
 	toast_->setObjectName("laycueToast");

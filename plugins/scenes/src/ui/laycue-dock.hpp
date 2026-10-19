@@ -41,6 +41,7 @@ class PictureView;
 class Segmented;
 class ViewTakeover;
 class StageButton;
+class ActionButton;
 class ShotCard;
 class Surface;
 } // namespace ui
@@ -101,6 +102,7 @@ private:
 	void arrangePictures(bool wide);
 	void updateStateUi();
 	void updateTransitionLabel();
+	void pickTransition(); // the menu of OBS's transitions under the stage buttons
 	void updatePictureTargets();
 	void pullPictures();
 	void updateOverlays(const Snapshot &snapshot);
@@ -143,6 +145,7 @@ private:
 	QLabel *nextHint_ = nullptr;
 	ui::StageButton *cutButton_ = nullptr;
 	ui::StageButton *goLiveButton_ = nullptr;
+	ui::ActionButton *transitionButton_ = nullptr;
 
 	// The live pushback's "camera inside" controls
 	QWidget *insideBar_ = nullptr;
