@@ -11,23 +11,28 @@ Transitions already in OBS's list are picked from the same menu.
 
 | Transition | What it does |
 |---|---|
-| **Laycue Push** | The new shot pushes the old one off to the left, with a band of brand colour between them. |
+| **Laycue Push** | The new shot pushes the old one off to the left. |
 | **Laycue Brand Wipe** | A wide brand-colour bar sweeps across carrying your logo; the new shot is behind it. |
-| **Laycue Zoom Through** | The old shot rushes toward you into a wash of brand colour and logo; the new shot settles out of it. |
-| **Laycue Split Doors** | The old shot splits down the middle and slides apart, with brand-colour edges on the doors. |
-| **Laycue Logo Sting** | A brand panel rises over the picture, your logo pops on it, and it lifts away to show the new shot. |
+| **Laycue Zoom Through** | The old shot rushes toward you and the new one settles out of it. |
+| **Laycue Split Doors** | The old shot splits down the middle and slides apart. |
+| **Laycue Logo Sting** | A panel rises over the picture, your logo pops on it, and it lifts away to show the new shot. |
 | **Laycue Card Stack** | The old shot steps back and dims; the new one slides up over it like a card. |
 | **Laycue Move** | Cameras and pictures that are in both shots glide from where they were to where they will be (for example from a single shot into a split layout); the rest cross-fades. Sources inside a nested scene move too. |
-| **Laycue Morph** | The old shot swells and melts into the new one, which settles in from slightly smaller, with a touch of brand colour. |
-| **Laycue Stripes** | Bands of the two brand colours slide in one after another, the logo shows, then they slide on out. |
+| **Laycue Morph** | The old shot swells and melts into the new one, which settles in from slightly smaller. |
+| **Laycue Stripes** | With colours on, bands of the two brand colours slide in one after another, the logo shows, then they slide on out. |
 
 ## Branding
 
-Right-click the transition in the **Scene Transitions** dock > **Properties**:
+Colours are an opt-in dressing layer: every transition runs plain by default — pure movement, no bands, no wash —
+which is the broadcast look. Right-click the transition in the **Scene Transitions** dock > **Properties**:
 
-- **Brand colour** and **Second colour**.
-- **Logo (picture or animated GIF)**: a PNG with a transparent background looks best. An animated GIF plays while
-  the transition runs. Brand Wipe, Zoom Through, Logo Sting and Stripes show it.
+- **Use brand colours** turns the dressing on. The one exception is **Laycue Logo Sting**, which keeps its colour
+  panel by default (it is a colour panel by design) and can be switched off the same way, leaving a plain black
+  curtain behind your logo.
+- **Brand colour** and **Second colour**, shown once the switch is on.
+- **Logo (picture or animated GIF)**: optional for every transition. A PNG with a transparent background looks
+  best. An animated GIF plays while the transition runs. Brand Wipe, Zoom Through, Logo Sting and Stripes show it
+  (with its colour dressing on).
 
 Add the same transition more than once (with different names) to keep several brand looks, for example one for
 Sunday service and one for a conference.

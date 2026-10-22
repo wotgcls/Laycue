@@ -38,10 +38,12 @@ const Info kTransitions[] = {
 constexpr const char *kColour1 = "colour1";
 constexpr const char *kColour2 = "colour2";
 constexpr const char *kLogo = "logo";
+constexpr const char *kUseColour = "use_colour";
 
 struct Transition {
 	obs_source_t *source = nullptr;
 	Kind kind = Kind::Push;
+	bool useColour = false; // brand colours and the logo show only when this is on
 	uint32_t colour1 = 0xFF8A2BE2; // OBS colours are 0xAABBGGRR
 	uint32_t colour2 = 0xFF1A0A2E;
 	std::string logoPath;
@@ -307,8 +309,8 @@ void renderFrame(void *data, gs_texture_t *a, gs_texture_t *b, float progress, u
 
 	switch (t->kind) {
 	case Kind::Push: {
-		// The new shot pushes the old one off to the left, a band of brand colour between them.
-		const float band = W * 0.05f;
+		// The new shot pushes the old one off to the left; with colours on, a brand band rides between them.
+		const float band = t->useColour ? W * 0.05f : 0.0f;
 		const float shift = (W + band) * e;
 		drawTexture(a, -shift, 0, 1, 1, cx, cy);
 		drawRect(W - shift, 0, band, H, t->colour1);
@@ -316,28 +318,34 @@ void renderFrame(void *data, gs_texture_t *a, gs_texture_t *b, float progress, u
 		break;
 	}
 	case Kind::Wipe: {
-		// A wide brand bar sweeps across with the logo on it; the new shot is behind it.
-		const float bar = W * 0.32f;
+		// A wide brand bar sweeps across with the logo on it; without colours: a clean edge wipe.
+		const float bar = t->useColour ? W * 0.32f : 0.0f;
 		const float lead = -bar + (W + bar * 2.0f) * e; // the bar's leading (right) edge
 		const float edge = std::clamp(lead - bar, 0.0f, W);
 		drawTexture(a, 0, 0, 1, 1, cx, cy);
 		drawPart(b, 0, 0, edge, H, 0, 0);
-		drawRect(lead - bar, 0, bar, H, t->colour1);
-		drawRect(lead - bar - W * 0.02f, 0, W * 0.02f, H, t->colour2);
-		drawLogo(t, lead - bar / 2.0f, H / 2.0f, H * 0.22f, 1.0f);
+		if (t->useColour) {
+			drawRect(lead - bar, 0, bar, H, t->colour1);
+			drawRect(lead - bar - W * 0.02f, 0, W * 0.02f, H, t->colour2);
+			drawLogo(t, lead - bar / 2.0f, H / 2.0f, H * 0.22f, 1.0f);
+		}
 		break;
 	}
 	case Kind::Zoom: {
-		// The old shot rushes toward you into a wash of brand colour; the new one settles out of it.
-		const float wash = progress < 0.5f ? ease(stage(progress, 0.15f, 0.5f))
-						   : 1.0f - ease(stage(progress, 0.5f, 0.85f));
+		// The old shot rushes toward you; the new one settles out of it. Colours add a wash and the logo.
+		const float wash = t->useColour ? (progress < 0.5f ? ease(stage(progress, 0.15f, 0.5f))
+								   : 1.0f - ease(stage(progress, 0.5f, 0.85f)))
+					       : 0.0f;
 		if (progress < 0.5f) {
 			const float s = 1.0f + 0.6f * ease(progress * 2.0f);
 			drawTexture(a, W / 2.0f * (1.0f - s), H / 2.0f * (1.0f - s), s, s, cx, cy);
 		} else {
-			const float s = 0.82f + 0.18f * ease((progress - 0.5f) * 2.0f);
-			drawRect(0, 0, W, H, t->colour2);
-			drawTexture(b, W / 2.0f * (1.0f - s), H / 2.0f * (1.0f - s), s, s, cx, cy);
+			const float settle = ease((progress - 0.5f) * 2.0f);
+			if (t->useColour)
+				drawRect(0, 0, W, H, t->colour2);
+			const float s = 0.82f + 0.18f * settle;
+			drawTexture(b, W / 2.0f * (1.0f - s), H / 2.0f * (1.0f - s), s, s, cx, cy,
+				    t->useColour ? 1.0f : settle);
 		}
 		drawRect(0, 0, W, H, t->colour1, wash);
 		drawLogo(t, W / 2.0f, H / 2.0f, H * 0.24f, wash);
@@ -346,24 +354,28 @@ void renderFrame(void *data, gs_texture_t *a, gs_texture_t *b, float progress, u
 	case Kind::Doors: {
 		// The old shot splits down the middle and slides apart, brand edges on the doors.
 		const float open = (W / 2.0f) * e;
-		const float strip = W * 0.012f;
 		drawTexture(b, 0, 0, 1, 1, cx, cy);
 		drawPart(a, 0, 0, W / 2.0f, H, -open, 0);
 		drawPart(a, W / 2.0f, 0, W / 2.0f, H, W / 2.0f + open, 0);
-		if (progress > 0.0f && progress < 1.0f) {
+		if (t->useColour && progress > 0.0f && progress < 1.0f) {
+			const float strip = W * 0.012f;
 			drawRect(W / 2.0f - open - strip, 0, strip, H, t->colour1);
 			drawRect(W / 2.0f + open, 0, strip, H, t->colour1);
 		}
 		break;
 	}
 	case Kind::Sting: {
-		// A brand panel rises over the picture, the logo pops on it, then it lifts away to show the new shot.
+		// A panel rises over the picture, the logo pops on it, then it lifts away to show the new shot.
 		const float rise = ease(stage(progress, 0.0f, 0.35f));
 		const float lift = ease(stage(progress, 0.65f, 1.0f));
 		drawTexture(progress < 0.5f ? a : b, 0, 0, 1, 1, cx, cy);
 		const float top = H * (1.0f - rise) - H * lift;
-		drawRect(0, top, W, H, t->colour1);
-		drawRect(0, top - H * 0.03f, W, H * 0.03f, t->colour2);
+		if (t->useColour) {
+			drawRect(0, top, W, H, t->colour1);
+			drawRect(0, top - H * 0.03f, W, H * 0.03f, t->colour2);
+		} else {
+			drawRect(0, top, W, H, 0xFF000000); // a plain black curtain, stinger-style
+		}
 		const float pop = stage(progress, 0.3f, 0.5f);
 		const float settle = ease(stage(progress, 0.5f, 0.6f));
 		const float scale = pop < 1.0f ? 0.6f + 0.55f * ease(pop) : 1.15f - 0.15f * settle;
@@ -376,7 +388,8 @@ void renderFrame(void *data, gs_texture_t *a, gs_texture_t *b, float progress, u
 		drawTexture(a, W / 2.0f * (1.0f - s), H / 2.0f * (1.0f - s), s, s, cx, cy);
 		drawRect(0, 0, W, H, 0xFF000000, 0.55f * e);
 		const float y = H * (1.0f - e);
-		drawRect(0, y - H * 0.012f, W, H * 0.012f, t->colour1);
+		if (t->useColour)
+			drawRect(0, y - H * 0.012f, W, H * 0.012f, t->colour1);
 		drawTexture(b, 0, y, 1, 1, cx, cy);
 		break;
 	}
@@ -393,12 +406,19 @@ void renderFrame(void *data, gs_texture_t *a, gs_texture_t *b, float progress, u
 		const float sa = 1.0f + 0.12f * e, sb = 0.9f + 0.1f * e;
 		drawTexture(a, W / 2.0f * (1.0f - sa), H / 2.0f * (1.0f - sa), sa, sa, cx, cy);
 		drawTexture(b, W / 2.0f * (1.0f - sb), H / 2.0f * (1.0f - sb), sb, sb, cx, cy, e);
-		const float glow = std::sin(float(progress) * 3.14159265f);
-		drawRect(0, 0, W, H, t->colour1, 0.18f * glow);
+		if (t->useColour) { // a soft wash of brand colour mid-way, only when dressed
+			const float glow = std::sin(float(progress) * 3.14159265f);
+			drawRect(0, 0, W, H, t->colour1, 0.18f * glow);
+		}
 		break;
 	}
 	case Kind::Stripes: {
-		// Bands of brand colour slide in one after another to cover the picture, then slide on out.
+		// Bands of brand colour slide in one after another; without colours: a quiet cross-fade.
+		if (!t->useColour) {
+			drawTexture(a, 0, 0, 1, 1, cx, cy, 1.0f - e);
+			drawTexture(b, 0, 0, 1, 1, cx, cy, e);
+			break;
+		}
 		const int count = 6;
 		const float bandH = H / float(count);
 		drawTexture(progress < 0.5f ? a : b, 0, 0, 1, 1, cx, cy);
@@ -454,6 +474,7 @@ void loadLogo(Transition *t, const std::string &path)
 void update(void *data, obs_data_t *settings)
 {
 	auto *t = static_cast<Transition *>(data);
+	t->useColour = obs_data_get_bool(settings, kUseColour);
 	t->colour1 = uint32_t(obs_data_get_int(settings, kColour1)) | 0xFF000000;
 	t->colour2 = uint32_t(obs_data_get_int(settings, kColour2)) | 0xFF000000;
 	const char *logo = obs_data_get_string(settings, kLogo);
@@ -508,18 +529,35 @@ bool audioRender(void *data, uint64_t *tsOut, struct obs_source_audio_mix *audio
 
 void defaults(obs_data_t *settings)
 {
-	obs_data_set_default_int(settings, kColour1, 0xFFE22B8A); // violet
-	obs_data_set_default_int(settings, kColour2, 0xFF2E0A1A); // deep plum
+	obs_data_set_default_int(settings, kColour1, 0xFF2E4DFF); // Laycue red
+	obs_data_set_default_int(settings, kColour2, 0xFF45250B); // deep navy
 	obs_data_set_default_string(settings, kLogo, "");
+}
+
+// Colours are an opt-in dressing layer, so they are off by default everywhere but the Logo Sting
+// panel, which is a colour panel by design and still brings a plain black curtain without them.
+template<int I> void defaultsKind(obs_data_t *settings)
+{
+	defaults(settings);
+	obs_data_set_default_bool(settings, kUseColour, kTransitions[I].kind == Kind::Sting);
 }
 
 obs_properties_t *properties(void *)
 {
 	obs_properties_t *props = obs_properties_create();
+	obs_properties_add_bool(props, kUseColour, obs_module_text("Laycue.Transition.UseColour"));
 	obs_properties_add_color(props, kColour1, obs_module_text("Laycue.Transition.Colour1"));
 	obs_properties_add_color(props, kColour2, obs_module_text("Laycue.Transition.Colour2"));
 	obs_properties_add_path(props, kLogo, obs_module_text("Laycue.Transition.Logo"), OBS_PATH_FILE,
 				"Images (*.png *.jpg *.jpeg *.gif *.webp *.bmp)", nullptr);
+	// The colours only matter while the switch is on; hiding them keeps the properties short.
+	obs_property_set_modified_callback(obs_properties_get(props, kUseColour),
+					   [](obs_properties_t *props, obs_property_t *, obs_data_t *settings) {
+						   const bool on = obs_data_get_bool(settings, kUseColour);
+						   obs_property_set_visible(obs_properties_get(props, kColour1), on);
+						   obs_property_set_visible(obs_properties_get(props, kColour2), on);
+						   return true;
+					   });
 	return props;
 }
 
@@ -542,7 +580,7 @@ template<int I> void registerOne()
 	info.create = createKind<I>;
 	info.destroy = destroy;
 	info.update = update;
-	info.get_defaults = defaults;
+	info.get_defaults = defaultsKind<I>;
 	info.get_properties = properties;
 	info.video_tick = tick;
 	info.video_render = render;
