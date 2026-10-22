@@ -1,0 +1,18 @@
+name: Unit Tests
+run-name: ${{ github.ref_name }} unit tests 🧪
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    name: Run core unit tests 🧪
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run tests
+        run: |
+          cmake -S tests -B build_tests
+          cmake --build build_tests
+          ctest --test-dir build_tests --output-on-failure

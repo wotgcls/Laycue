@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" font-family="'Comic Sans MS','Segoe Print',cursive" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <title>How the Laycue pack works</title>
+  <rect width="1200" height="760" fill="#fff" stroke="none"/>
+  <text x="600" y="52" text-anchor="middle" font-size="34" fill="#111" stroke="none">How the Laycue pack works</text>
+  <path d="M380 64 Q600 76 820 62" stroke="#e5472e"/>
+
+  <!-- Xiaohei -->
+  <g transform="translate(70 120)">
+    <path d="M10 70 Q0 20 50 10 Q100 0 110 55 Q118 100 60 108 Q18 112 10 70Z" fill="#111"/>
+    <circle cx="42" cy="55" r="7" fill="#fff" stroke="none"/><circle cx="76" cy="55" r="7" fill="#fff" stroke="none"/>
+    <text x="130" y="30" font-size="18" fill="#2e6fd0" stroke="none">“What do I do first?”</text>
+  </g>
+
+  <!-- the problem -->
+  <text x="70" y="290" font-size="20" fill="#111" stroke="none">OBS can do everything. A volunteer needs it done right in 5 minutes.</text>
+  <text x="70" y="318" font-size="20" fill="#e5472e" stroke="none">So Laycue only adds what OBS does not:</text>
+
+  <!-- Scenes -->
+  <g transform="translate(60 350)">
+    <rect width="250" height="230" rx="14"/>
+    <text x="125" y="36" text-anchor="middle" font-size="24" fill="#111" stroke="none">Scenes</text>
+    <text x="16" y="70" font-size="16" fill="#111" stroke="none">Shots: Live + Up next,</text>
+    <text x="16" y="92" font-size="16" fill="#111" stroke="none">then Cut or Go Live.</text>
+    <text x="16" y="128" font-size="16" fill="#111" stroke="none">Overlays: label what</text>
+    <text x="16" y="150" font-size="16" fill="#111" stroke="none">a source IS (logo,</text>
+    <text x="16" y="172" font-size="16" fill="#111" stroke="none">verse, clock) and Laycue</text>
+    <text x="16" y="194" font-size="16" fill="#111" stroke="none">hides clashes for you.</text>
+    <path d="M16 210 L234 210" stroke="#e5472e"/>
+  </g>
+
+  <!-- Titles -->
+  <g transform="translate(330 350)">
+    <rect width="250" height="230" rx="14"/>
+    <text x="125" y="36" text-anchor="middle" font-size="24" fill="#111" stroke="none">Titles</text>
+    <text x="16" y="70" font-size="16" fill="#111" stroke="none">66 lower thirds, crawls,</text>
+    <text x="16" y="92" font-size="16" fill="#111" stroke="none">Subscribe + Bell.</text>
+    <text x="16" y="128" font-size="16" fill="#111" stroke="none">Build the run order once,</text>
+    <text x="16" y="150" font-size="16" fill="#111" stroke="none">“Save this service”,</text>
+    <text x="16" y="172" font-size="16" fill="#111" stroke="none">press Play next on Sunday.</text>
+    <path d="M16 210 L234 210" stroke="#e5472e"/>
+  </g>
+
+  <!-- Clock -->
+  <g transform="translate(600 350)">
+    <rect width="250" height="230" rx="14"/>
+    <text x="125" y="36" text-anchor="middle" font-size="24" fill="#111" stroke="none">Clock</text>
+    <text x="16" y="70" font-size="16" fill="#111" stroke="none">“Starts at 5:00 PM”.</text>
+    <text x="16" y="92" font-size="16" fill="#111" stroke="none">Shows the real time left</text>
+    <text x="16" y="114" font-size="16" fill="#111" stroke="none">and counts by itself.</text>
+    <text x="16" y="150" font-size="16" fill="#111" stroke="none">8 designs, countdown,</text>
+    <text x="16" y="172" font-size="16" fill="#111" stroke="none">count-up or to a time.</text>
+    <path d="M16 210 L234 210" stroke="#e5472e"/>
+  </g>
+
+  <!-- Network -->
+  <g transform="translate(870 350)">
+    <rect width="270" height="230" rx="14"/>
+    <text x="135" y="36" text-anchor="middle" font-size="24" fill="#111" stroke="none">Network</text>
+    <text x="16" y="70" font-size="16" fill="#111" stroke="none">Tests your upload and</text>
+    <text x="16" y="92" font-size="16" fill="#111" stroke="none">recommends a bitrate.</text>
+    <text x="16" y="128" font-size="16" fill="#111" stroke="none">Live monitor. Auto-adjust</text>
+    <text x="16" y="150" font-size="16" fill="#111" stroke="none">is opt-in, never a surprise.</text>
+    <path d="M16 210 L254 210" stroke="#e5472e"/>
+  </g>
+
+  <!-- flow -->
+  <g stroke="#2e6fd0">
+    <path d="M150 640 L330 640"/><path d="M318 630 L332 640 L318 650"/>
+    <path d="M440 640 L600 640"/><path d="M588 630 L602 640 L588 650"/>
+    <path d="M720 640 L900 640"/><path d="M888 630 L902 640 L888 650"/>
+  </g>
+  <text x="70" y="646" font-size="18" fill="#111" stroke="none">Set up</text>
+  <text x="338" y="646" font-size="18" fill="#111" stroke="none">Before</text>
+  <text x="608" y="646" font-size="18" fill="#111" stroke="none">Live</text>
+  <text x="908" y="646" font-size="18" fill="#111" stroke="none">Every Sunday</text>
+  <text x="70" y="690" font-size="16" fill="#2e6fd0" stroke="none">Pick a layout, label overlays, save the service, set the clock. Then only press Play next.</text>
+  <text x="70" y="722" font-size="16" fill="#e5472e" stroke="none">You are always in control: every automation is opt-in, scoped and pausable.</text>
+</svg>

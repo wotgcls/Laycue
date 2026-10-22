@@ -1,8 +1,25 @@
 # Laycue — Product Requirements Document (MVP)
 
-**Status:** Draft v0.2 · **Owner:** Laycue founder · **Last updated:** 27 Sep 2026
+**Status:** Draft v0.7 · **Owner:** Laycue founder · **Last updated:** 28 Sep 2026
 
 **Changes from v0.1:** Laycue is now a native OBS plugin (was a browser dock). Added the operator-control principle. Exclusivity scope is now chosen per group. Smart fit is instant and can be limited to chosen scenes. Studio mode, hotkeys, the "Reset all" button and scene-collection storage are now covered. The done-when criteria are rewritten so they can be tested.
+
+**Changes in v0.3:** Added F6 Switcher mode (vision-mixer style Preview/Program buttons with Cut and Auto, no scene building) as milestone M3.5.
+
+**Changes in v0.4:** Switcher mode has two views, **Shots** (default, for volunteers) and **Mixer** (for experienced operators), plus per-view customisation. Operators can upload a pushback design straight into Laycue (F1). Added a design direction (section 7a) and a clickable mockup link.
+
+**Changes in v0.5:** F3 rewritten: overlay tags and position-aware exclusivity ("spots"). New-shot flow defined. Added section 3a (two roles: set-up person and Sunday operator) and section 10a (release plan: a smaller first release).
+
+**Changes in v0.6:** Release plan approved and written into section 10. Shots view refined after a first-time-operator critique (Go Live/Cut, Up next clears after going live, still thumbnails for shots, overlay spot icons, explanations when overlays switch off, starter shots).
+
+**Changes in v0.7 (what was built, and what changed on the way):**
+- The flow the owner described is now the product: **label your overlays → (optional) overlay rules → pushbacks → run the service**. Every step is optional and the panel guides a first-time operator ("Getting started", tips).
+- **Pushbacks are Laycue-owned scenes.** Adding a pushback makes one scene ("Laycue · <name>") holding the graphic on top and the chosen cameras (or scenes) beneath it, each fitted to the graphic's window. While it is live the operator switches the camera *inside* the window (cut or fade) without the graphic moving, or **Unpins** back to what was on. Laycue never edits the operator's own scenes or sources; the only change to a source is the Chroma Key it adds to the pushback picture, which the operator switches on in the flow.
+- **Window colour is a choice.** A see-through window, or "a colour": the colour Laycue measured in the picture (for example `#00B13F`) or one the operator picks. Laycue tunes the Chroma Key strength by checking what OBS draws, so it never removes more than the window.
+- **Normal | Studio** replaces the planned Laycue A/B "Switcher mode" scenes: one switch turns OBS's Studio Mode on or off, and in Studio Laycue runs OBS's Preview (Up next) and Program (Live). A plugin cannot replace OBS's own Preview and Program screens; this drives them.
+- **Settings and profiles.** A Settings page (cut or fade inside pushbacks, large buttons, tips, Lock) and **profiles**: a whole setup (labels, rules, preferences) saved under a name, shared by every scene collection and matched by name. Export and import by file.
+- **Hotkeys** in OBS: Go Live, Cut, Unpin, next/previous camera inside the pushback, clear Up next.
+- Not built yet: layout presets (F2: PIP, side-by-side, quad), the Mixer view, per-shot hotkeys, animation between layouts.
 
 ---
 
@@ -34,6 +51,13 @@ The result is slow, error-prone switching and a stressed operator. Hardware mixe
 
 **Primary persona: "The Sunday operator."** Runs OBS alone or with one helper, often in studio mode. Knows scenes and sources, doesn't write code. Needs things to work first time, live, with no fiddling.
 
+## 3a. Two roles: who sets it up, who runs it
+
+Most churches split the work, and Laycue is designed for both people:
+
+- **The set-up person** (media lead, often the most technical volunteer) prepares Laycue once, during the week: tags overlays, adds pushbacks, builds shots, sets hotkeys. They need a **guided first-run setup**, a short checklist in the panel ("1. Tag your overlays · 2. Add a pushback · 3. Make your shots"), and empty states that explain what each area is for.
+- **The Sunday operator** (a volunteer, sometimes new each week) only runs the show: taps shots, presses Cut or Auto, turns overlays on and off. They should never need to configure anything live. A **Lock setup** switch hides all editing controls during the service, so nothing can be changed by accident.
+
 ## 4. Guiding principle: the operator is in control
 
 Laycue automates what the operator asks for, and nothing else.
@@ -51,6 +75,7 @@ Laycue automates what the operator asks for, and nothing else.
 2. Let operators tag sources as mutually exclusive, with a scope they choose, so showing one hides the others automatically.
 3. Drop in a frame graphic and have the camera appear in its window instantly.
 4. Install in under five minutes with a normal installer.
+5. Optionally, run a whole show from Laycue like a hardware vision mixer (pick the next shot, press Cut or Auto) without building a scene for every combination.
 
 ### Non-goals (MVP)
 - Building a video engine or replacing OBS. OBS does the pixels.
@@ -65,6 +90,13 @@ Laycue automates what the operator asks for, and nothing else.
 
 Laycue is a **native OBS plugin**. The user runs the installer for their system (Windows, macOS or Linux) and restarts OBS. A **Laycue panel** appears (Docks → Laycue) and Laycue's actions appear in **Settings → Hotkeys**. There's nothing to connect and no password to enter, because Laycue runs inside OBS.
 
+**The flow.**
+1. **Open the panel.** Choose **Normal** (Go Live sends a scene straight to the stream) or **Studio** (Laycue runs OBS's Preview and Program).
+2. **Label your overlays** (Overlays tab → Set up overlays): tell Laycue which sources are Scripture, Lyrics, Lower third, Logo or your own kind. Right-click a source to label it, or press Auto-label. Then choose which overlays replace each other (rules: same scene, all scenes or chosen scenes; only if they overlap or strictly one at a time; pause).
+3. **Add pushbacks** (Pushbacks tab → Add pushback): choose the graphic, say whether the window is see-through or a colour, choose the cameras, name it.
+4. **Run the service.** Tap a shot to get it ready, then Go Live (or Cut). Put a pushback live, then switch the camera inside it, or Unpin. Toggle overlays on the Overlays tab.
+5. **Lock setup** for the service so nothing can be changed by accident; **profiles** keep a setup for next time.
+
 ## 7. Features and requirements
 
 ### F0 — Install and load
@@ -75,7 +107,11 @@ Laycue is a **native OBS plugin**. The user runs the installer for their system 
 **Done when:** a first-time user installs and sees the Laycue panel in under five minutes, and the panel's scene/source list stays correct when scenes and sources are added, renamed, removed or the scene collection is switched.
 
 ### F1 — Smart fit (frame graphics) · *build first*
-- The operator marks a source as a **frame** (the pushback graphic) and picks its **subject** (usually a camera).
+- **Two ways to add a pushback:**
+  - **Upload a design** in Laycue: the operator chooses an image file (PNG with a see-through window, or an image with a green window). Laycue shows the window it found straight away, outlined on the image, with a preview of the camera placed inside it. The operator names it, picks the camera and the fill mode, and adds it. Laycue then offers to add the image to the scenes the operator chooses (asking first) and it becomes a **shot** in Shots view.
+  - **Use an existing source**: the operator marks a source already in OBS as a **frame** and picks its **subject** (usually a camera).
+- **Green windows are keyed automatically** for pushbacks uploaded in Laycue: a "Remove green automatically" switch (on by default) adds OBS's Chroma Key filter to the image Laycue created, with the key colour taken from the green actually measured in the image. For a graphic already in the operator's scenes, Laycue asks once before adding the filter, and reuses an existing key filter if there is one.
+- If no clean window is found, Laycue says so in plain language ("No window found" or "Check the edges") and the operator can switch between see-through and green, or adjust the edges by hand.
 - The operator chooses **which scenes** this pairing is active in (default: all scenes containing both the frame and the subject).
 - The operator says how the window is defined: **transparent** (alpha) or **green screen** (chroma). For green, Laycue offers to add OBS's Chroma Key filter to the frame, and asks before adding it. Detection always measures the frame *after* its filters, so Laycue measures exactly the hole viewers see.
 - Laycue finds the largest window in the frame and fits the subject into it.
@@ -103,19 +139,37 @@ Laycue is a **native OBS plugin**. The user runs the installer for their system 
 
 **Done when:** switching between any two presets takes one click or one hotkey, animates without visible stutter at 30fps output, and never leaves a source half-positioned, even if interrupted by another preset mid-animation.
 
-### F3 — Exclusivity groups
-- The operator creates a named group, like "Overlays", and adds sources to it.
-- **Each group has a scope the operator chooses:**
-  - **Same scene only** (default): turning on a member hides the other members in that same scene only.
-  - **Chosen scenes**: the rule applies only in the scenes the operator ticks. Other scenes are left alone.
-  - **All scenes**: turning on a member hides the other members in every scene.
-- Each group has an on/off (pause) switch, so an operator can suspend a rule mid-service without deleting it.
-- Works whether the source is toggled in Laycue, in OBS directly, or by a hotkey or Stream Deck.
-- A source can belong to more than one group.
-- Laycue never touches sources or scenes outside a group's scope.
-- A visual indicator in the panel shows which member of each group is live.
+### F3 — Overlays: tags and position-aware exclusivity
 
-**Done when:** in a test with five overlays across four scenes, with each scope setting, turning on a member through any normal OBS action leaves at most one member of that group visible within the group's scope by the next rendered frame. If two members are turned on at nearly the same time, the last one wins. Scenes and sources outside the scope are never changed.
+**Tags.** The operator tags sources by what they are: **Lyrics, Scripture, Lower third, Announcement, Logo**, or a custom tag. Tags live in Laycue's settings only; OBS source names are never changed. Each overlay tag becomes a button in the panel's Overlays area. If two sources share a tag (for example two scripture styles), the button shows the chosen default and a small menu picks the other.
+
+**The rule: overlays can share the screen unless they would cover each other.** When an overlay turns on, Laycue turns off only the overlays in scope whose **spot** overlaps its spot. Everything else stays up.
+
+**Spots.**
+- Each overlay has a spot: the part of the screen it covers, shown as a box on a small picture of the screen.
+- Laycue measures it automatically from where the overlay actually draws pixels, not from its layer size. (Lyric and graphics tools often send a full-screen image with only a strip at the bottom filled; the spot is the strip.) Measuring reuses the smart-fit pixel reading (F1).
+- The spot is calculated per scene from the item's position in that scene, so the same overlay placed differently in two scenes has two spots.
+- The operator can adjust any spot by dragging, or pick a quick preset: Bottom, Top, Left, Right, Corner, Full screen. For overlays whose content changes size (lyrics), the spot should cover the largest area they use; Laycue offers "Re-measure" while the overlay is showing its largest content.
+- Spots that only touch at an edge (overlap smaller than 2% of the smaller spot, or under 8 px) do not count as overlapping.
+
+**Examples.**
+
+| Turning on | Already showing | Result |
+|---|---|---|
+| Scripture (bottom) | Lyrics (bottom) | Lyrics turns off: they overlap |
+| Logo (top right) | Lyrics (bottom) | Both stay: they don't touch |
+| Name lower third (bottom left) | Lyrics (bottom, full width) | Lyrics turns off: they overlap |
+| Announcement (full screen) | Logo, Lyrics | Both turn off: full screen covers everything |
+
+**Groups and scope.**
+- All overlay-tagged sources form one **Overlays** group automatically, so it works with no setup. Operators can make extra groups or take a source out of the group.
+- Each group has a scope: **Same scene only** (default), **Chosen scenes** (tick existing scenes; unticked scenes are exceptions and are ignored), or **All scenes**. Laycue never creates, copies or deletes scenes for this; a group is only a rule Laycue watches.
+- Each group has a pause switch, and an option **"Only one at a time, wherever they are"** (off by default) for people who want strict exclusivity regardless of position.
+- A source can belong to more than one group. If two members turn on at nearly the same moment, the last one wins.
+- Works whether the overlay is toggled in Laycue, in OBS, by a hotkey or a Stream Deck.
+- The Overlays area shows the small screen picture with each live overlay's spot, so the operator can see why something turned off.
+
+**Done when:** in a test with five tagged overlays (two bottom, one top-right logo, one bottom-left name, one full-screen announcement) across four scenes, for each scope setting: turning on any overlay by any normal OBS action turns off exactly the overlapping overlays in scope by the next rendered frame, leaves non-overlapping ones up, and never changes anything outside the scope.
 
 ### F4 — Settings and persistence
 - All configuration (frames, presets, groups, hotkeys) is saved inside OBS **with the scene collection**, because it refers to that collection's scenes and sources. Switching scene collection switches Laycue's configuration with it.
@@ -124,6 +178,61 @@ Laycue is a **native OBS plugin**. The user runs the installer for their system 
 
 ### F5 — Reset all (safety)
 - A clearly visible **Reset all** button puts every source Laycue has moved back to its saved original position, and cancels running animations.
+
+### F6 — Switcher mode (optional, operator turns it on)
+
+Run the show like a hardware vision mixer (ATEM, Roland) instead of building one scene per shot.
+
+**How it works**
+- When the operator turns Switcher mode on, Laycue asks permission, then creates two scenes of its own: **"Laycue A"** and **"Laycue B"**. It only ever changes these two scenes, never the operator's own.
+- The operator chooses which sources the switcher uses (cameras, slides, graphics, overlays). Laycue adds them to both of its scenes. The sources are shared, not copied, so their settings and audio stay the same.
+- One Laycue scene is on air (**Live**). Laycue builds the next shot in the other one (**Next**).
+- **Works with or without OBS studio mode; the operator chooses:**
+  - *Studio mode off* (simplest): OBS's big view shows Live; the Laycue panel shows Next and the controls.
+  - *Studio mode on*: OBS's two big views show Next (Preview) and Live (Program); the Laycue panel mirrors them small.
+  - For a separate Live screen, OBS's own projector is used (right-click the view → Windowed/Fullscreen Projector). Laycue does not add its own pop-out window.
+- The panel shows mixer-style controls:
+  - **Preview row:** pick the source for the next shot.
+  - **Program row:** shows what's on air. Clicking a Program button cuts to that source immediately.
+  - **Layout row:** Full, PIP, Side-by-side, Two-box, Quad, and pushback frames (F1 smart fit).
+  - **Slot picker:** for multi-box layouts, choose which source fills which slot (A, B, C, D).
+  - **Overlays row:** toggles for lyrics, scripture, lower thirds and so on, following exclusivity groups (F3).
+  - **Cut:** switches instantly. **Auto:** switches using the transition selected in OBS (fade, stinger, wipe…), with its duration.
+- **Two views of the same switcher**, switched with one click at the top of the panel:
+  - **Shots** (default): the operator taps a ready-made shot ("Pastor + slides", "Sermon pushback", "Band close") to cue it as Next, then presses Cut or Auto. Shots are set up in advance (a shot = layout + sources, or a pushback + camera), each with a small picture of how it looks and its hotkey. Built for volunteers: no slots or layouts to think about live.
+  - **Mixer**: Next and Live rows of source buttons, layout picker, slot picker and swap, for experienced operators.
+  - Both views share the same Live picture, Next picture, Cut, Auto and Overlays, so switching views never changes what's on air.
+- **New shot** (three steps, no blank canvas): (1) pick a layout (Full, Picture-in-picture, Side by side, Two-box, Quad, Pushback); (2) tap each box and choose its source, with a live preview; (3) save — Laycue names it from its contents ("Pastor + Slides") and assigns the next hotkey. **Adjust** lets the operator drag and resize boxes (saved as their own version); **Duplicate** copies a shot to change one thing. A free-form layout editor is out of scope.
+- **Shots view details (from the first-time-operator critique):**
+  - The main button is **Go Live** (fades, using the OBS transition) with **Cut** (instant) beside it. No "Auto"/"Program"/"Preview" jargon in the Shots view.
+  - Tapping a shot only puts it in **Up next**; nothing changes on the stream until Go Live. The panel says so ("Tap to get ready · nothing goes live until Go Live").
+  - After Go Live, Up next **clears** (rather than swapping the old shot back in), so pressing Go Live twice can never jump back by accident. Go Live and Cut are disabled until a shot is cued.
+  - **Thumbnails:** the Live and Up next pictures are live video. Each shot card shows a real still picture built from the actual sources, refreshed every few seconds and when the shot is edited. Not live video, to save computer power during the stream.
+  - Overlay buttons show a tiny screen with the overlay's spot and say "On Live" or "Off". When one overlay switches another off, a short message explains it ("Scripture replaced Lyrics · same spot").
+  - Every shot card shows its hotkey; Space = Go Live.
+  - When setup is locked, the Mixer switch, New shot and all editing are hidden; a Locked pill in the header unlocks it.
+- **Starter shots:** on first run, Laycue makes one full-screen shot per camera plus Slides, and guesses overlay tags from source names (Lyrics, Scripture, Name, Logo), so the panel is useful before any setup.
+- **Customisation** (per scene collection): which sources appear and in what order, show or hide sections (for example hide Overlays), normal or large buttons (touchscreens), rename and reorder shots.
+- After each Cut or Auto, the two scenes swap roles and Laycue prepares the next shot in the one now off air.
+- Every button can be triggered by an OBS hotkey (and so by a Stream Deck or keyboard).
+- The operator's own scenes keep working. They can be switched to directly (for a countdown or pre-service loop), and Switcher mode picks up again when a Laycue scene is next taken.
+- Turning Switcher mode off leaves the two Laycue scenes in place (the operator can delete them).
+
+**Known limitations**
+- Media sources set to "restart when becomes active" restart when switched in. Normal scenes behave the same way.
+- Overlays toggled while a transition is running apply to the incoming shot.
+
+**Done when:** a four-camera service with slides, one pushback frame and three overlays can be run entirely from the Laycue panel (or hotkeys), without the operator building any scene. Cut is instant, Auto uses the OBS transition, and the on-air picture never shows a half-built shot.
+
+## 7a. Design direction
+
+- **Brand:** the Laycue Brand System v1.0 (https://claude.ai/artifact/H435m1pPCfoLBUsLWPA1rj; summary and logo files in `assets/brand/`). Mark: four coloured source bands merging into one cream output screen. Tagline: "Layers in. One picture out."
+- **Premium, calm, fast.** The panel should feel better made than OBS itself while clearly belonging inside it: Ink and Graphite surfaces, Cream text, deliberate spacing and type (Archivo, JetBrains Mono for hotkeys).
+- **"Quiet everywhere except Live and Up next."** The Live picture and the Up next shot are the heroes; everything else is near-monochrome.
+- **Colour has one job each:** Tally Red = on air only; Cue Green = up next; Overlay Amber = overlays and notices; Signal Blue = setup and edit; Cream = output and primary actions. Go Live is the only filled colour control.
+- **Follows Apple's Human Interface principles:** clear hierarchy, instant press feedback (98% scale in 80 ms), grouped settings lists, plain-language labels, reduced-motion support.
+- **Keyboard-first:** every shot and button shows its hotkey.
+- **Clickable mockup:** https://claude.ai/artifact/RnVjdtYU11GCujsmbVrb7x (first-run setup, Shots view, pushback upload, Mixer view, docked in OBS). The brand system's section 06 is the reference for the final panel styling.
 
 ## 8. Technical approach (summary)
 
@@ -150,17 +259,35 @@ Full detail lives in `CLAUDE.md`.
 | Slower build/test loop than a web app | Slower development | Pure logic tested without OBS; GitHub builds installers automatically |
 | Low willingness to pay | No revenue | Release free first, measure adoption before pricing |
 
-## 10. Milestones
+## 10. Release plan and milestones (approved)
+
+Every milestone ends with a **Windows build** the owner installs, plus a short test checklist. Windows is the primary test platform (the owner's church PC); macOS and Linux builds are produced by CI but tested less often.
+
+**Release 1 · Sunday-ready core** (works inside the operator's existing scenes)
 
 | # | Milestone | Outcome |
 |---|---|---|
-| M0 | Plugin skeleton | Installers build on GitHub; plugin loads in OBS; Laycue panel lists scenes and sources and stays up to date |
-| M1 | Detection lab | In the panel, pick a frame source (or an image file) and see the detected window drawn over it; confirms detection runs after filters |
-| M2 | Smart fit + saving | Frame/subject pairings with scene choice; instant fit; restore on hide; config saved with the scene collection; Reset all |
-| M3 | Layouts | Presets, slots, animated switching, swap, studio-mode Preview, hotkeys |
-| M4 | Exclusivity | Groups with scope options and pause switch, enforced across all toggle methods; export/import |
-| M5 | Sunday test | Used live for four services; bugs logged and fixed |
-| M6 | Public beta | Free release on OBS forums; measure downloads and feedback |
+| M0 | Plugin skeleton ✓ | Installers build on GitHub; plugin loads in OBS; panel lists scenes and sources |
+| M1 | Window finder ✓ | In the panel, pick a pushback image or an OBS source and see the detected window. Passes on the three real pushbacks in `tests/fixtures/pushbacks`. Confirms detection works after OBS's Chroma Key |
+| M2 | Pushbacks ✓ | Add pushback (file or OBS source), window finder with see-through or a colour, gentle automatic Chroma Key, cameras and scenes as feeds, fitted instantly, switch inside (cut/fade), Unpin, saved with the scene collection (built as Laycue-owned scenes, not edits to the operator's scenes) |
+| M3 | Overlays ✓ | Labels, spots measured from drawn pixels, position-aware rules, scope, strict, pause (F3) |
+| M4 | Setup and safety ✓ | Getting-started guide and tips, Lock setup, Settings, profiles, hotkeys, Windows installer |
+| S1 | Sunday test 1 | Used live for 2 services; bugs fixed before Release 2 |
+
+**Release 2 · Switcher**
+
+| # | Milestone | Outcome |
+|---|---|---|
+| M5 | Layouts | Presets, slots, animated moves, swap (F2) |
+| M6 | Shots view | Switcher mode, Shots view, starter shots, New shot flow, hotkeys (F6) |
+| S2 | Sunday test 2 | Used live for 2 services |
+
+**Release 3 · Pro and public beta**
+
+| # | Milestone | Outcome |
+|---|---|---|
+| M7 | Mixer and customisation | Mixer view, customisation options, wide bottom-dock layout |
+| M8 | Beta | 3–5 other churches test it, then a free public beta on the OBS forums |
 
 ## 11. Success metrics
 

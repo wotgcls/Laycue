@@ -1,0 +1,37 @@
+laycue_add_plugin(
+  laycue-titles
+  SOURCES
+    src/plugin-main.cpp
+    src/core/easing.cpp
+    src/core/qr.cpp
+    src/core/qr.hpp
+    src/core/easing.hpp
+    src/core/ticker.cpp
+    src/core/ticker.hpp
+    src/core/title-clock.cpp
+    src/core/title-clock.hpp
+    src/core/title-templates.cpp
+    src/core/title-templates.hpp
+    src/core/library.cpp
+    src/core/library.hpp
+    src/obs/source-control.cpp
+    src/obs/source-control.hpp
+    src/obs/title-source.cpp
+    src/obs/title-source.hpp
+    src/render/font-set.cpp
+    src/render/brand-icons.cpp
+    src/render/brand-icons.hpp
+    src/render/font-set.hpp
+    src/render/title-renderer.cpp
+    src/render/title-renderer.hpp
+    src/store/library-io.cpp
+    src/store/library-io.hpp
+    src/ui/customize-page.cpp
+    src/ui/customize-page.hpp
+    src/ui/logo-parts-dialog.cpp
+    src/ui/logo-parts-dialog.hpp
+    src/ui/title-widgets.cpp
+    src/ui/title-widgets.hpp
+    src/ui/titles-dock.cpp
+    src/ui/titles-dock.hpp
+)

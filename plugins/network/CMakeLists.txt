@@ -1,0 +1,32 @@
+laycue_add_plugin(
+  laycue-network
+  SOURCES
+    src/plugin-main.cpp
+    src/core/adaptive.cpp
+    src/core/adaptive.hpp
+    src/core/health.cpp
+    src/core/health.hpp
+    src/core/network-settings.cpp
+    src/core/network-settings.hpp
+    src/core/recommend.cpp
+    src/core/recommend.hpp
+    src/core/report.cpp
+    src/core/report.hpp
+    src/core/speed-analysis.cpp
+    src/core/speed-analysis.hpp
+    src/core/stats.cpp
+    src/core/stats.hpp
+    src/features/session.cpp
+    src/features/session.hpp
+    src/obs/speed-test.cpp
+    src/obs/speed-test.hpp
+    src/obs/stream-stats.cpp
+    src/obs/stream-stats.hpp
+    src/store/settings-io.cpp
+    src/store/settings-io.hpp
+    src/ui/live-chart.cpp
+    src/ui/live-chart.hpp
+    src/ui/network-dock.cpp
+    src/ui/network-dock.hpp
+  LIBS Qt6::Network
+)

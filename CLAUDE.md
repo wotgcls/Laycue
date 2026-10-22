@@ -4,7 +4,9 @@ Read `PRD.md` first. It defines what we're building and why. This file defines h
 
 ## What Laycue is
 
-A layout and layer manager for OBS Studio, built as a **native OBS plugin** (C++17, libobs, OBS frontend API, Qt 6). It adds a **Laycue dock** (panel) to OBS and registers **OBS hotkeys**. It is not a browser dock and does not use obs-websocket. Never propose converting it into one unless explicitly asked.
+Laycue is a **pack of four native OBS plugins** that are installed separately and share a look (`plugins/common`): **Scenes** (layouts and overlay rules; the original product, described by `PRD.md`), **Titles** (native lower-third source, 20 templates, tickers) **Network** (bitrate recommender, live monitor, opt-in auto-adjust) and **Clock** (countdown, count-up and until-time timer, 8 designs). Read `docs/PACK.md` for the pack, `docs/titles.md`, `docs/network.md` and `docs/clock.md` for those three. Paths below that start with `src/` belong to Scenes, i.e. `plugins/scenes/src/`; the other plugins follow the same pattern (`core/` pure and tested, `obs/` talks to libobs, `ui/` Qt). Shared UI (controls, tokens, style, hotkey set) is in `plugins/common/src`. The rest of this file describes Scenes, the first plugin, unless it says otherwise.
+
+Scenes is a layout and layer manager for OBS Studio, built as a **native OBS plugin** (C++17, libobs, OBS frontend API, Qt 6). It adds a **Laycue dock** (panel) to OBS and registers **OBS hotkeys**. It is not a browser dock and does not use obs-websocket. Never propose converting it into one unless explicitly asked.
 
 ## About the owner
 
@@ -22,7 +24,7 @@ The operator is in control. Every automation is opt-in, scoped and pausable. Lay
 
 - **C++17**, **CMake**, built from the official **obs-plugintemplate** (its `cmake/`, `.github/` and `buildspec.json` came from it).
 - **libobs** + **obs-frontend-api** for everything OBS.
-- **Qt 6 Widgets** for the dock UI. It inherits OBS's theme; don't hardcode colours.
+- **Qt 6 Widgets** for the dock UI, styled to the **Laycue brand system** (`assets/brand/README.md`, source https://claude.ai/artifact/H435m1pPCfoLBUsLWPA1rj): Ink `#111110` base, Graphite `#1C1B19`/`#2C2A27`, Cream `#F1EBDD` for text, output and primary actions; one job per colour: Tally Red `#FF4D2E` = on air only, Cue Green `#2FD18B` = up next, Overlay Amber `#FFB31A` = overlays and notices, Signal Blue `#2E8BFF` = setup/edit. Archivo (bundled, OFL) with system UI font fallback; JetBrains Mono for hotkeys. Controls: 8 px radius, 36 px default / 44 px touch, spacing 4/8/14/24, motion 120 ms ease-out. Keep all tokens in one tokens file in `src/ui/`; never scatter hex values through widgets. Logo images live in `data/brand/` (loaded with `obs_module_file`). No translucency/blur (Qt docks can't do it reliably).
 - **Tests:** pure C++ in `tests/`, a standalone CMake project with a tiny in-repo check helper (`tests/check.hpp`). No test library.
 - Target OBS version is pinned in `buildspec.json` (currently 31.1.1). Only use APIs available in that version.
 - No network, no backend, no accounts.
@@ -31,6 +33,7 @@ The operator is in control. Every automation is opt-in, scoped and pausable. Lay
 
 Local (Linux; this is how Claude checks work in its own environment):
 - `cmake --preset ubuntu-x86_64 && cmake --build --preset ubuntu-x86_64`: build the plugin
+- Build everything and check one plugin in OBS: `cmake --build --preset ubuntu-x86_64`, then copy `build_x86_64/plugins/<name>/laycue-<name>.so` plus `plugins/<name>/data` and `plugins/common/data` into `~/.config/obs-studio/plugins/laycue-<name>/{bin/64bit,data}`.
 - `cmake -S tests -B build_tests && cmake --build build_tests && ctest --test-dir build_tests --output-on-failure`: run unit tests (no OBS needed)
 - `clang-format -i src/**/*.cpp src/**/*.hpp tests/*.cpp tests/*.hpp`: format C++ (CI uses clang-format **19**)
 - `gersemi -i CMakeLists.txt tests/CMakeLists.txt`: format CMake files (CI checks this too)
@@ -43,22 +46,41 @@ Always build the plugin, run the tests and run both formatters before saying a t
 
 ```
 src/
-  plugin-main.cpp        # module load/unload: creates the dock, hooks OBS events
+  plugin-main.cpp        # module load/unload: creates the App, hotkeys and the dock, hooks OBS events
   plugin-support.*       # from template: PLUGIN_NAME, PLUGIN_VERSION, obs_log()
   obs/                   # the ONLY place that talks to libobs directly
-    scene-watcher.*      # subscribes to scene/source signals, reports "something changed"
+    scene-watcher.*      # subscribes to scene/source signals (incl. item_visible, groups)
     scene-reader.*       # reads scenes, items and canvas into core structs
+    overlay-items.*      # overlay items: read, show/hide, measure the visible-pixel spot
+    pixel-reader.*       # image files (OBS's decoder) and sources drawn WITH their filters
+    pushback-scene.*     # builds/drives a pushback's own scene, camera fit, Chroma Key tuning
+    layout-scene.*       # builds a layout's own scene (split screen etc.), one source per slot
+    scene-util.*         # helpers shared by pushback/layout scenes (place item, canvas size)
+    frame-grabber.*      # Live/Up next/shot pictures on the graphics thread
+    switcher.*           # Go Live / Cut, studio mode
   core/                  # PURE C++17. No libobs, no Qt. Fully unit tested.
+    detect.*             # window detection on an RGBA pixel buffer
+    geometry.*           # rects, overlap rule, spot mapping, fill/fit, picture placement
+    autotag.*            # suggests an overlay label from name and position
+    exclusivity.*        # overlay rules: which items to hide (scope, strict, pause)
+    layouts.*            # layout templates (slots as canvas fractions) and slot rectangles
+    config.*             # everything Laycue remembers (tags, rules, pushbacks, settings)
+    cue-state.*          # Live / Up next rules
     source-kinds.*       # friendly names for OBS source types
-    (later) geometry.*   # rects, fit/fill math, crop calculation, coordinate mapping
-    (later) detect.*     # hole detection on an RGBA pixel buffer
-    (later) layouts.*    # preset definitions and slot → transform maths
-    (later) exclusivity.*# group rules + scope: given a change, which items to hide
-    (later) tween.*      # easing and interpolation of transforms
-  features/              # glue core logic to OBS (smartFit, layoutEngine, exclusivityEngine)
-  store/                 # config types, version number, migrations, save/load
-  ui/                    # Qt widgets: the dock and its panels
-tests/                   # standalone CMake project testing src/core
+  features/              # glue core logic to OBS
+    app.*                # the one top-level object: owns the Config, saves it with the collection
+    overlay-engine.*     # applies the overlay rules when an item is shown
+    profiles.*           # named setups, matched by name, export/import
+    hotkeys.*            # OBS hotkeys (hotkey thread -> UI thread)
+  store/config-io.*      # Config <-> obs_data (saved under modules.laycue) and JSON
+  ui/                    # Qt widgets: the dock, controls, pages, tabs
+    laycue-dock.*        # the panel: header tabs, stage, tabs, pages
+    controls.*           # Surface (depth), Segmented, Switch, ActionButton, GearButton, TipCard
+    widgets.*            # PictureView, ShotCard, FeedButton
+    pages/               # Set up overlays, Add pushback, New layout, Settings, PageFrame
+    view-takeover.*      # opt-in "Laycue view": hides OBS's central Preview/Program widget
+    tabs/                # Overlays tab
+tests/                   # standalone CMake project testing src/core (+ the real pushback fixtures)
 data/locale/en-US.ini    # all user-visible text
 ```
 
@@ -89,7 +111,7 @@ data/locale/en-US.ini    # all user-visible text
 - Per-frame work (animations) uses `obs_add_tick_callback`; remove it on unload.
 
 **Pixels (M1+)**
-- Detection renders the frame source *with its filters* into a `gs_texrender` via `obs_source_video_render`, then reads it back through a `gs_stagesurface`. Graphics calls only inside `obs_enter_graphics()/obs_leave_graphics()` or a graphics-thread task. Verify in M1 that filters (chroma key) are included.
+- Detection renders the frame source *with its filters* into a `gs_texrender` via `obs_source_video_render`, then reads it back through a `gs_stagesurface`. Graphics calls only inside `obs_enter_graphics()/obs_leave_graphics()`, even in a graphics-thread task (`obs_queue_task(OBS_TASK_GRAPHICS)` does not enter the context for you; `gs_texrender_create` returns null without it). Clear to transparent and use separate alpha blending so see-through areas stay see-through. Verified in M1: filters (Chroma Key) are included. Image files are decoded with OBS's own `gs_image_file_init` (PNG, JPG, WebP on every platform), not QImage.
 
 **Saving**
 - Config is saved with the scene collection via `obs_frontend_add_save_callback` (an `obs_data_t` under key `laycue`). One JSON object with a `version` number. Write a migration whenever the schema changes.
@@ -110,7 +132,8 @@ A crash here takes down a live stream.
 
 ### Hole detection (`core/detect`)
 1. Input: RGBA pixels of the frame source, rendered by OBS *after* its filters.
-2. Binary mask: pixel is "hole" if alpha < threshold (default 16). For green frames, OBS's Chroma Key filter makes the green transparent first. A raw chroma-distance mode (in a chroma space such as YCbCr, adjustable tolerance) exists only as a fallback.
+2. Binary mask: pixel is "hole" if alpha < threshold (default 16). For green frames, OBS's Chroma Key filter makes the green transparent first. A raw chroma-distance mode (CbCr distance, default tolerance 28) exists as a fallback and for the upload preview. **Never assume pure green**: sample the key colour as the most common strongly-green colour in the image (g > r+60 and g > b+60), and use that same colour for the Chroma Key filter Laycue adds. Real designs use e.g. `#00B13F`, which pure-green matching misses entirely (verified on the owner's pushbacks). On upload, try see-through first and fall back to green automatically.
+   **Chroma Key strength:** OBS's default Similarity (400) keys out far more than the green for darker greens like `#00B13F`: on a dark navy design it made the *whole* image transparent (found in M1). When Laycue adds a Chroma Key filter (M2), it must choose a lower Similarity (about 150 worked) and verify with detection that the window is not ≥95% of the image.
 3. Find the largest connected region of hole pixels.
 4. Return its bounding rectangle and fill ratio (hole pixels ÷ rectangle area). Under 0.9 → low-confidence flag.
 5. Detect on a downscaled copy (~640px wide), scale the rectangle back, refine edges at full size.
@@ -126,7 +149,25 @@ Smart fit is **instant** (no animation) and is applied ahead of time in every sc
 Interpolate position, bounds and crop between start and end with ease-in-out, one step per rendered frame (tick callback), default 400ms. Always apply the exact final transform last. A new animation on the same item replaces the old one, starting from where it currently is.
 
 ### Exclusivity (`core/exclusivity`)
-Given "source X became visible in scene S" and the group config (members, scope: same scene / chosen scenes / all scenes, paused flag), return the items to hide. Never return items outside the scope. Ignore changes Laycue caused itself (reentrancy guard around Laycue's own `set_visible` calls).
+Pure function. Input: "item X (source S) became visible in scene N", every group containing S (members, scope: same scene / chosen scenes / all scenes, paused flag, strict flag), and each in-scope visible member's **spot** (a canvas rect). Output: the items to hide.
+- Non-strict (default): hide a member only if its spot overlaps X's spot. Ignore overlaps smaller than 2% of the smaller spot's area or under 8 px in either direction.
+- Strict ("only one at a time, wherever they are"): hide every other visible member in scope.
+- Never return items outside the scope. Paused groups return nothing.
+- A **spot** = the source's visible-pixel bounding box (measured with the same readback as hole detection, alpha > threshold) mapped to canvas through that scene item's transform, or the operator's manual rect if set. Rect intersection and the tolerance rule live in `core/geometry` with tests.
+- Ignore changes Laycue caused itself (reentrancy guard around Laycue's own `set_visible` calls).
+
+## Lessons that cost time (read before touching the UI)
+
+- **Never call `tr()` inside a QObject class for Laycue text.** It resolves to Qt's `QObject::tr` and returns the key. Use `ui::lt("Laycue.Key")` (`ui/labels.hpp`).
+- **OBS's theme distorts QSS-styled `QPushButton`s** (height, offset inside their cell, clipping). Laycue draws its own buttons (`ActionButton`, `FeedButton`, `GearButton`, `Segmented`, `Switch`, `ShotCard`). Do not add new QSS-styled buttons. Labels are fine.
+- **Qt ignores zero margins on nested layouts** here; prefer separate widgets that each own a top-level layout.
+- **`obs_queue_task(OBS_TASK_GRAPHICS)` does not enter the graphics context.** Wrap graphics work in `obs_enter_graphics()/obs_leave_graphics()`.
+- **A source nothing references is destroyed when you release it.** Hold it (`SourceHold`) until a scene has it.
+- **Frontend save data lands under `modules` in the collection file.** Laycue's config is `modules.laycue`, hotkeys `modules.laycue_hotkeys`.
+- **OBS swaps Preview and Program after a transition.** After Go Live the panel ignores Preview changes for a moment (`kSuppressGraceMs`), so that swap isn't read as the operator cueing something.
+- **Never name a member `slots`, `signals` or `emit` in a header the UI includes**: Qt defines them as macros. Use `sources`, `shapes`.
+- **Laycue view hides OBS's central widget** (`QMainWindow::centralWidget()`), not a widget found by name: OBS's inner widget names differ between versions. It restores it on turning off and on exit.
+- **Hotkey callbacks run on OBS's hotkey thread**; post to the UI thread. Signals can fire on any thread too.
 
 ## Coding rules
 
@@ -138,7 +179,7 @@ Given "source X became visible in scene S" and the group config (members, scope:
 
 ## Working process
 
-- Work milestone by milestone, in order: M0 → M1 → M2 → M3 → M4 (see PRD).
+- Work milestone by milestone, in the order of PRD section 10: M0 → M1 → M2 → M3 → M4 → Sunday test 1 → M5 → M6 → Sunday test 2 → M7 → M8. Each milestone ends with a Windows build and a test checklist for the owner.
 - At the start of a task, state which milestone and requirement it serves.
 - For new core logic, write tests first or alongside.
 - After finishing, give: what changed, how to install the build and test it in OBS step by step, and anything that still isn't done.

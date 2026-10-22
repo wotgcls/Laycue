@@ -1,0 +1,19 @@
+laycue_add_plugin(
+  laycue-scripture
+  SOURCES
+    src/plugin-main.cpp
+    src/core/bible.cpp
+    src/core/bible.hpp
+    src/core/books.cpp
+    src/core/books.hpp
+    src/core/reference.cpp
+    src/core/reference.hpp
+    src/core/templates.cpp
+    src/core/templates.hpp
+    src/store/scripture-io.cpp
+    src/store/scripture-io.hpp
+    src/ui/reference-box.cpp
+    src/ui/reference-box.hpp
+    src/ui/scripture-dock.cpp
+    src/ui/scripture-dock.hpp
+)
