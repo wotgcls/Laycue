@@ -78,6 +78,7 @@ struct Settings {
 	bool showTips = true;      // guide cards and hints
 	bool autoKey = true;       // "Remove the background colour for me" is on by default in Add pushback
 	bool laycueView = false;   // hide OBS's own Preview/Program area so Laycue is the main view
+	bool autoUpdate = false;   // check the published releases for a newer Laycue quietly when OBS starts
 };
 
 struct Config {

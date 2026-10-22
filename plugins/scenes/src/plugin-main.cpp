@@ -20,6 +20,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include "features/hotkeys.hpp"
 #include "obs/brand-transitions.hpp"
 #include "ui/laycue-dock.hpp"
+#include "update/updater.hpp"
 
 #include "ui/laycue-menu.hpp"
 
@@ -29,7 +30,10 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #include <QMainWindow>
 #include <QPointer>
+#include <QString>
+#include <QTimer>
 
+#include <chrono>
 #include <memory>
 
 OBS_DECLARE_MODULE()
@@ -46,6 +50,8 @@ QPointer<laycue::LaycueDock> g_dock;
 // The one top-level object. Created first, destroyed last, so the dock never outlives it.
 std::unique_ptr<laycue::App> g_app;
 std::unique_ptr<laycue::Hotkeys> g_hotkeys; // destroyed first, before the app
+// The quiet "check when OBS starts" updater (Settings opt-in); reset in obs_module_unload.
+std::unique_ptr<laycue::update::Updater> g_autoUpdater;
 
 void onFrontendEvent(enum obs_frontend_event event, void *)
 {
@@ -84,6 +90,21 @@ bool obs_module_load(void)
 				g_dock->runHotkey(action);
 		});
 
+		// When Settings says to, quietly check for a newer release once OBS is up. The log tells the
+		// story ("update available: Laycue x.y.z"), and the Settings page's Updates card re-checks and
+		// shows it when opened.
+		if (g_app->config().settings.autoUpdate) {
+			g_autoUpdater = std::make_unique<laycue::update::Updater>(QString::fromUtf8(PLUGIN_VERSION));
+			auto *updater = g_autoUpdater.get();
+			QObject::connect(updater, &laycue::update::Updater::changed, updater, [updater] {
+				if (updater->state() == laycue::update::Updater::State::Available)
+					obs_log(LOG_INFO, "update available: Laycue %s (installed %s)",
+						updater->latestVersion().toUtf8().constData(),
+						updater->currentVersion().toUtf8().constData());
+			});
+			QTimer::singleShot(std::chrono::seconds(15), updater, [updater] { updater->check(); });
+		}
+
 		obs_frontend_add_event_callback(onFrontendEvent, nullptr);
 		obs_log(LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
 	} catch (const std::exception &error) {
@@ -97,6 +118,7 @@ bool obs_module_load(void)
 void obs_module_unload(void)
 {
 	obs_frontend_remove_event_callback(onFrontendEvent, nullptr);
+	g_autoUpdater.reset();
 	g_hotkeys.reset();
 	g_app.reset();
 	obs_log(LOG_INFO, "plugin unloaded");

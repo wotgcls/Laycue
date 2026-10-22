@@ -282,7 +282,14 @@ void SettingsPage::build()
 
 	// --- Updates ---
 	page->addWidget(label(this, lt("Laycue.Update.Heading").toUpper(), 11, 700, color::textTertiary));
+	page->addWidget(row(this, lt("Laycue.Settings.AutoUpdate"), lt("Laycue.Settings.AutoUpdateSub"),
+			    makeSwitch(nullptr, lt("Laycue.Settings.AutoUpdate"), config.settings.autoUpdate,
+				       [this](bool on) {
+					       app_.modify([&](Config &c) { c.settings.autoUpdate = on; });
+				       })));
 	page->addWidget(new UpdateCard(updater_, this));
+	if (config.settings.autoUpdate)
+		updater_.check(); // the page opening is a good moment to look again
 
 	page->addWidget(label(this, lt("Laycue.Settings.About").arg(QString::fromUtf8(PLUGIN_VERSION)), 11, 400,
 			      color::textTertiary));
