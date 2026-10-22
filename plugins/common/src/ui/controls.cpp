@@ -644,15 +644,16 @@ void StageButton::paintEvent(QPaintEvent *)
 	QColor titleColour;
 	QColor detailColour;
 	if (!isEnabled()) {
-		fill = goLive ? color::control : color::graphite;
-		border = goLive ? Qt::transparent : QColor(255, 255, 255, 10);
+		fill = goLive ? color::control : Qt::transparent;
+		border = goLive ? Qt::transparent : QColor(255, 255, 255, 14);
 		titleColour = detailColour = color::textDisabled;
 	} else if (goLive) {
 		fill = hovered_ || isDown() ? color::livePressed : color::live;
 		titleColour = detailColour = color::ink;
 	} else {
-		fill = hovered_ ? QColor(0x36, 0x34, 0x30) : color::control;
-		border = QColor(255, 255, 255, 26);
+		// Cut is an outline: the one filled control on the stage stays Go Live.
+		fill = hovered_ ? color::control : Qt::transparent;
+		border = color::lineStrong;
 		titleColour = color::cream;
 		detailColour = color::textSecondary;
 	}
@@ -663,7 +664,7 @@ void StageButton::paintEvent(QPaintEvent *)
 	const QRectF top(box.left(), box.top() + 6, box.width(), box.height() / 2 - 4);
 	const QRectF bottom(box.left(), box.center().y() + 1, box.width(), box.height() / 2 - 6);
 	p.setPen(titleColour);
-	p.setFont(uiFont(goLive ? 16 : 15, goLive ? 700 : 600));
+	p.setFont(uiFont(goLive ? 17 : 15, goLive ? 700 : 600));
 	p.drawText(top, Qt::AlignHCenter | Qt::AlignBottom, title_);
 	p.setPen(detailColour);
 	p.setFont(uiFont(11, 500));

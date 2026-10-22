@@ -173,7 +173,7 @@ private:
 };
 
 // The two big buttons on the stage (Go Live, Cut): a title and a small line under it, drawn by Laycue.
-// Go Live is the one filled red control; Cut is quiet.
+// Go Live is the one filled red control; Cut is a quiet outline, so the main action reads first.
 class StageButton : public QAbstractButton {
 	Q_OBJECT
 
