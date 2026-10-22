@@ -32,6 +32,11 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Check out the ref (for RELEASE_NOTES.md) 📥
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
       - name: Check Release Tag ☑️
         id: check
         run: |
@@ -93,10 +98,16 @@ jobs:
           if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
           shopt -s extglob
 
-          echo "### Checksums" > ${{ github.workspace }}/CHECKSUMS.txt
+           echo "### Checksums" > ${{ github.workspace }}/CHECKSUMS.txt
           for file in ${{ github.workspace }}/@(*.exe|*.deb|*.ddeb|*.pkg|*.tar.xz|*.zip); do
             echo "    ${file##*/}: $(sha256sum "${file}" | cut -d " " -f 1)" >> ${{ github.workspace }}/CHECKSUMS.txt
           done
+
+          # The release body, which the panels' "What's new" also shows: notes first, then the checksums.
+          notes="${{ github.workspace }}/RELEASE_NOTES.md"
+          body="${{ github.workspace }}/BODY.txt"
+          { [[ -f "${notes}" ]] && cat "${notes}" && echo; } > "${body}"
+          cat "${{ github.workspace }}/CHECKSUMS.txt" >> "${body}"
 
           # "Check for updates" in the panels downloads an installer and its .sha256 file from the release.
           for installer in ${{ github.workspace }}/@(*-windows-x64-Installer.exe|*.pkg|*.deb); do
@@ -112,7 +123,7 @@ jobs:
           prerelease: ${{ fromJSON(steps.check.outputs.prerelease) }}
           tag_name: ${{ steps.check.outputs.version }}
           name: ${{ needs.build-project.outputs.pluginName }} ${{ steps.check.outputs.version }}
-          body_path: ${{ github.workspace }}/CHECKSUMS.txt
+          body_path: ${{ github.workspace }}/BODY.txt
           files: |
             ${{ github.workspace }}/*.exe
             ${{ github.workspace }}/*.sha256
