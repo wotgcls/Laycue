@@ -19,12 +19,15 @@ bool canTake(const CueState &state)
 	return !state.next.empty() && state.next != state.live;
 }
 
-void take(CueState &state)
+void take(CueState &state, const std::string &requeue)
 {
 	if (!canTake(state))
 		return;
 	state.live = state.next;
-	state.next.clear();
+	if (!requeue.empty() && requeue != state.live)
+		state.next = requeue;
+	else
+		state.next.clear();
 }
 
 void liveChanged(CueState &state, const std::string &live)

@@ -3,6 +3,8 @@
 #include "core/config.hpp"
 #include "features/app.hpp"
 #include "features/profiles.hpp"
+#include "obs/overlay-items.hpp"
+#include "obs/scene-reader.hpp"
 #include "obs/switcher.hpp"
 #include "ui/controls.hpp"
 #include "ui/labels.hpp"
@@ -12,6 +14,7 @@
 
 #include <plugin-support.h>
 
+#include <QComboBox>
 #include <QFileDialog>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -22,6 +25,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <set>
 
 namespace laycue::ui {
 
@@ -120,6 +124,11 @@ void SettingsPage::build()
 			this, lt("Laycue.Settings.View"), lt("Laycue.Settings.ViewSub"),
 			makeSwitch(nullptr, lt("Laycue.Settings.View"), config.settings.laycueView,
 				   [this](bool on) { app_.modify([&](Config &c) { c.settings.laycueView = on; }); })));
+		v->addWidget(divider(this));
+		v->addWidget(row(
+			this, lt("Laycue.Settings.Requeue"), lt("Laycue.Settings.RequeueSub"),
+			makeSwitch(nullptr, lt("Laycue.Settings.Requeue"), config.settings.requeueLive,
+				   [this](bool on) { app_.modify([&](Config &c) { c.settings.requeueLive = on; }); })));
 	}
 
 	// --- Pushbacks and overlays (setup: hidden while locked) ---
@@ -154,6 +163,81 @@ void SettingsPage::build()
 		connect(labels, &QAbstractButton::clicked, this, &SettingsPage::overlaySetupRequested);
 		v->addWidget(
 			row(editHost_, lt("Laycue.Settings.LabelsTitle"), lt("Laycue.Settings.LabelsSub"), labels));
+	}
+	{
+		// --- Failover: the stream is never empty because a source died (setup: hidden while locked) ---
+		QVBoxLayout *v = group(editLayout, editHost_, lt("Laycue.Settings.Failover"));
+		v->addWidget(
+			innerLabel(editHost_, lt("Laycue.Settings.FailoverIntro"), 11, 400, color::textTertiary));
+		v->addWidget(row(
+			editHost_, lt("Laycue.Settings.FailoverOn"), QString(),
+			makeSwitch(nullptr, lt("Laycue.Settings.FailoverOn"), config.settings.failoverOn,
+				   [this](bool on) {
+					   app_.modify([&](Config &c) { c.settings.failoverOn = on; });
+				   })));
+		v->addWidget(divider(editHost_));
+
+		// The feed to watch, with the shots that exist named for the shot to go live. One walk over
+		// OBS's scenes answers both: every feed placed in a scene, and every scene that isn't Laycue's.
+		std::vector<std::pair<std::string, std::string>> feeds, shotsList;
+		std::set<std::string> laycueScenes;
+		for (const Pushback &pushback : config.pushbacks)
+			laycueScenes.insert(pushback.sceneUuid);
+		for (const Layout &layout : config.layouts)
+			laycueScenes.insert(layout.sceneUuid);
+		{
+			std::set<std::string> seenFeeds, seenScenes;
+			for (const OverlayItem &item : readAllItems()) {
+				if (!item.sceneUuid.empty() && seenScenes.insert(item.sceneUuid).second &&
+				    !laycueScenes.count(item.sceneUuid))
+					shotsList.push_back({item.sceneUuid, item.sceneName});
+				if (item.sourceUuid.empty() || !seenFeeds.insert(item.sourceUuid).second)
+					continue;
+				switch (item.kind) { // the kinds that carry a picture
+				case SourceKind::Scene:
+				case SourceKind::Group:
+				case SourceKind::Text:
+				case SourceKind::Audio:
+					continue;
+				default:
+					feeds.push_back({item.sourceUuid, item.sourceName});
+				}
+			}
+		}
+
+		const auto fill = [](QComboBox *box, const std::vector<std::pair<std::string, std::string>> &items,
+				     const std::string &chosen, const QString &none) {
+			box->addItem(none, QString());
+			for (const auto &[uuid, name] : items)
+				box->addItem(QString::fromStdString(name), QString::fromStdString(uuid));
+			const int at = box->findData(QString::fromStdString(chosen));
+			box->setCurrentIndex(at < 0 ? 0 : at);
+		};
+		auto *watchBox = new QComboBox(editHost_);
+		fill(watchBox, feeds, config.settings.failoverSourceUuid, lt("Laycue.Settings.FailoverNothing"));
+		connect(watchBox, &QComboBox::activated, this, [watchBox, this](int index) {
+			const std::string uuid = watchBox->itemData(index).toString().toStdString();
+			const std::string name = uuid.empty() ? std::string() : watchBox->itemText(index).toStdString();
+			app_.modify([&](Config &c) {
+				c.settings.failoverSourceUuid = uuid;
+				c.settings.failoverSourceName = name;
+			});
+		});
+		v->addWidget(row(editHost_, lt("Laycue.Settings.FailoverWatch"),
+				 lt("Laycue.Settings.FailoverWatchSub"), watchBox));
+		v->addWidget(divider(editHost_));
+
+		auto *shotBox = new QComboBox(editHost_);
+		fill(shotBox, shotsList, config.settings.failoverShotUuid, lt("Laycue.Settings.FailoverNothing"));
+		connect(shotBox, &QComboBox::activated, this, [shotBox, this](int index) {
+			const std::string uuid = shotBox->itemData(index).toString().toStdString();
+			const std::string name = uuid.empty() ? std::string() : shotBox->itemText(index).toStdString();
+			app_.modify([&](Config &c) {
+				c.settings.failoverShotUuid = uuid;
+				c.settings.failoverShotName = name;
+			});
+		});
+		v->addWidget(row(editHost_, lt("Laycue.Settings.FailoverShot"), QString(), shotBox));
 	}
 	page->addWidget(editHost_);
 

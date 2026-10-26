@@ -79,6 +79,14 @@ struct Settings {
 	bool autoKey = true;       // "Remove the background colour for me" is on by default in Add pushback
 	bool laycueView = false;   // hide OBS's own Preview/Program area so Laycue is the main view
 	bool autoUpdate = false;   // check the published releases for a newer Laycue quietly when OBS starts
+	bool requeueLive = true;   // after Go Live, Up next fills with the shot that was live (like OBS's own swap)
+	// Fail-over: watch one source and, if it goes blank or freezes while it is on the air, put one
+	// shot live at once. Off by default, and nothing ever switches back by itself.
+	bool failoverOn = false;
+	std::string failoverSourceUuid; // the source being watched (usually a camera)
+	std::string failoverSourceName; // last known name, for display if the UUID is gone
+	std::string failoverShotUuid;   // the shot put live on a failure
+	std::string failoverShotName;
 };
 
 struct Config {

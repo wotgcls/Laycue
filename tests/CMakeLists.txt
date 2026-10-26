@@ -20,6 +20,7 @@ add_executable(
   test-main.cpp
   test-source-kinds.cpp
   test-cue-state.cpp
+  test-watchdog.cpp
   test-detect.cpp
   test-geometry.cpp
   test-exclusivity.cpp
@@ -35,6 +36,7 @@ add_executable(
   test-lyrics.cpp
   test-slides.cpp
   "${LAYCUE_SRC}/core/cue-state.cpp"
+  "${LAYCUE_SRC}/core/watchdog.cpp"
   "${LAYCUE_SRC}/core/detect.cpp"
   "${LAYCUE_SRC}/core/geometry.cpp"
   "${LAYCUE_SRC}/core/autotag.cpp"

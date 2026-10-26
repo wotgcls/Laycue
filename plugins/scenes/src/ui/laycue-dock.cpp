@@ -44,6 +44,8 @@
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
+#include <obs.hpp>
+
 #include <algorithm>
 
 namespace laycue {
@@ -71,8 +73,29 @@ constexpr int kRestoreFallbackMs = 1000;  // safety net for putting the transiti
 constexpr int kLiveIntervalMs = 100;      // Live picture: ~10 fps
 constexpr int kNextIntervalMs = 250;      // Up next picture: ~4 fps
 constexpr int kThumbIntervalMs = 2500;    // shot card stills
+constexpr int kWatchdogIntervalMs = 250;  // the watched source: ~4 fps is plenty to judge it
+constexpr int kWatchdogCooldownS = 10;    // no second fail-over straight after the first
 constexpr uint32_t kLiveWidth = 640, kLiveHeight = 360;
 constexpr uint32_t kThumbWidth = 384, kThumbHeight = 216;
+constexpr uint32_t kWatchdogWidth = 96, kWatchdogHeight = 60;
+
+// What the watched source's picture says, for the fail-over judge: a fold of its pixels and how
+// much light it carries. The alpha byte is skipped, and a byte below 16 is near-black noise.
+WatchdogSample sampleOf(const Picture &picture)
+{
+	WatchdogSample sample;
+	sample.looked = static_cast<size_t>(picture.width) * picture.height;
+	uint64_t checksum = 14695981039346656037ULL;
+	const uint8_t *pixels = picture.pixels.data();
+	for (size_t i = 0; i + 4 <= picture.pixels.size(); i += 4) {
+		for (int c = 0; c < 3; ++c) { // RGB
+			checksum = (checksum ^ pixels[i + c]) * 1099511628211ULL;
+			sample.lit += pixels[i + c] >= 16 ? 1 : 0;
+		}
+	}
+	sample.checksum = checksum;
+	return sample;
+}
 
 QImage toImage(const Picture &picture)
 {
@@ -985,6 +1008,10 @@ void LaycueDock::updatePictureTargets()
 		const bool isNext = shot.uuid == cue_.next;
 		targets.push_back({shot.uuid, kThumbWidth, kThumbHeight, isNext ? kNextIntervalMs : kThumbIntervalMs});
 	}
+	// The fail-over keeps its own small picture of the watched source.
+	const Settings &settings = app_.config().settings;
+	if (settings.failoverOn && !settings.failoverSourceUuid.empty())
+		targets.push_back({settings.failoverSourceUuid, kWatchdogWidth, kWatchdogHeight, kWatchdogIntervalMs});
 	grabber_->setTargets(std::move(targets));
 }
 
@@ -1003,6 +1030,69 @@ void LaycueDock::pullPictures()
 		entry.second->setImage(image);
 		if (entry.first == cue_.next)
 			nextView_->setImage(image);
+	}
+	pollWatchdog();
+}
+
+void LaycueDock::pollWatchdog()
+{
+	const Settings &settings = app_.config().settings;
+	const std::string key = settings.failoverOn ? settings.failoverSourceUuid : std::string();
+	if (key.empty() || settings.failoverShotUuid.empty()) {
+		watchdogKey_.clear();
+		watchdogFired_ = false;
+		return; // not watching anything
+	}
+	if (key != watchdogKey_) { // a different source is being watched: start over
+		watchdogKey_ = key;
+		watchdog_.reset();
+		watchdogSerial_ = 0;
+		watchdogHasPicture_ = false;
+		watchdogFired_ = false;
+	}
+
+	// The judge eats the same small pictures the grabber already brings.
+	Picture picture;
+	if (grabber_->takeIfNewer(key, watchdogSerial_, picture)) {
+		watchdogSerial_ = picture.serial;
+		watchdogLast_ = std::chrono::steady_clock::now();
+		watchdogHasPicture_ = true;
+		watchdog_.push(sampleOf(picture));
+	} else if (watchdogHasPicture_ &&
+		   std::chrono::steady_clock::now() - watchdogLast_ > std::chrono::seconds(2)) {
+		watchdogLast_ = std::chrono::steady_clock::now();
+		watchdog_.push(WatchdogSample{}); // no picture at all: the source is gone silent
+	}
+
+	const FeedState state = watchdog_.verdict();
+	if (state == FeedState::Healthy)
+		watchdogFired_ = false; // the feed recovered; nothing ever switches back by itself
+	if (watchdogFired_ || (state != FeedState::Blank && state != FeedState::Frozen))
+		return;
+	if (std::chrono::steady_clock::now() < watchdogCooldown_)
+		return;
+
+	// Only act on a source that is on the air right now; a watching camera elsewhere can wait.
+	OBSSourceAutoRelease src = obs_get_source_by_uuid(key.c_str());
+	if (!src || !obs_source_showing(src))
+		return;
+
+	if (cue_.live == settings.failoverShotUuid) {
+		watchdogFired_ = true; // the fallback already lives; nothing is left for the stream to see
+		return;
+	}
+
+	// Cut straight to the fallback — a broken camera should not ride in on a slow transition. The
+	// empty requeue stops Up next from refilling with the feed that just died.
+	cue_.next = settings.failoverShotUuid;
+	goLive(true, std::string());
+	if (cue_.live == settings.failoverShotUuid) {
+		watchdogFired_ = true;
+		watchdogCooldown_ = std::chrono::steady_clock::now() + std::chrono::seconds(kWatchdogCooldownS);
+		obs_log(LOG_WARNING, "Fail-over: %s went blank or froze, so %s went live",
+			settings.failoverSourceName.c_str(), settings.failoverShotName.c_str());
+		showToast(text("Laycue.FailoverFired").arg(fromStd(settings.failoverSourceName),
+							   fromStd(settings.failoverShotName)));
 	}
 }
 
@@ -1027,11 +1117,12 @@ void LaycueDock::onShotClicked(const std::string &uuid)
 	updateStateUi();
 }
 
-void LaycueDock::goLive(bool instant)
+void LaycueDock::goLive(bool instant, std::optional<std::string> requeue)
 {
 	if (!canTake(cue_) || !transitionToRestore_.empty())
 		return; // nothing cued, or a Cut is still finishing (one frame)
 	const std::string target = cue_.next;
+	const std::string previous = cue_.live; // the shot that was live, so Up next can refill with it
 	const QString name = fromStd(nameOf(target));
 
 	if (const Pushback *pushback = pushbackForScene(target))
@@ -1051,7 +1142,10 @@ void LaycueDock::goLive(bool instant)
 	}
 	if (!transitionToRestore_.empty())
 		restoreTimer_.start();
-	take(cue_);
+	if (requeue.has_value())
+		take(cue_, *requeue); // the fail-over's Cut: nobody hurriedly goes back to a feed that just died
+	else
+		take(cue_, app_.config().settings.requeueLive ? previous : std::string());
 	if (!app_.config().wentLive)
 		app_.modify([](Config &c) { c.wentLive = true; });
 	showToast(text(instant ? "Laycue.CutDone" : "Laycue.LiveDone").arg(name));

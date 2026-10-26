@@ -54,6 +54,26 @@ TEST_CASE("pressing Go Live twice never jumps back")
 	CHECK(!laycue::canTake(s));
 }
 
+TEST_CASE("with a requeue, Go Live fills Up next with the shot that was live")
+{
+	CueState s{"worship", "sermon"};
+	laycue::take(s, "worship");
+	CHECK_EQ(s.live, std::string("sermon"));
+	CHECK_EQ(s.next, std::string("worship"));
+	CHECK(laycue::canTake(s));
+	// And going live again does return to the previous shot — the swap OBS Studio Mode does itself.
+	laycue::take(s, s.live == "worship" ? std::string("sermon") : std::string("worship"));
+	CHECK_EQ(s.live, std::string("worship"));
+}
+
+TEST_CASE("a requeue of the live shot itself clears Up next")
+{
+	CueState s{"worship", "sermon"};
+	laycue::take(s, "sermon"); // the caller passed the new live by mistake; nothing oddly cued
+	CHECK_EQ(s.live, std::string("sermon"));
+	CHECK(s.next.empty());
+}
+
 TEST_CASE("nothing cued means Go Live is unavailable")
 {
 	CueState s{"worship", ""};

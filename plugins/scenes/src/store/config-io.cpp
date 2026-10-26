@@ -77,6 +77,14 @@ OBSData configToData(const Config &config)
 		obs_data_set_bool(s, "showTips", v.showTips);
 		obs_data_set_bool(s, "autoKey", v.autoKey);
 		obs_data_set_bool(s, "laycueView", v.laycueView);
+		obs_data_set_bool(s, "laycueView", v.laycueView);
+		obs_data_set_bool(s, "autoUpdate", v.autoUpdate);
+		obs_data_set_bool(s, "requeueLive", v.requeueLive);
+		obs_data_set_bool(s, "failoverOn", v.failoverOn);
+		obs_data_set_string(s, "failoverSourceUuid", v.failoverSourceUuid.c_str());
+		obs_data_set_string(s, "failoverSourceName", v.failoverSourceName.c_str());
+		obs_data_set_string(s, "failoverShotUuid", v.failoverShotUuid.c_str());
+		obs_data_set_string(s, "failoverShotName", v.failoverShotName.c_str());
 		obs_data_set_obj(root, "settings", s);
 	}
 
@@ -197,6 +205,13 @@ Config configFromData(obs_data_t *data)
 			obs_data_set_default_bool(s, "showTips", v.showTips);
 			obs_data_set_default_bool(s, "autoKey", v.autoKey);
 			obs_data_set_default_bool(s, "laycueView", v.laycueView);
+			obs_data_set_default_bool(s, "autoUpdate", v.autoUpdate);
+			obs_data_set_default_bool(s, "requeueLive", v.requeueLive);
+			obs_data_set_default_bool(s, "failoverOn", v.failoverOn);
+			obs_data_set_default_string(s, "failoverSourceUuid", v.failoverSourceUuid.c_str());
+			obs_data_set_default_string(s, "failoverSourceName", v.failoverSourceName.c_str());
+			obs_data_set_default_string(s, "failoverShotUuid", v.failoverShotUuid.c_str());
+			obs_data_set_default_string(s, "failoverShotName", v.failoverShotName.c_str());
 			v.insideFade = obs_data_get_bool(s, "insideFade");
 			v.insideFadeMs = static_cast<int>(obs_data_get_int(s, "insideFadeMs"));
 			v.largeButtons = obs_data_get_bool(s, "largeButtons");
@@ -204,6 +219,13 @@ Config configFromData(obs_data_t *data)
 			v.showTips = obs_data_get_bool(s, "showTips");
 			v.autoKey = obs_data_get_bool(s, "autoKey");
 			v.laycueView = obs_data_get_bool(s, "laycueView");
+			v.autoUpdate = obs_data_get_bool(s, "autoUpdate");
+			v.requeueLive = obs_data_get_bool(s, "requeueLive");
+			v.failoverOn = obs_data_get_bool(s, "failoverOn");
+			v.failoverSourceUuid = obs_data_get_string(s, "failoverSourceUuid");
+			v.failoverSourceName = obs_data_get_string(s, "failoverSourceName");
+			v.failoverShotUuid = obs_data_get_string(s, "failoverShotUuid");
+			v.failoverShotName = obs_data_get_string(s, "failoverShotName");
 		}
 	}
 

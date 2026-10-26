@@ -9,6 +9,11 @@
 - Scripture: type a **phrase** instead of a reference and press Enter — every verse in the loaded version that
   holds it shows as a list (Next and Previous walk the results).
 - Lyrics: songs can be found by **any lyric line**, not just the title or first line.
+- Scenes: after Go Live, the shot that **was** live loads into Up next immediately, so the preview is never empty
+  (Laycue → Settings → Working with OBS; can be switched off).
+- Scenes: **failover** (opt-in, off by default). Laycue → Settings: watch a source — usually a camera — and if it
+  goes blank or freezes while it is live, a shot of your choosing goes on the air at once, so the stream never
+  shows an empty state. Nothing ever switches back by itself.
 - **Check when OBS starts** (Laycue → Settings → Updates): the panel quietly looks for a newer release, so testers
   find updates without opening Settings first.
 - Panels: one shared look with pinned headers, resize handles, and the transition picker in Shots. Titles grew to

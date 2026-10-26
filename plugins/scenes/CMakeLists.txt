@@ -3,6 +3,7 @@ laycue_add_plugin(
   SOURCES
     src/plugin-main.cpp
     src/core/cue-state.cpp
+    src/core/watchdog.cpp
     src/core/detect.cpp
     src/core/geometry.cpp
     src/core/autotag.cpp

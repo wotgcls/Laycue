@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/cue-state.hpp"
+#include "core/watchdog.hpp"
 #include "obs/frame-grabber.hpp"
 #include "features/hotkeys.hpp"
 #include "features/overlay-engine.hpp"
@@ -15,8 +16,10 @@
 #include <QTimer>
 #include <QWidget>
 
+#include <chrono>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -106,9 +109,10 @@ private:
 	void addObsTransition(const std::string &id); // OBS's own add step for one of Laycue's transitions
 	void updatePictureTargets();
 	void pullPictures();
+	void pollWatchdog(); // fail-over: judge the watched source, fire once when it fails
 	void updateOverlays(const Snapshot &snapshot);
 	void onShotClicked(const std::string &uuid);
-	void goLive(bool instant);
+	void goLive(bool instant, std::optional<std::string> requeue = std::nullopt); // no value: follow the setting
 	void finishCut(); // puts back the operator's transition after a Cut
 	void chooseMode(bool studio);
 	void onItemVisible(const std::string &sceneUuid, int64_t itemId, bool visible);
@@ -195,6 +199,13 @@ private:
 	std::vector<Shot> pushbackShots_; // the pushbacks, by their scene
 	std::vector<Shot> layoutShots_;   // the layouts, by their scene
 	CueState cue_;
+	FeedWatchdog watchdog_;                                  // the fail-over judge, fed from the pictures
+	uint64_t watchdogSerial_ = 0;                            // the watched source's last picture serial
+	std::chrono::steady_clock::time_point watchdogLast_;     // when a picture last arrived
+	bool watchdogHasPicture_ = false;                        // a picture has arrived since it was armed
+	bool watchdogFired_ = false;                             // a failure was acted on; re-arms when it recovers
+	std::chrono::steady_clock::time_point watchdogCooldown_; // no second fire straight after the first
+	std::string watchdogKey_;                                // what is being watched, so a change resets it
 	std::string lastLive_;            // the scene that was live at the last refresh
 	std::string previousLive_;        // what was live before the current pushback (for Unpin)
 	bool repairChecked_ = false;      // pushback scenes have been checked since the collection loaded
