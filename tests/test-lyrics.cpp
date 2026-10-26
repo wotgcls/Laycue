@@ -83,6 +83,7 @@ TEST_CASE("lyrics: typing a song name finds it")
 	     {"Amazing Grace", "Holy, Holy, Holy", "It Is Well with My Soul", "Rock of Ages", "Grace Alone"})
 		songs.push_back(parseSongText(title, "", "Verse 1\nfirst line of " + std::string(title) + "\n"));
 	songs[3].sections[0].lines[0] = "Cleft for me";
+	songs[4].sections.push_back({"Bridge", {"shelter me from the cold"}}); // a line no name or first line has
 	const auto names = [&](const std::string &q) {
 		std::string out;
 		for (size_t i : searchSongs(songs, q))
@@ -94,6 +95,7 @@ TEST_CASE("lyrics: typing a song name finds it")
 	CHECK_EQ(names("well"), std::string("It Is Well with My Soul|"));
 	CHECK_EQ(names("holy holy"), std::string("Holy, Holy, Holy|"));
 	CHECK_EQ(names("cleft"), std::string("Rock of Ages|")); // by its first line
+	CHECK_EQ(names("shelter"), std::string("Grace Alone|")); // by a line deep in the song
 	CHECK_EQ(names("zzz"), std::string());
 	CHECK_EQ(searchSongs(songs, "", 3).size(), size_t(3));
 

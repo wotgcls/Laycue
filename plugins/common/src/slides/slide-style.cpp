@@ -14,6 +14,7 @@ void sanitize(SlideStyle &s)
 	s.font = std::clamp(s.font, 0, kFontCount - 1);
 	s.decor = std::clamp(s.decor, 0, kDecorCount - 1);
 	s.transition = std::clamp(s.transition, 0, int(Transition::Cut));
+	s.line = std::clamp(s.line, 0, kAccentLineCount - 1);
 	s.color1 &= 0xFFFFFF;
 	s.color2 &= 0xFFFFFF;
 	s.color3 &= 0xFFFFFF;
@@ -34,7 +35,8 @@ void copyBackground(const SlideStyle &from, SlideStyle &to)
 
 bool isAnimated(const SlideStyle &style)
 {
-	return style.decor != int(Decor::None) || style.fill == int(Fill::Moving);
+	return style.decor != int(Decor::None) || style.fill == int(Fill::Moving) ||
+	       style.line == int(AccentLine::Sweep);
 }
 
 } // namespace laycue::slides

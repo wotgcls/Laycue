@@ -25,6 +25,10 @@ struct Bible {
 // Reads the whole file. False with `error` set if it isn't a Bible Laycue knows.
 bool parseBible(const std::string &xml, Bible &out, std::string &error);
 
+// Every verse whose text contains `phrase` anywhere (case doesn't matter), in Bible order, at most `limit` of
+// them. The whole version is already in memory, so a search takes a blink. A short or blank phrase finds nothing.
+std::vector<Reference> searchBible(const Bible &bible, const std::string &phrase, size_t limit = 24);
+
 // A short name made from a long one when the file has none: "World English Bible" -> "WEB".
 std::string abbreviate(const std::string &name);
 

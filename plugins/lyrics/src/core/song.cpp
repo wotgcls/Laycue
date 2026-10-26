@@ -290,6 +290,25 @@ bool parseOpenLyrics(const std::string &xmlText, Song &out, std::string &error)
 	return true;
 }
 
+namespace {
+
+// Whether a lyric line of any part (not just the first) contains the query, so a song can be found by the
+// words it sings. Case and punctuation don't matter (the query arrives as `simple()` already).
+bool inLyrics(const Song &song, const std::string &q)
+{
+	if (q.empty())
+		return false;
+	for (const Section &section : song.sections) {
+		for (const std::string &line : section.lines) {
+			if (simple(line).find(q) != std::string::npos)
+				return true;
+		}
+	}
+	return false;
+}
+
+} // namespace
+
 std::vector<size_t> searchSongs(const std::vector<Song> &songs, const std::string &query, size_t limit)
 {
 	const std::string q = simple(query);
@@ -305,8 +324,7 @@ std::vector<size_t> searchSongs(const std::vector<Song> &songs, const std::strin
 			score = 3;
 		else if (title.find(q) != std::string::npos)
 			score = 2;
-		else if (!songs[i].sections.empty() && !songs[i].sections.front().lines.empty() &&
-			 simple(songs[i].sections.front().lines.front()).find(q) != std::string::npos)
+		else if (inLyrics(songs[i], q))
 			score = 1;
 		if (score > 0)
 			scored.push_back({score, i});

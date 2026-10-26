@@ -96,9 +96,10 @@ struct SlideSource {
 	uint32_t textureW = 0, textureH = 0;
 	uint32_t canvasW = 1920, canvasH = 1080;
 	// What moves while the words are up, each its own picture and texture, redrawn 30 times a second: the
-	// moving colours under the slide, and the looping picture beside the words.
+	// moving colours under the slide, the looping picture beside the words, and the sweeping light on the line.
 	Layer backdrop;
 	Layer decor;
+	Layer accent;
 	double animSeconds = 0.0;
 	double animSince = 1.0;
 };
@@ -163,12 +164,13 @@ void *create(obs_data_t *settings, obs_source_t *source)
 void destroy(void *data)
 {
 	auto *s = static_cast<SlideSource *>(data);
-	if (s->texture || s->decor.texture || s->backdrop.texture) {
+	if (s->texture || s->decor.texture || s->backdrop.texture || s->accent.texture) {
 		obs_enter_graphics();
 		if (s->texture)
 			gs_texture_destroy(s->texture);
 		s->decor.destroy();
 		s->backdrop.destroy();
+		s->accent.destroy();
 		obs_leave_graphics();
 	}
 	delete s;
@@ -285,10 +287,18 @@ void tick(void *data, float seconds)
 					s->backdrop.set(renderBackdrop(now.style, s->animSeconds, W, H, 0.25,
 								       s->opacity),
 							backBox);
+				const QRect lineBox = accentLineRect(now.style, W, H);
+				if (lineBox.isEmpty())
+					s->accent.clear();
+				else
+					s->accent.set(renderAccentLine(now.style, s->animSeconds, lineBox.size(),
+								       s->opacity),
+						      lineBox);
 			}
 		} else {
 			s->decor.clear();
 			s->backdrop.clear();
+			s->accent.clear();
 		}
 	} catch (...) {
 		obs_log(LOG_ERROR, "Slide source: could not draw a frame");
@@ -323,6 +333,7 @@ void render(void *data, gs_effect_t *effect)
 		gs_effect_set_texture(image, s->texture);
 		gs_draw_sprite(s->texture, 0, w, h);
 		s->decor.draw(image);
+		s->accent.draw(image); // the sweeping light rides exactly on the line
 	} catch (...) {
 		obs_log(LOG_ERROR, "Slide source: could not draw");
 	}

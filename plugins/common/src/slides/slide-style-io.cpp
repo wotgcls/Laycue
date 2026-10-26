@@ -18,6 +18,7 @@ void writeStyle(obs_data_t *d, const SlideStyle &s)
 	obs_data_set_int(d, "font", s.font);
 	obs_data_set_int(d, "decor", s.decor);
 	obs_data_set_int(d, "transition", s.transition);
+	obs_data_set_int(d, "line", s.line);
 }
 
 SlideStyle readStyle(obs_data_t *d)
@@ -43,6 +44,7 @@ SlideStyle readStyle(obs_data_t *d)
 	s.font = int(number("font", s.font));
 	s.decor = int(number("decor", s.decor));
 	s.transition = int(number("transition", s.transition));
+	s.line = int(number("line", s.line));
 	sanitize(s);
 	return s;
 }

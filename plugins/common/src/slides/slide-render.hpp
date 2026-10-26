@@ -40,4 +40,10 @@ QImage renderBackdrop(const SlideStyle &style, double seconds, int canvasWidth, 
 // The whole canvas: transparent except the slide. An empty request gives a transparent picture. Never throws.
 QImage renderSlide(const SlideRequest &request);
 
+// The moving line (AccentLine::Sweep): where the line sits on the canvas (empty for any other mode or layout),
+// and one frame of its light, `seconds` into its slow loop, drawn at `opacity`, to lay exactly over the line the
+// still slide already has.
+QRect accentLineRect(const SlideStyle &style, int canvasWidth, int canvasHeight);
+QImage renderAccentLine(const SlideStyle &style, double seconds, const QSize &size, double opacity);
+
 } // namespace laycue::slides

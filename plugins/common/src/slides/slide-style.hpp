@@ -56,6 +56,11 @@ enum class Decor {
 constexpr int kDecorCount = 10;
 // What happens when the words change: the old ones fade out and the new fade in, or they swap at once.
 enum class Transition { Fade = 0, Cut = 1 };
+// The thin line (the accent strip on the band's edge, or a Rule's side rule): as it is, a gradient along it, a
+// gradient with a soft light that travels along it, or no line at all. Flat keeps the line everywhere it is, so
+// taking it away is a choice.
+enum class AccentLine { Flat = 0, Gradient = 1, Sweep = 2, None = 3 };
+constexpr int kAccentLineCount = 4;
 
 constexpr int kMinSize = 60;
 constexpr int kMaxSize = 160;
@@ -76,13 +81,14 @@ struct SlideStyle {
 	int font = int(Font::Modern);
 	int decor = int(Decor::None);
 	int transition = int(Transition::Fade);
+	int line = int(AccentLine::Flat);
 
 	bool operator==(const SlideStyle &o) const
 	{
 		return layout == o.layout && fill == o.fill && color1 == o.color1 && color2 == o.color2 &&
 		       color3 == o.color3 && picture == o.picture && text == o.text && accent == o.accent &&
 		       textCase == o.textCase && sizePercent == o.sizePercent && align == o.align && font == o.font &&
-		       decor == o.decor && transition == o.transition;
+		       decor == o.decor && transition == o.transition && line == o.line;
 	}
 	bool operator!=(const SlideStyle &o) const { return !(*this == o); }
 };

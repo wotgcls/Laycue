@@ -164,6 +164,26 @@ TEST_CASE("scripture: next and previous verse cross chapters and books")
 	CHECK(!previousVerse(b, first));
 }
 
+TEST_CASE("scripture: a phrase search finds the verses that hold it, in Bible order")
+{
+	Bible b;
+	std::string error;
+	CHECK(parseBible(
+		"<XMLBIBLE><BIBLEBOOK bnumber=\"19\"><CHAPTER cnumber=\"23\"><VERS vnumber=\"1\">The LORD is my"
+		" shepherd</VERS><VERS vnumber=\"2\">He leads me beside still waters</VERS></CHAPTER></BIBLEBOOK>"
+		"<BIBLEBOOK bnumber=\"43\"><CHAPTER cnumber=\"3\"><VERS vnumber=\"16\">For God so loved the world</"
+		"VERS></CHAPTER></BIBLEBOOK></XMLBIBLE>",
+		b, error));
+	const std::vector<Reference> mine = searchBible(b, "MY shepHerd"); // case doesn't matter
+	CHECK(mine.size() == 1);
+	CHECK(mine[0].book == 19 && mine[0].chapter == 23 && mine[0].verseFrom == 1);
+	CHECK_EQ(searchBible(b, "world").size(), size_t(1));
+	CHECK(searchBible(b, "a").empty());  // too short to be a phrase
+	CHECK(searchBible(b, "   ").empty());
+	CHECK(searchBible(b, "nowhere at all in it").empty());
+	CHECK_EQ(searchBible(b, "he").size(), size_t(3)); // The, He and the each hold it
+}
+
 TEST_CASE("scripture: the bundled King James Version loads")
 {
 	std::ifstream file(std::string(LAYCUE_PLUGINS_DIR) + "/scripture/data/bibles/kjv.xml", std::ios::binary);

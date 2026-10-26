@@ -192,6 +192,18 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 	});
 	words->addWidget(accent_, 1);
 
+	v->addWidget(innerLabel(this, lt("Laycue.Slides.Line"), 11, 600, color::textTertiary));
+	// The thin line the templates put on the band (or a side rule): exactly as it comes, a gradient along it,
+	// the gradient with a quiet light that travels along it, or no line at all.
+	line_ = new Segmented(this);
+	line_->setItems({lt("Laycue.Slides.LineFlat"), lt("Laycue.Slides.LineGradient"),
+			 lt("Laycue.Slides.LineSweep"), lt("Laycue.Slides.LineNone")});
+	connect(line_, &Segmented::changed, this, [this](int index) {
+		style_.line = index;
+		emitChanged();
+	});
+	v->addWidget(line_);
+
 	QHBoxLayout *sizeRow = nullptr;
 	v->addWidget(row(this, sizeRow));
 	sizeRow->addWidget(innerLabel(this, lt("Laycue.Slides.TextSize"), 12, 600, color::textSecondary), 1);
@@ -341,6 +353,7 @@ void StyleEditor::refresh()
 		fontRows[group]->setCurrent(position);
 	}
 	transition_->setCurrent(style_.transition);
+	line_->setCurrent(std::clamp(style_.line, 0, kAccentLineCount - 1));
 	if (decor_) {
 		int position = -1;
 		for (size_t i = 0; i < decors_.size(); ++i) {

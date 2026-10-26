@@ -50,7 +50,8 @@ private:
 	void chooseVersion();
 	bool useVersion(const VersionFile &version);
 	void typed();
-	void go(); // Enter: show what is typed
+	void go(); // Enter: show what is typed, or search for it when it isn't a reference
+	void search();
 	void showVerse(const Reference &ref);
 	void toggleShown();
 	void step(int direction);
@@ -69,6 +70,10 @@ private:
 	Reference current_; // the verse on screen (or ready)
 	bool shown_ = false;
 	std::string sourceName_;
+	// A phrase typed in the box, shown as a list of the verses that hold it until one is picked.
+	bool searching_ = false;
+	std::string searchQuery_;
+	std::vector<Reference> searchResults_;
 
 	ui::RowButton *versionRow_ = nullptr;
 	QLabel *presence_ = nullptr;

@@ -49,7 +49,8 @@ Song parseSongFile(const std::string &text, const std::string &fallbackTitle);
 bool parseOpenLyrics(const std::string &xml, Song &out, std::string &error);
 
 // The best matches for what was typed: title starts with it, then a word of the title starts with it, then
-// it appears in the title or the first line. Case and punctuation don't matter. Indexes into `songs`.
+// it appears in the title, then it appears in any lyric line (so a song can be found by the words it sings).
+// Case and punctuation don't matter. Indexes into `songs`.
 std::vector<size_t> searchSongs(const std::vector<Song> &songs, const std::string &query, size_t limit = 6);
 
 // "amazing-grace", made unique against `taken`.

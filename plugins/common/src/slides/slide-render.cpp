@@ -172,6 +172,30 @@ void paintFill(QPainter &p, const QRectF &area, const QPainterPath &shape, const
 
 // ---- Where everything goes -------------------------------------------------------------------------------
 
+// The accent line, as far as one still frame shows it: Flat is a plain colour, a Gradient runs along the strip
+// (a vertical side rule takes a vertical gradient), None draws nothing. A Sweep shares this gradient as its base;
+// its travelling light is a separate moving layer (accentLineRect and renderAccentLine).
+void drawAccent(QPainter &p, const QRectF &strip, int mode, const QColor &accent)
+{
+	switch (AccentLine(mode)) {
+	case AccentLine::None:
+		return;
+	case AccentLine::Flat:
+		p.fillRect(strip, accent);
+		return;
+	default: {
+		const bool horizontal = strip.width() >= strip.height();
+		QLinearGradient g = horizontal ? QLinearGradient(strip.topLeft(), strip.topRight())
+					       : QLinearGradient(strip.topLeft(), strip.bottomLeft());
+		g.setColorAt(0, accent);
+		g.setColorAt(0.5, lighter(accent));
+		g.setColorAt(1, accent);
+		p.fillRect(strip, g);
+		return;
+	}
+	}
+}
+
 struct Geometry {
 	QRectF area;    // the shape behind the words
 	QRectF text;    // the words
@@ -1007,12 +1031,20 @@ QImage renderSlide(const SlideRequest &r)
 		QPainterPath path;
 		path.addRoundedRect(g.area, g.radius, g.radius);
 		paintFill(p, g.area, path, s, r.picture);
-		if (!bare) {
-			QLinearGradient edge(g.area.topLeft(), g.area.bottomRight());
-			edge.setColorAt(0, lighter(accent));
-			edge.setColorAt(0.5, accent);
-			edge.setColorAt(1, lighter(accent));
-			p.setPen(QPen(QBrush(edge), 4 * k));
+		if (!bare && s.line != int(AccentLine::None)) {
+			QPen pen;
+			if (s.line == int(AccentLine::Flat)) {
+				pen.setColor(accent);
+			} else {
+				QLinearGradient edge(g.area.topLeft(), g.area.bottomRight());
+				edge.setColorAt(0, lighter(accent));
+				edge.setColorAt(0.5, accent);
+				edge.setColorAt(1, lighter(accent));
+				pen.setColor(accent);
+				pen.setBrush(QBrush(edge));
+			}
+			pen.setWidthF(4 * k);
+			p.setPen(pen);
 			p.drawPath(path);
 		}
 		if (hasCaption) {
@@ -1101,11 +1133,12 @@ QImage renderSlide(const SlideRequest &r)
 		path.addRoundedRect(g.area, g.radius, g.radius);
 		paintFill(p, g.area, path, s, r.picture);
 		if (s.align == int(Align::Right))
-			p.fillRect(QRectF(g.area.right() - 10 * k, g.area.top(), 10 * k, g.area.height()), accent);
+			drawAccent(p, QRectF(g.area.right() - 10 * k, g.area.top(), 10 * k, g.area.height()), s.line,
+				   accent);
 		else if (s.align == int(Align::Centre))
-			p.fillRect(QRectF(g.area.left(), g.area.top(), g.area.width(), 8 * k), accent);
+			drawAccent(p, QRectF(g.area.left(), g.area.top(), g.area.width(), 8 * k), s.line, accent);
 		else
-			p.fillRect(QRectF(g.area.left(), g.area.top(), 10 * k, g.area.height()), accent);
+			drawAccent(p, QRectF(g.area.left(), g.area.top(), 10 * k, g.area.height()), s.line, accent);
 		drawText(p, g.text, text, words, textColour, k, bare, s.align);
 		drawCaption(p, g.caption, r.caption, 30 * k, accent, horizontal(s.align), k, bare);
 		break;
@@ -1134,13 +1167,76 @@ QImage renderSlide(const SlideRequest &r)
 	default: {
 		paintFill(p, g.area, QPainterPath(), s, r.picture);
 		if (!bare)
-			p.fillRect(QRectF(0, g.area.top(), W, 5 * k), accent);
+			drawAccent(p, QRectF(0, g.area.top(), W, 5 * k), s.line, accent);
 		drawText(p, g.text, text, words, textColour, k, bare, s.align);
 		drawCaption(p, g.caption, r.caption, 28 * k, accent, captionAlign(s.align), k, bare);
 		break;
 	}
 	}
 	return image;
+}
+
+QRect accentLineRect(const SlideStyle &s, int W, int H)
+{
+	if (s.line != int(AccentLine::Sweep))
+		return QRect(); // only the Sweep gets its own moving layer
+	const double k = H / 1080.0;
+	switch (Layout(s.layout)) {
+	case Layout::LowerThird:
+		return QRect(0, int(std::lround(H * 0.70)), W, std::max(1, int(std::lround(5 * k))));
+	case Layout::Rule: {
+		const double w = W * 0.64, h = H * 0.29;
+		const double x = s.align == int(Align::Right)    ? W - W * 0.06 - w
+				 : s.align == int(Align::Centre) ? (W - w) / 2.0
+								 : W * 0.06;
+		if (s.align == int(Align::Right))
+			return QRect(int(std::lround(x + w - 10 * k)), int(std::lround(H * 0.64)),
+				     std::max(1, int(std::lround(10 * k))), int(std::lround(h)));
+		if (s.align == int(Align::Centre))
+			return QRect(int(std::lround(x)), int(std::lround(H * 0.64)), int(std::lround(w)),
+				     std::max(1, int(std::lround(8 * k))));
+		return QRect(int(std::lround(x)), int(std::lround(H * 0.64)), std::max(1, int(std::lround(10 * k))),
+			     int(std::lround(h)));
+	}
+	default:
+		return QRect(); // the other layouts have no plain line to sweep over
+	}
+}
+
+QImage renderAccentLine(const SlideStyle &s, double seconds, const QSize &size, double opacity)
+{
+	QImage image(size.width(), size.height(), QImage::Format_ARGB32_Premultiplied);
+	image.fill(Qt::transparent);
+	if (image.isNull() || opacity <= 0.0)
+		return QImage();
+	QPainter p(&image);
+	p.setRenderHint(QPainter::Antialiasing, true);
+	p.setOpacity(std::clamp(opacity, 0.0, 1.0));
+	// The base: the same gradient the still frame has, so the sweep rides on what is already there.
+	const QColor accent = rgb(s.accent);
+	const bool horizontal = size.width() >= size.height();
+	const QLinearGradient base = horizontal ? QLinearGradient(0, 0, size.width(), 0)
+						: QLinearGradient(0, 0, 0, size.height());
+	base.setColorAt(0, accent);
+	base.setColorAt(0.5, lighter(accent));
+	base.setColorAt(1, accent);
+	p.fillRect(image.rect(), base);
+	// The light: a soft bright band that travels down the line and eases back, twice a moment — every few
+	// seconds, so it reads as a quiet shine, not a chase.
+	const double span = horizontal ? size.width() : size.height();
+	const double band = span * 0.38;
+	const double cycle = std::fmod(seconds / 4.5, 2.0);
+	const double t = cycle < 1.0 ? easeInOut(cycle) : easeInOut(2.0 - cycle);
+	const double head = t * (span + band * 2.0) - band;
+	QLinearGradient sheen = horizontal ? QLinearGradient(head - band, 0, head + band, 0)
+					   : QLinearGradient(0, head - band, 0, head + band);
+	QColor light = lighter(accent).lighter(150);
+	light.setAlpha(190);
+	sheen.setColorAt(0.0, QColor(light.red(), light.green(), light.blue(), 0));
+	sheen.setColorAt(0.5, light);
+	sheen.setColorAt(1.0, QColor(light.red(), light.green(), light.blue(), 0));
+	p.fillRect(image.rect(), sheen);
+	return image.convertToFormat(QImage::Format_RGBA8888);
 }
 
 } // namespace laycue::slides

@@ -168,6 +168,9 @@ TEST_CASE("slides: moving looks are known to move, still ones are not")
 	SlideStyle pictured = still;
 	pictured.decor = int(Decor::Notes);
 	CHECK(isAnimated(pictured));
+	SlideStyle sweeping = still;
+	sweeping.line = int(AccentLine::Sweep);
+	CHECK(isAnimated(sweeping));
 	// Lyrics has music pictures, Scripture has Bible ones.
 	int music = 0;
 	for (const auto &t : laycue::lyrics::lyricsTemplates())
@@ -175,4 +178,43 @@ TEST_CASE("slides: moving looks are known to move, still ones are not")
 	CHECK(music >= 3);
 	for (const auto &t : laycue::scripture::scriptureTemplates())
 		CHECK(t.style.decor < int(Decor::Notes));
+}
+
+TEST_CASE("slides: the accent line knows where it is, and its light moves")
+{
+	SlideStyle s; // the Bar layout has the strip along the top of its band
+	const QRect bar = accentLineRect(s, 1920, 1080);
+	CHECK_EQ(bar.height(), 5);
+	CHECK(!bar.isEmpty());
+	SlideStyle rule = s;
+	rule.layout = int(Layout::Rule);
+	rule.align = int(Align::Left);
+	const QRect side = accentLineRect(rule, 1920, 1080);
+	CHECK_EQ(side.width(), 10);
+	CHECK(!side.isEmpty());
+	rule.align = int(Align::Centre);
+	CHECK(!accentLineRect(rule, 1920, 1080).isEmpty());
+	rule.align = int(Align::Right);
+	CHECK(!accentLineRect(rule, 1920, 1080).isEmpty());
+	CHECK(accentLineRect(rule, 1920, 1080).width() == accentLineRect(side, 1920, 1080).width());
+	// The other layouts have no plain line, and modes other than Sweep have no moving layer.
+	SlideStyle card = s;
+	card.layout = int(Layout::Card);
+	CHECK(accentLineRect(card, 1920, 1080).isEmpty());
+	SlideStyle flat = s;
+	flat.line = int(AccentLine::Flat);
+	CHECK(accentLineRect(flat, 1920, 1080).isEmpty());
+	SlideStyle none = s;
+	none.line = int(AccentLine::None);
+	CHECK(accentLineRect(none, 1920, 1080).isEmpty());
+	// A frame at a given second shows a light; at a later second it shows it somewhere else, and it also
+	// honours the slide's opacity.
+	SlideStyle on = s;
+	on.line = int(AccentLine::Sweep);
+	const QImage first = renderAccentLine(on, 0.0, QSize(800, 5), 1.0);
+	const QImage later = renderAccentLine(on, 1.1, QSize(800, 5), 1.0);
+	CHECK(!first.isNull() && !later.isNull());
+	CHECK(first != later);
+	CHECK(renderAccentLine(on, 0.0, QSize(5, 800), 1.0).size() == QSize(5, 800)); // a side rule sweeps too
+	CHECK(renderAccentLine(on, 0.0, QSize(800, 5), 0.0).isNull());               // hidden with the slide
 }

@@ -215,4 +215,42 @@ bool previousVerse(const Bible &bible, Reference &ref)
 	return false;
 }
 
+namespace {
+
+// Lowercase, letter by letter (the verses hold text such as accented names, so the unsigned cast matters).
+std::string lowered(const std::string &text)
+{
+	std::string out;
+	out.reserve(text.size());
+	for (char c : text)
+		out += char(std::tolower(static_cast<unsigned char>(c)));
+	return out;
+}
+
+} // namespace
+
+std::vector<Reference> searchBible(const Bible &bible, const std::string &phrase, size_t limit)
+{
+	std::vector<Reference> out;
+	const std::string needle = lowered(phrase);
+	if (needle.size() < 2)
+		return out;
+	for (int book = 1; book <= int(bible.books.size()) && out.size() < limit; ++book) {
+		const auto &chapters = bible.books[size_t(book - 1)];
+		for (int chapter = 1; chapter <= int(chapters.size()) && out.size() < limit; ++chapter) {
+			const auto &verses = chapters[size_t(chapter - 1)];
+			for (int verse = 1; verse <= int(verses.size()) && out.size() < limit; ++verse) {
+				if (lowered(verses[size_t(verse - 1)]).find(needle) != std::string::npos) {
+					Reference hit;
+					hit.book = book;
+					hit.chapter = chapter;
+					hit.verseFrom = verse;
+					out.push_back(hit);
+				}
+			}
+		}
+	}
+	return out;
+}
+
 } // namespace laycue::scripture

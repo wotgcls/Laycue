@@ -267,7 +267,7 @@ void ScriptureDock::build()
 
 void ScriptureDock::typed()
 {
-	const std::string text = input_->text().toStdString();
+	std::string text = input_->text().toStdString();
 	const std::string book = bookHint(text);
 	Reference ref;
 	if (!book.empty() && !input_->text().contains(QLatin1Char(' '))) {
@@ -275,7 +275,7 @@ void ScriptureDock::typed()
 	} else if (parseReference(text, ref) && ref.valid()) {
 		hint_->setText(lt("Laycue.Scripture.HintGo").arg(qs(referenceLabel(ref))));
 	} else {
-		hint_->setText(text.empty() ? QString() : lt("Laycue.Scripture.HintUnknown"));
+		hint_->setText(text.empty() ? QString() : lt("Laycue.Scripture.HintSearch").arg(qs(text)));
 	}
 }
 
@@ -283,7 +283,8 @@ void ScriptureDock::go()
 {
 	Reference ref;
 	if (!parseReference(input_->text().toStdString(), ref) || !ref.valid() || !bible_) {
-		toast(lt("Laycue.Scripture.HintUnknown"));
+		// Not a reference: what is typed might be a phrase to look for in every verse of this version.
+		search();
 		return;
 	}
 	if (ref.verseFrom < 1)
@@ -301,8 +302,26 @@ void ScriptureDock::go()
 
 // ---- Showing -----------------------------------------------------------------------------------------------
 
+// Every verse in the chosen version that holds the phrase, shown in place of the chapter list until one is picked.
+void ScriptureDock::search()
+{
+	if (!bible_)
+		return;
+	searchQuery_ = input_->text().toStdString();
+	searchResults_ = searchBible(*bible_, searchQuery_, 9);
+	searching_ = true;
+	hint_->setText(QString());
+	rebuildVerses();
+	if (searchResults_.empty()) {
+		toast(lt("Laycue.Scripture.SearchNone").arg(qs(searchQuery_), qs(bible_->abbrev)));
+	} else {
+		toast(lt("Laycue.Scripture.SearchFound").arg(int(searchResults_.size())).arg(qs(bible_->abbrev)));
+	}
+}
+
 void ScriptureDock::showVerse(const Reference &ref)
 {
+	searching_ = false; // a picked result becomes the ordinary chapter list again
 	const bool sameChapter = ref.book == current_.book && ref.chapter == current_.chapter;
 	current_ = ref;
 	current_.verseTo = 0;
@@ -354,6 +373,22 @@ void ScriptureDock::toggleShown()
 
 void ScriptureDock::step(int direction)
 {
+	if (searching_) {
+		// Left and Right walk the search results.
+		if (searchResults_.empty())
+			return;
+		int at = -1;
+		for (size_t i = 0; i < searchResults_.size(); ++i) {
+			if (searchResults_[i].book == current_.book && searchResults_[i].chapter == current_.chapter &&
+			    searchResults_[i].verseFrom == current_.verseFrom)
+				at = int(i);
+		}
+		const int next = at < 0 ? (direction > 0 ? 0 : int(searchResults_.size()) - 1)
+					: std::clamp(at + direction, 0, int(searchResults_.size()) - 1);
+		if (next != at)
+			showVerse(searchResults_[size_t(next)]);
+		return;
+	}
 	if (!bible_ || !current_.valid())
 		return;
 	Reference ref = current_;
@@ -384,6 +419,25 @@ void ScriptureDock::runHotkey(int index)
 void ScriptureDock::rebuildVerses()
 {
 	clear(versesLayout_);
+	if (searching_) {
+		// What the phrase found, the verse itself as the row's title.
+		referenceLabel_->setText(lt("Laycue.Scripture.SearchResults").arg(qs(searchQuery_),
+										 qs(bible_ ? bible_->abbrev : "")));
+		if (!bible_)
+			return;
+		if (searchResults_.empty())
+			versesLayout_->addWidget(label(versesBox_, lt("Laycue.Scripture.SearchEmpty"), 11, 400,
+						       color::textTertiary));
+		for (const Reference &hit : searchResults_) {
+			const QString text = qs(bible_->verse(hit.book, hit.chapter, hit.verseFrom));
+			auto *row = new RowButton(versesBox_);
+			row->setTitle(qs(referenceLabel(hit)) + "  " + text);
+			row->setToolTip(text);
+			connect(row, &RowButton::clicked, this, [this, hit]() { showVerse(hit); });
+			versesLayout_->addWidget(row);
+		}
+		return;
+	}
 	if (!bible_ || !current_.valid()) {
 		referenceLabel_->setText(QString());
 		return;

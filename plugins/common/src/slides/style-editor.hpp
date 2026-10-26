@@ -74,6 +74,7 @@ private:
 	ui::Segmented *font2_ = nullptr; // modern sans
 	ui::Segmented *font3_ = nullptr; // premium serif
 	ui::Segmented *transition_ = nullptr;
+	ui::Segmented *line_ = nullptr; // Flat, Gradient, Light sweep, No line
 	ui::Segmented *decor_ = nullptr;  // the first four looping pictures
 	ui::Segmented *decor2_ = nullptr; // the rest
 	std::vector<int> decors_;
