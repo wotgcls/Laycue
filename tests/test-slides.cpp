@@ -2,6 +2,7 @@
 
 #include "../plugins/lyrics/src/core/templates.hpp"
 #include "../plugins/scripture/src/core/templates.hpp"
+#include "slides/slide-render.hpp"
 #include "slides/slide-style.hpp"
 
 #include <fstream>
@@ -182,11 +183,13 @@ TEST_CASE("slides: moving looks are known to move, still ones are not")
 
 TEST_CASE("slides: the accent line knows where it is, and its light moves")
 {
-	SlideStyle s; // the Bar layout has the strip along the top of its band
-	const QRect bar = accentLineRect(s, 1920, 1080);
-	CHECK_EQ(bar.height(), 5);
-	CHECK(!bar.isEmpty());
-	SlideStyle rule = s;
+	SlideStyle bar; // the Bar layout puts the strip along the top of its band
+	bar.line = int(AccentLine::Sweep);
+	const QRect strip = accentLineRect(bar, 1920, 1080);
+	CHECK_EQ(strip.height(), 5);
+	CHECK(!strip.isEmpty());
+
+	SlideStyle rule = bar;
 	rule.layout = int(Layout::Rule);
 	rule.align = int(Align::Left);
 	const QRect side = accentLineRect(rule, 1920, 1080);
@@ -195,26 +198,23 @@ TEST_CASE("slides: the accent line knows where it is, and its light moves")
 	rule.align = int(Align::Centre);
 	CHECK(!accentLineRect(rule, 1920, 1080).isEmpty());
 	rule.align = int(Align::Right);
-	CHECK(!accentLineRect(rule, 1920, 1080).isEmpty());
-	CHECK(accentLineRect(rule, 1920, 1080).width() == accentLineRect(side, 1920, 1080).width());
+	CHECK_EQ(accentLineRect(rule, 1920, 1080).width(), 10); // the side rule on the right is vertical too
 	// The other layouts have no plain line, and modes other than Sweep have no moving layer.
-	SlideStyle card = s;
+	SlideStyle card = bar;
 	card.layout = int(Layout::Card);
 	CHECK(accentLineRect(card, 1920, 1080).isEmpty());
-	SlideStyle flat = s;
+	SlideStyle flat = bar;
 	flat.line = int(AccentLine::Flat);
 	CHECK(accentLineRect(flat, 1920, 1080).isEmpty());
-	SlideStyle none = s;
+	SlideStyle none = bar;
 	none.line = int(AccentLine::None);
 	CHECK(accentLineRect(none, 1920, 1080).isEmpty());
 	// A frame at a given second shows a light; at a later second it shows it somewhere else, and it also
 	// honours the slide's opacity.
-	SlideStyle on = s;
-	on.line = int(AccentLine::Sweep);
-	const QImage first = renderAccentLine(on, 0.0, QSize(800, 5), 1.0);
-	const QImage later = renderAccentLine(on, 1.1, QSize(800, 5), 1.0);
+	const QImage first = renderAccentLine(bar, 0.0, QSize(800, 5), 1.0);
+	const QImage later = renderAccentLine(bar, 1.1, QSize(800, 5), 1.0);
 	CHECK(!first.isNull() && !later.isNull());
 	CHECK(first != later);
-	CHECK(renderAccentLine(on, 0.0, QSize(5, 800), 1.0).size() == QSize(5, 800)); // a side rule sweeps too
-	CHECK(renderAccentLine(on, 0.0, QSize(800, 5), 0.0).isNull());               // hidden with the slide
+	CHECK(renderAccentLine(bar, 0.0, QSize(5, 800), 1.0).size() == QSize(5, 800)); // a side rule sweeps too
+	CHECK(renderAccentLine(bar, 0.0, QSize(800, 5), 0.0).isNull());               // hidden with the slide
 }
