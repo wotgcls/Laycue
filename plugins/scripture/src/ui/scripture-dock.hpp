@@ -77,12 +77,14 @@ private:
 	std::vector<Reference> searchResults_;
 	bool searchMode_ = false;       // the chosen behaviour of the type box (search words or references)
 	QTimer searchTimer_;            // in search mode, the words are looked up a moment after the last key
+	std::string phrase() const;     // what is typed, in whichever box the mode shows
 
 	ui::RowButton *versionRow_ = nullptr;
 	QLabel *presence_ = nullptr;
 	QLabel *status_ = nullptr;
 	ReferenceBox *input_ = nullptr;
 	ui::Segmented *mode_ = nullptr; // Reference / Search, above the type box
+	QLineEdit *searchInput_ = nullptr; // plain text, shown in Search mode
 	QLabel *hint_ = nullptr;
 	QLabel *referenceLabel_ = nullptr; // "John 3:16 (KJV)" above the verses
 	QWidget *versesBox_ = nullptr;

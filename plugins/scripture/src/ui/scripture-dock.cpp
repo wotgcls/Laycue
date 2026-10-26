@@ -53,6 +53,12 @@ QString qs(const std::string &s)
 
 } // namespace
 
+// What the operator has typed, in whichever box the chosen mode shows.
+std::string ScriptureDock::phrase() const
+{
+	return searchMode_ ? searchInput_->text().toStdString() : input_->text().toStdString();
+}
+
 ScriptureDock::ScriptureDock(QWidget *parent) : QWidget(parent)
 {
 	setObjectName("LaycueScriptureDock");
@@ -80,7 +86,10 @@ ScriptureDock::ScriptureDock(QWidget *parent) : QWidget(parent)
 	if (!loaded && !versions.empty())
 		useVersion(versions.front());
 	if (!settings_.lastTyped.empty()) {
-		input_->setText(qs(settings_.lastTyped));
+		if (searchMode_)
+			searchInput_->setText(qs(settings_.lastTyped));
+		else
+			input_->setText(qs(settings_.lastTyped));
 		typed();
 	}
 
@@ -160,6 +169,34 @@ void ScriptureDock::build()
 	mode_->setFixedWidth(176);
 	connect(mode_, &Segmented::changed, this, &ScriptureDock::chooseMode);
 	s->addWidget(mode_);
+
+	// Search mode's own plain box: words or a sentence, nothing about chapters and verses.
+	searchInput_ = new QLineEdit(stage);
+	searchInput_->setPlaceholderText(lt("Laycue.Scripture.SearchPlaceholder"));
+	searchInput_->setAccessibleName(lt("Laycue.Scripture.SearchPlaceholder"));
+	searchInput_->setClearButtonEnabled(true);
+	{
+		QFont f = searchInput_->font();
+		f.setPixelSize(17);
+		f.setWeight(QFont::DemiBold);
+		searchInput_->setFont(f);
+		searchInput_->setStyleSheet(
+			QStringLiteral("QLineEdit { background: %1; color: %2; border: 1px solid %3;"
+				       " border-radius: %4px; padding: 0 12px; font-size: 17px; }"
+				       "QLineEdit:focus { border: 2px solid %5; padding: 0 11px; }")
+				.arg(hex(color::recess), hex(color::cream), hex(color::lineStrong))
+				.arg(size::radius)
+				.arg(hex(color::setup)));
+	}
+	searchInput_->setMinimumHeight(size::touch);
+	connect(searchInput_, &QLineEdit::textEdited, this, &ScriptureDock::typed);
+	connect(searchInput_, &QLineEdit::returnPressed, this, [this]() {
+		searchTimer_.stop();
+		search();
+	});
+	searchInput_->setVisible(settings_.searchMode);
+	input_->setVisible(!settings_.searchMode);
+	s->addWidget(searchInput_);
 
 	input_ = new ReferenceBox(stage);
 	connect(input_, &ReferenceBox::edited, this, &ScriptureDock::typed);
@@ -285,6 +322,9 @@ void ScriptureDock::chooseMode(int index)
 	settings_.searchMode = search;
 	save();
 	searchMode_ = search;
+	input_->setVisible(!searchMode_); // the framed reference box, or the plain words box
+	searchInput_->setVisible(searchMode_);
+	(searchMode_ ? static_cast<QWidget *>(searchInput_) : static_cast<QWidget *>(input_))->setFocus();
 	searchTimer_.stop();
 	searching_ = false; // the list below changes role: chapters again, or ready for results
 	rebuildVerses();
@@ -294,7 +334,7 @@ void ScriptureDock::chooseMode(int index)
 void ScriptureDock::typed()
 {
 	if (searchMode_) {
-		const bool empty = input_->text().trimmed().isEmpty();
+		const bool empty = searchInput_->text().trimmed().isEmpty();
 		hint_->setText(empty ? QString() : lt("Laycue.Scripture.HintTypedSearch"));
 		if (empty)
 			searchTimer_.stop();
@@ -323,8 +363,11 @@ void ScriptureDock::go()
 	}
 	Reference ref;
 	if (!parseReference(input_->text().toStdString(), ref) || !ref.valid() || !bible_) {
-		// Not a reference: what is typed might be a phrase to look for. Then word search is the mode.
+		// Not a reference: what is typed might be a phrase to look for. Then word search is the mode,
+		// and the words carry over to its plain box.
+		searchInput_->setText(input_->text());
 		chooseMode(1);
+		searchTimer_.stop();
 		search();
 		return;
 	}
@@ -348,9 +391,11 @@ void ScriptureDock::search()
 {
 	if (!bible_)
 		return;
-	if (input_->text().trimmed().isEmpty())
+	if (searchInput_->text().trimmed().isEmpty() && input_->text().trimmed().isEmpty())
 		return;
-	searchQuery_ = input_->text().toStdString();
+	searchQuery_ = phrase();
+	settings_.lastTyped = searchQuery_;
+	save();
 	searchResults_ = searchBible(*bible_, searchQuery_, 9);
 	searching_ = true;
 	hint_->setText(QString());
@@ -566,11 +611,11 @@ bool ScriptureDock::useVersion(const VersionFile &version)
 	settings_.version = version.file;
 	versionRow_->setValue(qs(bible_->abbrev + " \xC2\xB7 " + bible_->name));
 	save();
-	if (searchMode_ && input_->text().trimmed().isEmpty())
+	if (searchMode_ && searchInput_->text().trimmed().isEmpty())
 		searching_ = false; // nothing typed to search for in the new version
 	if (current_.valid())
 		showVerse(current_); // the same verse in the new version
-	if (searchMode_ && !input_->text().trimmed().isEmpty())
+	if (searchMode_ && !searchInput_->text().trimmed().isEmpty())
 		search(); // the results follow the new version
 	return true;
 }
