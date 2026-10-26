@@ -17,6 +17,7 @@ struct ScriptureSettings {
 	std::vector<slides::SlideStyle> styles; // one per template, with the operator's changes
 	std::vector<std::string> saved;         // saved scriptures, as typed references ("John 3:16")
 	std::string lastTyped;
+	bool searchMode = false;                // the type box search words, not references
 };
 
 ScriptureSettings loadSettings();

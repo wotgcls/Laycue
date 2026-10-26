@@ -87,6 +87,10 @@ ScriptureDock::ScriptureDock(QWidget *parent) : QWidget(parent)
 	toastTimer_.setSingleShot(true);
 	toastTimer_.setInterval(2600);
 	connect(&toastTimer_, &QTimer::timeout, this, [this]() { toast_->hide(); });
+	searchTimer_.setSingleShot(true);
+	searchTimer_.setInterval(350); // a moment after the last key, so typing feels light
+	connect(&searchTimer_, &QTimer::timeout, this, &ScriptureDock::search);
+	searchMode_ = settings_.searchMode;
 	pollTimer_.setInterval(1000);
 	connect(&pollTimer_, &QTimer::timeout, this, &ScriptureDock::updateStatus);
 	pollTimer_.start();
@@ -146,6 +150,16 @@ void ScriptureDock::build()
 	versionRow_->setOpen(true);
 	connect(versionRow_, &RowButton::clicked, this, &ScriptureDock::chooseVersion);
 	s->addWidget(versionRow_);
+
+	// The type box works in either of two ways: a quick reference ("jn 3 16") or a word search.
+	mode_ = new Segmented(stage);
+	mode_->setItems({lt("Laycue.Scripture.ModeReference"), lt("Laycue.Scripture.ModeSearch")});
+	mode_->setCurrent(settings_.searchMode ? 1 : 0);
+	mode_->setAccessibleName(lt("Laycue.Scripture.Mode.Accessible"));
+	mode_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	mode_->setFixedWidth(176);
+	connect(mode_, &Segmented::changed, this, &ScriptureDock::chooseMode);
+	s->addWidget(mode_);
 
 	input_ = new ReferenceBox(stage);
 	connect(input_, &ReferenceBox::edited, this, &ScriptureDock::typed);
@@ -265,8 +279,29 @@ void ScriptureDock::build()
 
 // ---- Typing ------------------------------------------------------------------------------------------------
 
+void ScriptureDock::chooseMode(int index)
+{
+	const bool search = index == 1;
+	settings_.searchMode = search;
+	save();
+	searchMode_ = search;
+	searchTimer_.stop();
+	searching_ = false; // the list below changes role: chapters again, or ready for results
+	rebuildVerses();
+	typed();            // the hint line follows the mode
+}
+
 void ScriptureDock::typed()
 {
+	if (searchMode_) {
+		const bool empty = input_->text().trimmed().isEmpty();
+		hint_->setText(empty ? QString() : lt("Laycue.Scripture.HintTypedSearch"));
+		if (empty)
+			searchTimer_.stop();
+		else
+			searchTimer_.start(); // the moment the words stop arriving, it looks
+		return;
+	}
 	std::string text = input_->text().toStdString();
 	const std::string book = bookHint(text);
 	Reference ref;
@@ -281,9 +316,15 @@ void ScriptureDock::typed()
 
 void ScriptureDock::go()
 {
+	if (searchMode_) {
+		searchTimer_.stop();
+		search();
+		return;
+	}
 	Reference ref;
 	if (!parseReference(input_->text().toStdString(), ref) || !ref.valid() || !bible_) {
-		// Not a reference: what is typed might be a phrase to look for in every verse of this version.
+		// Not a reference: what is typed might be a phrase to look for. Then word search is the mode.
+		chooseMode(1);
 		search();
 		return;
 	}
@@ -307,6 +348,8 @@ void ScriptureDock::search()
 {
 	if (!bible_)
 		return;
+	if (input_->text().trimmed().isEmpty())
+		return;
 	searchQuery_ = input_->text().toStdString();
 	searchResults_ = searchBible(*bible_, searchQuery_, 9);
 	searching_ = true;
@@ -321,7 +364,8 @@ void ScriptureDock::search()
 
 void ScriptureDock::showVerse(const Reference &ref)
 {
-	searching_ = false; // a picked result becomes the ordinary chapter list again
+	if (!searchMode_)
+		searching_ = false; // in reference mode, a picked result is the ordinary chapter list again
 	const bool sameChapter = ref.book == current_.book && ref.chapter == current_.chapter;
 	current_ = ref;
 	current_.verseTo = 0;
@@ -522,8 +566,12 @@ bool ScriptureDock::useVersion(const VersionFile &version)
 	settings_.version = version.file;
 	versionRow_->setValue(qs(bible_->abbrev + " \xC2\xB7 " + bible_->name));
 	save();
+	if (searchMode_ && input_->text().trimmed().isEmpty())
+		searching_ = false; // nothing typed to search for in the new version
 	if (current_.valid())
 		showVerse(current_); // the same verse in the new version
+	if (searchMode_ && !input_->text().trimmed().isEmpty())
+		search(); // the results follow the new version
 	return true;
 }
 

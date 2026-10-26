@@ -52,6 +52,7 @@ private:
 	void typed();
 	void go(); // Enter: show what is typed, or search for it when it isn't a reference
 	void search();
+	void chooseMode(int index); // the type box works as a reference or as a word search
 	void showVerse(const Reference &ref);
 	void toggleShown();
 	void step(int direction);
@@ -74,11 +75,14 @@ private:
 	bool searching_ = false;
 	std::string searchQuery_;
 	std::vector<Reference> searchResults_;
+	bool searchMode_ = false;       // the chosen behaviour of the type box (search words or references)
+	QTimer searchTimer_;            // in search mode, the words are looked up a moment after the last key
 
 	ui::RowButton *versionRow_ = nullptr;
 	QLabel *presence_ = nullptr;
 	QLabel *status_ = nullptr;
 	ReferenceBox *input_ = nullptr;
+	ui::Segmented *mode_ = nullptr; // Reference / Search, above the type box
 	QLabel *hint_ = nullptr;
 	QLabel *referenceLabel_ = nullptr; // "John 3:16 (KJV)" above the verses
 	QWidget *versesBox_ = nullptr;

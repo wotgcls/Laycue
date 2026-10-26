@@ -6,8 +6,8 @@
   an optional logo can ride along. They work with Studio Mode, hotkeys and the T-bar like OBS's own.
 - Scripture and Lyrics: the thin line the templates draw can now be a **gradient**, take a quiet **light sweep**
   that travels along it, or be **taken away** entirely — under "Edit this look" in both panels.
-- Scripture: type a **phrase** instead of a reference and press Enter — every verse in the loaded version that
-  holds it shows as a list (Next and Previous walk the results).
+- Scripture: the type box is now a choice — **Reference** or **Search**. In Search mode the words are found in
+  every verse of the loaded version **as you type** (**Next** and **Previous** walk the results).
 - Lyrics: songs can be found by **any lyric line**, not just the title or first line.
 - Scenes: after Go Live, the shot that **was** live loads into Up next immediately, so the preview is never empty
   (Laycue → Settings → Working with OBS; can be switched off).

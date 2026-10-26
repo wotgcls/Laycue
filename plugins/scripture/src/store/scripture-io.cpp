@@ -71,6 +71,7 @@ ScriptureSettings loadSettings()
 		s.styles[i] = slides::readStyle(item);
 	}
 	s.lastTyped = str(obs_data_get_string(data, "lastTyped"));
+	s.searchMode = obs_data_get_bool(data, "searchMode");
 	OBSDataArrayAutoRelease saved = obs_data_get_array(data, "saved");
 	const size_t n = saved ? obs_data_array_count(saved) : 0;
 	for (size_t i = 0; i < n; ++i) {
@@ -96,6 +97,7 @@ void saveSettings(const ScriptureSettings &s)
 	}
 	obs_data_set_array(data, "styles", styles);
 	obs_data_set_string(data, "lastTyped", s.lastTyped.c_str());
+	obs_data_set_bool(data, "searchMode", s.searchMode);
 	OBSDataArrayAutoRelease saved = obs_data_array_create();
 	for (const std::string &ref : s.saved) {
 		OBSDataAutoRelease item = obs_data_create();
