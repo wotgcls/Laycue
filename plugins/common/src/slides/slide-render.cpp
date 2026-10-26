@@ -1215,8 +1215,8 @@ QImage renderAccentLine(const SlideStyle &s, double seconds, const QSize &size, 
 	// The base: the same gradient the still frame has, so the sweep rides on what is already there.
 	const QColor accent = rgb(s.accent);
 	const bool horizontal = size.width() >= size.height();
-	const QLinearGradient base = horizontal ? QLinearGradient(0, 0, size.width(), 0)
-						: QLinearGradient(0, 0, 0, size.height());
+	QLinearGradient base = horizontal ? QLinearGradient(0, 0, size.width(), 0)
+					  : QLinearGradient(0, 0, 0, size.height());
 	base.setColorAt(0, accent);
 	base.setColorAt(0.5, lighter(accent));
 	base.setColorAt(1, accent);
