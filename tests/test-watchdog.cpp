@@ -37,6 +37,15 @@ FeedState six(FeedWatchdog &w, const WatchdogSample &s)
 	return last;
 }
 
+// Six samples of a feed that changes: each look is different, as a live picture is.
+FeedState sixMoving(FeedWatchdog &w)
+{
+	FeedState last = FeedState::Unknown;
+	for (size_t i = 1; i <= 6; ++i)
+		last = w.push(moving(i));
+	return last;
+}
+
 } // namespace
 
 TEST_CASE("watchdog: it says nothing until a full window of samples")
@@ -69,9 +78,9 @@ TEST_CASE("watchdog: darkness or silence reads as blank")
 TEST_CASE("watchdog: one odd sample cannot condemn a healthy feed")
 {
 	FeedWatchdog w;
-	six(w, moving(1));
+	sixMoving(w);
 	CHECK(w.push(WatchdogSample{0, 0, 0}) != FeedState::Blank); // one dark frame among movers
-	CHECK(w.push(moving(7)) == FeedState::Healthy);
+	CHECK(w.push(moving(8)) == FeedState::Healthy);
 }
 
 TEST_CASE("watchdog: a freeze needs the same picture every time")
@@ -87,7 +96,7 @@ TEST_CASE("watchdog: after a fire, a reset re-arms it")
 	CHECK_EQ(six(w, blank()), FeedState::Blank);
 	w.reset();
 	CHECK(w.verdict() == FeedState::Unknown);
-	CHECK_EQ(six(w, moving(1)), FeedState::Healthy);
+	CHECK_EQ(sixMoving(w), FeedState::Healthy);
 }
 
 TEST_CASE("watchdog: darkness among stillness is blank, not frozen")
