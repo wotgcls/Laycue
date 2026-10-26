@@ -62,7 +62,7 @@ TEST_CASE("watchdog: it says nothing until a full window of samples")
 TEST_CASE("watchdog: a feed that moves, and a feed that sits still, are told apart")
 {
 	FeedWatchdog w;
-	CHECK_EQ(six(w, moving(1)), FeedState::Healthy);
+	CHECK_EQ(sixMoving(w), FeedState::Healthy);
 	FeedWatchdog still;
 	CHECK_EQ(six(still, frozen()), FeedState::Frozen);
 }
