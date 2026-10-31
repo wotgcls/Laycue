@@ -46,6 +46,15 @@ QColor lighter(const QColor &c)
 			       std::min(255, c.value() + 70));
 }
 
+// Part way from `a` to `b` (0 keeps a, 1 takes b), alpha and all.
+QColor blendColour(const QColor &a, const QColor &b, double f)
+{
+	const double r = std::clamp(f, 0.0, 1.0);
+	return QColor(int(a.red() + (b.red() - a.red()) * r + 0.5), int(a.green() + (b.green() - a.green()) * r + 0.5),
+		      int(a.blue() + (b.blue() - a.blue()) * r + 0.5),
+		      int(a.alpha() + (b.alpha() - a.alpha()) * r + 0.5));
+}
+
 // Dark text on a light accent, light text on a dark one.
 QColor onColour(const QColor &c)
 {
@@ -168,9 +177,53 @@ void paintFill(QPainter &p, const QRectF &area, const QPainterPath &shape, const
 	}
 	}
 	p.restore();
+	// A straight band (no shape, under half the screen tall) blends into what is behind it: its top takes
+	// a third of the band to rise and its tail fades off, so no border line shows.
+	const QRectF viewport = p.viewport();
+	if (shape.isEmpty() && area.height() < viewport.height() * 0.5) {
+		QLinearGradient blend(QPointF(0, area.top()), QPointF(0, area.bottom()));
+		blend.setColorAt(0.00, QColor(0, 0, 0, 0));
+		blend.setColorAt(0.32, QColor(0, 0, 0, 255));
+		blend.setColorAt(0.88, QColor(0, 0, 0, 255));
+		blend.setColorAt(1.00, QColor(0, 0, 0, 0));
+		p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+		p.fillRect(area, blend);
+		p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+	}
 }
 
 // ---- Where everything goes -------------------------------------------------------------------------------
+
+// The colours along the strip, shared by the still frame and the sweep's own base layer so the two always match:
+// the line holds its colour through the middle, and at each end it eases quietly away instead of stopping dead.
+// The fade follows a slow curve through many stops — nothing you can point at as a corner.
+void accentStops(QGradient &g, const QColor &accent)
+{
+	const QColor half = lighter(accent);
+	const auto at = [&](double pos, double alpha) {
+		// The gentle brightening in the middle: the colour leans toward the lighter shade as it nears
+		// the centre of the strip, and the ends keep the accent as it is.
+		const double d = std::abs(pos - 0.5) / 0.5; // 0 in the middle, 1 at the ends
+		QColor c = d < 1.0 ? blendColour(accent, half, 1.0 - d * d) : accent;
+		c.setAlpha(int(accent.alpha() * alpha + 0.5));
+		return c;
+	};
+	// In from the left: ease in over about a third of the strip, then hold.
+	g.setColorAt(0.00, at(0.00, 0.0));
+	g.setColorAt(0.02, at(0.02, 0.05));
+	g.setColorAt(0.07, at(0.07, 0.20));
+	g.setColorAt(0.14, at(0.14, 0.55));
+	g.setColorAt(0.24, at(0.24, 0.92));
+	g.setColorAt(0.34, at(0.34, 1.0));
+	g.setColorAt(0.50, at(0.50, 1.0));
+	// Out to the right: the same curve, mirrored.
+	g.setColorAt(0.66, at(0.66, 1.0));
+	g.setColorAt(0.76, at(0.76, 0.92));
+	g.setColorAt(0.86, at(0.86, 0.55));
+	g.setColorAt(0.93, at(0.93, 0.20));
+	g.setColorAt(0.98, at(0.98, 0.05));
+	g.setColorAt(1.00, at(1.00, 0.0));
+}
 
 // The accent line, as far as one still frame shows it: Flat is a plain colour, a Gradient runs along the strip
 // (a vertical side rule takes a vertical gradient), None draws nothing. A Sweep shares this gradient as its base;
@@ -187,9 +240,7 @@ void drawAccent(QPainter &p, const QRectF &strip, int mode, const QColor &accent
 		const bool horizontal = strip.width() >= strip.height();
 		QLinearGradient g = horizontal ? QLinearGradient(strip.topLeft(), strip.topRight())
 					       : QLinearGradient(strip.topLeft(), strip.bottomLeft());
-		g.setColorAt(0, accent);
-		g.setColorAt(0.5, lighter(accent));
-		g.setColorAt(1, accent);
+		accentStops(g, accent);
 		p.fillRect(strip, g);
 		return;
 	}
@@ -214,12 +265,19 @@ void placeDecor(Geometry &g, const SlideStyle &s, const QRectF &container, doubl
 	const double top = container.center().y() - size / 2.0;
 	if (s.align == int(Align::Right)) {
 		g.decor = QRectF(container.left() + margin, top, size, size);
-		if (narrowText)
+		if (narrowText) {
 			g.text.setLeft(std::max(g.text.left(), g.decor.right() + margin * 0.6));
+			// the reference stops short of the card too, when the two would otherwise meet
+			if (g.caption.isValid() && g.caption.intersects(g.decor))
+				g.caption.setLeft(std::max(g.caption.left(), g.decor.right() + margin * 0.6));
+		}
 	} else {
 		g.decor = QRectF(container.right() - margin - size, top, size, size);
-		if (narrowText)
+		if (narrowText) {
 			g.text.setRight(std::min(g.text.right(), g.decor.left() - margin * 0.6));
+			if (g.caption.isValid() && g.caption.intersects(g.decor))
+				g.caption.setRight(std::min(g.caption.right(), g.decor.left() - margin * 0.6));
+		}
 	}
 }
 
@@ -373,18 +431,42 @@ void drawSparkles(QPainter &p, const QRectF &box, double t, const QColor &accent
 	}
 }
 
+// Lines of unreadable words: short dashes of even ink, the way tiny text reads from a distance. Patterns
+// come from fixed mixtures, so every frame paints the same page.
+void drawWordRows(QPainter &p, const QRectF &box, int rows, double thickness, const QColor &ink)
+{
+	if (rows < 1 || box.width() < 2)
+		return;
+	p.setPen(QPen(ink, thickness, Qt::SolidLine, Qt::RoundCap));
+	const double gap = box.height() / rows;
+	for (int i = 0; i < rows; ++i) {
+		const double y = box.top() + gap * (i + 0.42);
+		const double x0 = box.left();
+		const double limit = box.right();
+		const int words = 3 + (i * 5 + 1) % 3;
+		double x = x0;
+		for (int word = 0; word < words && x < limit; ++word) {
+			const double width = (limit - x0) * (0.08 + 0.10 * std::fmod((i + word * 2) * 0.377, 1.0));
+			const double end = std::min(x + width, limit);
+			p.drawLine(QPointF(x, y), QPointF(end, y));
+			x = end + width * 0.38;
+		}
+	}
+}
+
 // An open Bible on a glow. Every few seconds the right-hand page turns over to the left, then it rests.
 void drawOpenBible(QPainter &p, double S, double t, const QColor &accent)
 {
 	const double period = 3.4;
 	const double u = std::fmod(t, period) / period;
-	drawGlow(p, QPointF(S / 2, S * 0.52), S * 0.56, accent, 0.55 + 0.35 * std::sin(2.0 * kPi * t / 4.0));
+	drawGlow(p, QPointF(S / 2, S * 0.53), S * 0.56, accent, 0.55 + 0.35 * std::sin(2.0 * kPi * t / 4.0));
 
 	const double spine = S / 2, half = S * 0.43;
-	const double top = S * 0.28, bottom = S * 0.80;
+	const double top = S * 0.26, bottom = S * 0.80;
 	const double lift = S * 0.035; // the outer edges sit a little higher than the spine
 	const QColor cover = accent.darker(230);
 	const QColor pageLight(250, 245, 230), pageShade(222, 212, 188);
+	const QColor ink(88, 78, 84, 105);
 
 	// The cover shows as a rim around the pages.
 	QPainterPath rim;
@@ -399,32 +481,47 @@ void drawOpenBible(QPainter &p, double S, double t, const QColor &accent)
 	p.setBrush(cover);
 	p.drawPath(rim);
 
+	// The block of sheets the pages sit on: a shaded strip beneath, where the pages have thickness.
+	QPainterPath block;
+	const double seg = S * 0.028;
+	block.moveTo(spine, bottom + S * 0.01);
+	block.quadTo(spine - half * 0.7, bottom - seg, spine - half - S * 0.02, bottom - lift + seg);
+	block.quadTo(spine, bottom + S * 0.05, spine + half + S * 0.02, bottom - lift + seg);
+	block.quadTo(spine + half * 0.7, bottom - seg, spine, bottom + S * 0.01);
+	block.closeSubpath();
+	QLinearGradient stack(QPointF(0, bottom - seg), QPointF(0, bottom + S * 0.055));
+	stack.setColorAt(0.0, pageShade);
+	stack.setColorAt(1.0, pageShade.darker(125));
+	p.setPen(Qt::NoPen);
+	p.setBrush(stack);
+	p.drawPath(block);
+
 	auto page = [&](double side, double width, double raise, bool shade) {
 		// A page from the spine out to `width` (a share of half) on `side` (-1 left, +1 right).
 		const double x = spine + side * half * width;
-		QPolygonF poly;
-		poly << QPointF(spine, top) << QPointF(x, top - lift - raise * S * 0.05) << QPointF(x, bottom - lift)
-		     << QPointF(spine, bottom);
+		QPainterPath poly;
+		// The page bows a touch, so it never reads as a flat plank.
+		poly.moveTo(spine, top);
+		poly.quadTo(spine + side * half * width * 0.55, top - lift - raise * S * 0.05 - S * 0.012, x,
+			    top - lift - raise * S * 0.05);
+		poly.lineTo(x, bottom - lift);
+		poly.quadTo(spine + side * half * width * 0.55, bottom + S * 0.012, spine, bottom);
+		poly.closeSubpath();
 		QLinearGradient g(QPointF(spine, 0), QPointF(x, 0));
 		g.setColorAt(0.0, pageShade);
 		g.setColorAt(0.35, shade ? pageShade : pageLight);
 		g.setColorAt(1.0, shade ? pageShade.lighter(108) : pageLight);
 		p.setBrush(g);
 		p.setPen(QPen(QColor(0, 0, 0, 40), S * 0.004));
-		p.drawPolygon(poly);
-		// Lines of text.
+		p.drawPath(poly);
+		// The passage: lines of tiny, unreadable words, straightened into the page's face.
 		if (width > 0.25) {
-			QColor ink(90, 80, 70, 95);
-			p.setPen(QPen(ink, S * 0.006, Qt::SolidLine, Qt::RoundCap));
-			for (int i = 0; i < 7; ++i) {
-				const double f = 0.16 + 0.11 * i;
-				const double y0 = top + (bottom - top) * f;
-				const double lx0 = spine + side * half * width * 0.14;
-				const double lx1 = spine + side * half * width * (i == 6 ? 0.55 : 0.86);
-				const double dy = -lift * (std::abs(lx0 - spine) / half) * 0.9;
-				const double dy1 = -lift * (std::abs(lx1 - spine) / half) * 0.9;
-				p.drawLine(QPointF(lx0, y0 + dy), QPointF(lx1, y0 + dy1));
-			}
+			const double inset = half * width * 0.15;
+			const double boxTop = top + (bottom - top) * 0.14;
+			const double boxBottom = top + (bottom - top) * 0.86;
+			drawWordRows(p,
+				     QRectF(spine + side * inset, boxTop, half * width - inset * 2, boxBottom - boxTop),
+				     9, S * 0.0055, ink);
 		}
 	};
 
@@ -533,34 +630,46 @@ void drawRays(QPainter &p, const QPointF &centre, double length, double t, const
 	p.restore();
 }
 
-// A scroll that slowly unrolls and rolls up again.
+// A scroll that slowly unrolls and rolls up again, its face carrying tiny unreadable words the way a
+// distance-shot page reads.
 void drawScroll(QPainter &p, double S, double t, const QColor &accent)
 {
 	drawGlow(p, QPointF(S / 2, S / 2), S * 0.52, accent, 0.5 + 0.3 * std::sin(2.0 * kPi * t / 4.0));
 	const double open = 0.25 + 0.75 * (0.5 - 0.5 * std::cos(2.0 * kPi * t / 7.0));
 	const double w = S * 0.6, full = S * 0.62, h = full * open;
 	const double cx = S / 2, top = S / 2 - h / 2;
+	// The paper: light in the middle, shaded toward the rods where it rolls under itself.
 	QLinearGradient paper(QPointF(cx - w / 2, 0), QPointF(cx + w / 2, 0));
-	paper.setColorAt(0.0, QColor(226, 210, 172));
-	paper.setColorAt(0.5, QColor(248, 238, 214));
-	paper.setColorAt(1.0, QColor(226, 210, 172));
+	paper.setColorAt(0.0, QColor(214, 196, 158));
+	paper.setColorAt(0.18, QColor(248, 238, 214));
+	paper.setColorAt(0.5, QColor(252, 244, 222));
+	paper.setColorAt(0.82, QColor(248, 238, 214));
+	paper.setColorAt(1.0, QColor(214, 196, 158));
 	p.setPen(Qt::NoPen);
 	p.setBrush(paper);
 	p.drawRect(QRectF(cx - w / 2, top, w, h));
-	p.setPen(QPen(QColor(110, 90, 60, 110), S * 0.007, Qt::SolidLine, Qt::RoundCap));
-	for (int i = 0; i < 9; ++i) {
-		const double y = top + S * 0.07 + i * S * 0.055;
-		if (y > top + h - S * 0.05)
-			break;
-		p.drawLine(QPointF(cx - w * 0.36, y), QPointF(cx + w * (i % 3 == 2 ? 0.1 : 0.36), y));
-	}
+	// A soft crease where the paper bends, a little in from each rod.
+	QLinearGradient crease(QPointF(cx - w * 0.34, 0), QPointF(cx - w * 0.24, 0));
+	crease.setColorAt(0.0, QColor(0, 0, 0, 0));
+	crease.setColorAt(0.5, QColor(120, 96, 60, 40));
+	crease.setColorAt(1.0, QColor(0, 0, 0, 0));
+	p.fillRect(QRectF(cx - w * 0.34, top, w * 0.10, h), crease);
+	QLinearGradient crease2(QPointF(cx + w * 0.24, 0), QPointF(cx + w * 0.34, 0));
+	crease2.setColorAt(0.0, QColor(0, 0, 0, 0));
+	crease2.setColorAt(0.5, QColor(120, 96, 60, 40));
+	crease2.setColorAt(1.0, QColor(0, 0, 0, 0));
+	p.fillRect(QRectF(cx + w * 0.24, top, w * 0.10, h), crease2);
+	// The passage: rows of unreadable words, kept clear of the curl.
+	const QColor ink(88, 70, 46, 115);
+	drawWordRows(p, QRectF(cx - w * 0.32, top + S * 0.06, w * 0.64, h - S * 0.10), 9, S * 0.0055, ink);
 	for (const double y : {top, top + h}) {
 		const QRectF rod(cx - w * 0.58, y - S * 0.04, w * 1.16, S * 0.08);
 		QLinearGradient g(rod.topLeft(), rod.bottomLeft());
 		g.setColorAt(0.0, accent.lighter(130));
-		g.setColorAt(0.5, accent.darker(150));
+		g.setColorAt(0.35, lighter(accent));
+		g.setColorAt(0.55, accent);
 		g.setColorAt(1.0, accent.darker(260));
-		p.setPen(Qt::NoPen);
+		p.setPen(QPen(QColor(0, 0, 0, 50), S * 0.004));
 		p.setBrush(g);
 		p.drawRoundedRect(rod, S * 0.04, S * 0.04);
 		p.setBrush(lighter(accent));
@@ -570,40 +679,68 @@ void drawScroll(QPainter &p, double S, double t, const QColor &accent)
 	drawSparkles(p, QRectF(S * 0.1, S * 0.05, S * 0.8, S * 0.6), t, accent);
 }
 
-// A white dove gliding on the spot, wings beating slowly.
+// A white dove gliding on the spot, wings beating slowly — each wing a fan of feathers, the near one over
+// the body and the far one shaded behind it.
 void drawDove(QPainter &p, double S, double t, const QColor &accent)
 {
 	drawGlow(p, QPointF(S / 2, S / 2), S * 0.52, accent, 0.55 + 0.3 * std::sin(2.0 * kPi * t / 3.0));
 	const double bob = std::sin(2.0 * kPi * t / 2.8) * S * 0.04;
 	const double beat = 0.5 + 0.5 * std::sin(2.0 * kPi * t / 1.2); // 0 wings down .. 1 wings up
-	const QColor white(250, 250, 255), shade(214, 220, 236);
+	const QColor white(250, 250, 255), shade(206, 213, 232), quill(186, 194, 218);
 	p.save();
 	p.translate(S / 2, S / 2 + bob);
 	p.setPen(Qt::NoPen);
-	auto wing = [&](double lift, const QColor &colour, double dx) {
+	// One wing: a base sweep with three feathers fanned out from the shoulder. `lift` 0..1 sets the beat.
+	auto wing = [&](double lift, const QColor &base, const QColor &feather, double dx) {
+		// The base sweep, out and back — its outline follows the beat.
 		QPainterPath path;
 		path.moveTo(dx, 0);
-		path.quadTo(dx - S * 0.12, -S * (0.08 + 0.3 * lift), dx - S * 0.36, -S * (0.02 + 0.26 * lift));
+		path.quadTo(dx - S * 0.12, -S * (0.08 + 0.3 * lift), dx - S * 0.38, -S * (0.03 + 0.27 * lift));
 		path.quadTo(dx - S * 0.2, -S * 0.02, dx + S * 0.05, S * 0.05);
 		path.closeSubpath();
-		p.setBrush(colour);
+		p.setBrush(base);
 		p.drawPath(path);
+		// The feathers: three quiet strokes on top of the sweep, widest apart at the tip.
+		p.setBrush(Qt::NoBrush);
+		for (int i = 0; i < 3; ++i) {
+			const double f = (i - 1) / 2.0; // -1 .. 1 across the fan
+			QPainterPath quillPath;
+			const double x0 = dx - S * 0.05, y0 = S * 0.02;
+			const double tipX = dx - S * (0.30 + 0.06 * lift) + f * S * 0.05;
+			const double tipY = -S * (0.02 + 0.26 * lift) + f * S * 0.045 + S * 0.02;
+			quillPath.moveTo(x0, y0);
+			quillPath.quadTo((x0 + tipX) / 2 - S * 0.02, (y0 + tipY) / 2 - S * 0.02 * lift, tipX, tipY);
+			quillPath.quadTo((x0 + tipX) / 2 - S * 0.02, (y0 + tipY) / 2 + S * 0.01, x0 + S * 0.03,
+					 y0 + S * 0.015);
+			p.setPen(QPen(feather, S * 0.012, Qt::SolidLine, Qt::RoundCap));
+			p.drawPath(quillPath);
+		}
 	};
-	wing(beat * 0.85, shade, S * 0.05);
+	wing(beat * 0.85, shade, quill, S * 0.05); // the far wing, shaded behind the body
 	// Body, tail and head.
 	p.setBrush(white);
 	p.drawEllipse(QPointF(0, S * 0.05), S * 0.21, S * 0.085);
+	// A quiet shade under the belly, so the body is round and not a flat capsule.
+	QRadialGradient belly(QPointF(0, S * 0.09), S * 0.20);
+	belly.setColorAt(0.0, QColor(214, 220, 238, 130));
+	belly.setColorAt(1.0, QColor(214, 220, 238, 0));
+	p.setBrush(belly);
+	p.drawEllipse(QPointF(0, S * 0.09), S * 0.19, S * 0.07);
+	p.setBrush(white);
 	QPolygonF tail;
 	tail << QPointF(-S * 0.17, S * 0.04) << QPointF(-S * 0.37, -S * 0.02) << QPointF(-S * 0.35, S * 0.13);
 	p.drawPolygon(tail);
 	p.drawEllipse(QPointF(S * 0.19, -S * 0.02), S * 0.07, S * 0.065);
+	// A soft grey nape where the head meets the neck.
+	p.setBrush(QColor(228, 232, 244));
+	p.drawEllipse(QPointF(S * 0.15, S * 0.005), S * 0.045, S * 0.04);
 	p.setBrush(lighter(accent));
 	QPolygonF beak;
 	beak << QPointF(S * 0.25, -S * 0.03) << QPointF(S * 0.32, -S * 0.005) << QPointF(S * 0.25, S * 0.01);
 	p.drawPolygon(beak);
 	p.setBrush(QColor(30, 30, 40));
 	p.drawEllipse(QPointF(S * 0.205, -S * 0.035), S * 0.011, S * 0.011);
-	wing(beat, white, 0);
+	wing(beat, white, quill, 0); // the near wing, over the body
 	p.restore();
 	drawSparkles(p, QRectF(S * 0.1, S * 0.1, S * 0.8, S * 0.8), t, accent);
 }
@@ -669,6 +806,18 @@ void drawSunrise(QPainter &p, double S, double t, const QColor &accent)
 		const double x = S / 2 - w / 2 + std::sin(t * (1.1 + 0.3 * i) + i) * S * 0.04;
 		p.drawLine(QPointF(x, y), QPointF(x + w, y));
 	}
+	// The card's edges melt into the slide instead of ending on a straight border.
+	p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+	for (int pass = 0; pass < 2; ++pass) {
+		QLinearGradient edge = pass == 0 ? QLinearGradient(QPointF(0, 0), QPointF(S, 0))
+						 : QLinearGradient(QPointF(0, 0), QPointF(0, S));
+		edge.setColorAt(0.00, QColor(0, 0, 0, 0));
+		edge.setColorAt(0.11, QColor(0, 0, 0, 255));
+		edge.setColorAt(0.89, QColor(0, 0, 0, 255));
+		edge.setColorAt(1.00, QColor(0, 0, 0, 0));
+		p.fillRect(QRectF(0, 0, S, S), edge);
+	}
+	p.setCompositionMode(QPainter::CompositionMode_SourceOver);
 }
 
 // One music note (single, or two joined by a beam) of height `size`, its head at the origin.
@@ -1217,24 +1366,34 @@ QImage renderAccentLine(const SlideStyle &s, double seconds, const QSize &size, 
 	const bool horizontal = size.width() >= size.height();
 	QLinearGradient base = horizontal ? QLinearGradient(0, 0, size.width(), 0)
 					  : QLinearGradient(0, 0, 0, size.height());
-	base.setColorAt(0, accent);
-	base.setColorAt(0.5, lighter(accent));
-	base.setColorAt(1, accent);
+	accentStops(base, accent);
 	p.fillRect(image.rect(), base);
-	// The light: a soft bright band that travels down the line and eases back, twice a moment — every few
-	// seconds, so it reads as a quiet shine, not a chase.
+	// The light: a wide soft band that travels down the line and eases back — its tails smooth instead of
+	// wedge-shaped, so it reads as a quiet shine, never a chase or a hard flash.
 	const double span = horizontal ? size.width() : size.height();
-	const double band = span * 0.38;
+	const double band = span * 0.5;
 	const double cycle = std::fmod(seconds / 4.5, 2.0);
 	const double t = cycle < 1.0 ? easeInOut(cycle) : easeInOut(2.0 - cycle);
 	const double head = t * (span + band * 2.0) - band;
 	QLinearGradient sheen = horizontal ? QLinearGradient(head - band, 0, head + band, 0)
 					   : QLinearGradient(0, head - band, 0, head + band);
 	QColor light = lighter(accent).lighter(150);
-	light.setAlpha(190);
-	sheen.setColorAt(0.0, QColor(light.red(), light.green(), light.blue(), 0));
-	sheen.setColorAt(0.5, light);
-	sheen.setColorAt(1.0, QColor(light.red(), light.green(), light.blue(), 0));
+	light.setAlpha(160);
+	auto soft = [&light](int a) {
+		QColor c = light;
+		c.setAlpha(a);
+		return c;
+	};
+	const int full = light.alpha();
+	sheen.setColorAt(0.00, soft(0));
+	sheen.setColorAt(0.16, soft(int(full * 0.18)));
+	sheen.setColorAt(0.34, soft(int(full * 0.55)));
+	sheen.setColorAt(0.45, soft(int(full * 0.88)));
+	sheen.setColorAt(0.50, soft(full));
+	sheen.setColorAt(0.55, soft(int(full * 0.88)));
+	sheen.setColorAt(0.66, soft(int(full * 0.55)));
+	sheen.setColorAt(0.84, soft(int(full * 0.18)));
+	sheen.setColorAt(1.00, soft(0));
 	p.fillRect(image.rect(), sheen);
 	return image.convertToFormat(QImage::Format_RGBA8888);
 }
