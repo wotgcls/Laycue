@@ -195,10 +195,10 @@ void ScriptureDock::build()
 		search();
 	});
 	searchInput_->setVisible(settings_.searchMode);
-	input_->setVisible(!settings_.searchMode);
 	s->addWidget(searchInput_);
 
 	input_ = new ReferenceBox(stage);
+	input_->setVisible(!settings_.searchMode);
 	connect(input_, &ReferenceBox::edited, this, &ScriptureDock::typed);
 	connect(input_, &ReferenceBox::submitted, this, &ScriptureDock::go);
 	connect(input_, &ReferenceBox::stepped, this, &ScriptureDock::step);
