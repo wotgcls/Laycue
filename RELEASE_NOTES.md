@@ -1,4 +1,6 @@
-**The big one: Laycue's own transitions are in, and you can add them right from the panel.**
+- **Fixed from 0.2.5:** OBS closed about a second into launching — the Scripture panel touched one of its parts
+  before it was built. It never reaches that point now.
+- **The big one: Laycue's own transitions are in, and you can add them right from the panel.**
 
 - Go Live can use nine native Laycue transitions (Push, Brand Wipe, Zoom Through, Split Doors, Logo Sting, Card
   Stack, Move, Morph, Stripes). In the Laycue panel, under **Transition: … ▾**, pick **+ Add …**. The movement is
