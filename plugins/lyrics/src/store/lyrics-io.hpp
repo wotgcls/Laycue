@@ -14,6 +14,7 @@ struct LyricsSettings {
 	int templateIndex = 0;                  // which of lyricsTemplates() is in use
 	std::vector<slides::SlideStyle> styles; // one per template, with the operator's changes
 	std::string lastSong;                   // id
+	bool showSongName = true;               // the song's name rides with the lyrics unless switched off
 };
 
 LyricsSettings loadSettings();

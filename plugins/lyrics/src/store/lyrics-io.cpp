@@ -70,6 +70,9 @@ LyricsSettings loadSettings()
 		s.styles[i] = slides::readStyle(item);
 	}
 	s.lastSong = str(obs_data_get_string(data, "lastSong"));
+	s.showSongName = obs_data_has_user_value(data, "showSongName")
+				 ? obs_data_get_bool(data, "showSongName")
+				 : true; // absent = shown (the default)
 	return s;
 }
 
@@ -85,6 +88,7 @@ void saveSettings(const LyricsSettings &s)
 	}
 	obs_data_set_array(data, "styles", styles);
 	obs_data_set_string(data, "lastSong", s.lastSong.c_str());
+	obs_data_set_bool(data, "showSongName", s.showSongName);
 	saveJson(data, configPath("lyrics.json"));
 }
 

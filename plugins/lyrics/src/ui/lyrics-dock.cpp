@@ -281,6 +281,24 @@ QWidget *LyricsDock::buildMain()
 	connect(next, &QAbstractButton::clicked, this, [this]() { step(1); });
 	buttons->addWidget(next);
 	s->addLayout(buttons);
+
+	// The song's name rides with the lyrics unless switched off.
+	auto *nameRow = new QHBoxLayout();
+	nameRow->setContentsMargins(0, 0, 0, 0);
+	nameRow->setSpacing(size::gapSmall);
+	songNameSwitch_ = new Switch(stage);
+	songNameSwitch_->setOn(settings_.showSongName);
+	songNameSwitch_->setAccessibleName(lt("Laycue.Lyrics.SongNameSwitch"));
+	connect(songNameSwitch_, &QAbstractButton::toggled, this, [this](bool on) {
+		settings_.showSongName = on;
+		saveSettings(settings_);
+		if (shown_)
+			push(); // what is on screen loses or gains its name at once
+	});
+	nameRow->addWidget(songNameSwitch_);
+	nameRow->addWidget(innerLabel(stage, lt("Laycue.Lyrics.SongNameSwitch"), 11, 500, color::textSecondary));
+	nameRow->addStretch(1);
+	s->addLayout(nameRow);
 	v->addWidget(stage);
 
 	// The song itself: write a new one, change this one, or bring one in from a file.
@@ -706,9 +724,11 @@ void LyricsDock::push()
 	slides::Slide slide;
 	slide.text = slides_[size_t(slide_)].text;
 	slide.style = settings_.styles[size_t(settings_.templateIndex)];
-	// The song's name goes with a background; words alone stay words alone.
-	slide.caption = index >= 0 && slide.style.fill != int(slides::Fill::None) ? songs_[size_t(index)].title
-										  : std::string();
+	// The song's name goes with a background; words alone stay words alone — unless the name is switched
+	// off, in which case the words ride bare whatever the background.
+	slide.caption = settings_.showSongName && index >= 0 && slide.style.fill != int(slides::Fill::None)
+				? songs_[size_t(index)].title
+				: std::string();
 	slide.shown = shown_;
 	if (shown_)
 		slides::hideOthers(kSourceId); // a verse and a song never stack

@@ -102,6 +102,7 @@ private:
 	QVBoxLayout *slidesLayout_ = nullptr;
 	QScrollArea *slidesScroll_ = nullptr; // the song's lines: a set height with its own scrolling
 	ui::ActionButton *showButton_ = nullptr;
+	ui::Switch *songNameSwitch_ = nullptr; // the song's name rides with the lyrics, or it does not
 	ui::Segmented *packs_ = nullptr;     // Classic / Modern / Sanctuary
 	ui::Segmented *templates_ = nullptr; // the templates of the chosen pack
 	std::vector<int> packMembers_;       // their positions in lyricsTemplates()
