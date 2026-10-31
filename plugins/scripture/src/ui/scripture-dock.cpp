@@ -328,7 +328,7 @@ void ScriptureDock::chooseMode(int index)
 	searchTimer_.stop();
 	searching_ = false; // the list below changes role: chapters again, or ready for results
 	rebuildVerses();
-	typed();            // the hint line follows the mode
+	typed(); // the hint line follows the mode
 }
 
 void ScriptureDock::typed()
@@ -510,13 +510,13 @@ void ScriptureDock::rebuildVerses()
 	clear(versesLayout_);
 	if (searching_) {
 		// What the phrase found, the verse itself as the row's title.
-		referenceLabel_->setText(lt("Laycue.Scripture.SearchResults").arg(qs(searchQuery_),
-										 qs(bible_ ? bible_->abbrev : "")));
+		referenceLabel_->setText(
+			lt("Laycue.Scripture.SearchResults").arg(qs(searchQuery_), qs(bible_ ? bible_->abbrev : "")));
 		if (!bible_)
 			return;
 		if (searchResults_.empty())
-			versesLayout_->addWidget(label(versesBox_, lt("Laycue.Scripture.SearchEmpty"), 11, 400,
-						       color::textTertiary));
+			versesLayout_->addWidget(
+				label(versesBox_, lt("Laycue.Scripture.SearchEmpty"), 11, 400, color::textTertiary));
 		for (const Reference &hit : searchResults_) {
 			const QString text = qs(bible_->verse(hit.book, hit.chapter, hit.verseFrom));
 			auto *row = new RowButton(versesBox_);
