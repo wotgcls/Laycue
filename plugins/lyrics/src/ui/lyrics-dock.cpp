@@ -8,6 +8,8 @@
 #include "slides/style-editor.hpp"
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
+
+#include <QDockWidget>
 #include "ui/pack-switcher.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/presence-text.hpp"
@@ -422,6 +424,24 @@ bool LyricsDock::eventFilter(QObject *watched, QEvent *event)
 	return QWidget::eventFilter(watched, event);
 }
 
+void LyricsDock::bringForward()
+{
+	// The panel lives in a dock OBS wraps it in: climb to it and hand it the keyboard, then put the words
+	// box in reach, its text ready to be typed over.
+	for (QWidget *host = parentWidget(); host; host = host->parentWidget()) {
+		if (auto *floating = qobject_cast<QDockWidget *>(host)) {
+			floating->show();
+			floating->raise();
+			break;
+		}
+	}
+	show();
+	raise();
+	activateWindow();
+	search_->setFocus();
+	search_->selectAll();
+}
+
 void LyricsDock::searched()
 {
 	rebuildResults();
@@ -431,19 +451,22 @@ void LyricsDock::rebuildResults()
 {
 	clear(resultsLayout_);
 	const std::string query = search_->text().toStdString();
-	// While nothing is typed and a song is open, the panel shows the song, not a list.
-	if (query.empty() && songIndex() >= 0) {
-		resultsBox_->hide();
-		return;
-	}
 	resultsBox_->show();
-	const std::vector<size_t> found = searchSongs(songs_, query, 6);
+	// With the box empty the list is the library: every song saved, so yours stay in sight however much you
+	// work on one. Typing narrows it to the matches.
+	const size_t shown = query.empty() ? songs_.size() : 6;
+	const std::vector<size_t> found = searchSongs(songs_, query, shown);
 	if (found.empty() && query.empty())
 		resultsLayout_->addWidget(
 			innerLabel(resultsBox_, lt("Laycue.Lyrics.NoMatch"), 11, 400, color::textTertiary));
+	else if (query.empty() && !found.empty())
+		resultsLayout_->addWidget(
+			innerLabel(resultsBox_, lt("Laycue.Lyrics.Songs"), 10, 700, color::textTertiary));
+	const int open = songIndex();
 	for (size_t index : found) {
 		auto *row = new RowButton(resultsBox_);
-		row->setTitle(qs(songs_[index].title));
+		// The song on screen is marked in front, where a long title can't push the mark out of sight.
+		row->setTitle((int(index) == open ? QStringLiteral("\u25CF ") : QString()) + qs(songs_[index].title));
 		row->setValue(qs(songs_[index].author));
 		connect(row, &RowButton::clicked, this, [this, index]() { openSong(index); });
 		resultsLayout_->addWidget(row);

@@ -259,6 +259,17 @@ void RowButton::setValue(const QString &value)
 	update();
 }
 
+// A search result with room to read: the reference on its own line, the passage wrapped under it (three lines
+// at most). The layout takes the height from heightForWidth.
+void RowButton::setBody(const QString &body)
+{
+	body_ = body.left(200) + (body.size() > 200 ? QStringLiteral("…") : QString());
+	QSizePolicy policy = sizePolicy();
+	policy.setHeightForWidth(true);
+	setSizePolicy(policy);
+	update();
+}
+
 void RowButton::setOpen(bool open)
 {
 	open_ = open;
@@ -275,6 +286,17 @@ QSize RowButton::minimumSizeHint() const
 	return {120, size::controlHeight};
 }
 
+int RowButton::heightForWidth(int width) const
+{
+	if (body_.isEmpty())
+		return size::controlHeight;
+	// The passage wraps under the title, three lines at most; the full text stays with the tool tip.
+	const QFontMetrics fm(uiFont(12, 500));
+	const int wrapWidth = std::max(40, width - 24 - 30); // the insets the paint file uses, chevron included
+	const QRect wrapped = fm.boundingRect(QRect(0, 0, wrapWidth, 3 * fm.lineSpacing()), Qt::TextWordWrap, body_);
+	return 7 + 16 + 3 + std::min(wrapped.height(), 3 * fm.lineSpacing()) + 7;
+}
+
 void RowButton::paintEvent(QPaintEvent *)
 {
 	QPainter p(this);
@@ -286,19 +308,38 @@ void RowButton::paintEvent(QPaintEvent *)
 	p.drawRoundedRect(box, radius, radius);
 
 	const int pad = 12;
-	const QRectF chevron(box.right() - pad - 10, box.center().y() - 5, 10, 10);
-	QRectF text = box.adjusted(pad, 0, -(pad + 18), 0);
-	p.setFont(uiFont(12, 600));
-	p.setPen(color::textTertiary);
-	const int titleW = QFontMetrics(uiFont(12, 600)).horizontalAdvance(title_);
-	p.drawText(text, Qt::AlignLeft | Qt::AlignVCenter, title_);
-	if (!value_.isEmpty()) {
-		// The value gets what is left of the row and is cut with an ellipsis rather than overlapping.
-		QRectF valueBox = text.adjusted(titleW + 10, 0, 0, 0);
+	QRectF chevron;
+	bool tall = false;
+	if (!body_.isEmpty()) {
+		// A tall search result: the reference on the top line, the passage wrapped beneath it.
+		tall = true;
+		const QRectF titleLine = box.adjusted(pad, 7, 0, 0).adjusted(0, 0, -(pad + 18), 0);
+		const QRectF titleBox(titleLine.left(), titleLine.top(), titleLine.width(), 16.0);
+		p.setFont(uiFont(12, 700));
+		p.setPen(color::textTertiary);
+		p.drawText(titleBox, Qt::AlignLeft | Qt::AlignVCenter, title_);
+		p.setFont(uiFont(12, 500));
 		p.setPen(color::cream);
-		const QString shown =
-			QFontMetrics(uiFont(12, 600)).elidedText(value_, Qt::ElideRight, int(valueBox.width()));
-		p.drawText(valueBox, Qt::AlignRight | Qt::AlignVCenter, shown);
+		const QRectF bodyBox(titleLine.left(), titleLine.top() + 19.0, titleLine.width(),
+				     titleLine.height() - 19.0);
+		p.drawText(bodyBox, Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap, body_);
+		chevron = QRectF(box.right() - pad - 10, titleLine.top() + 11.0, 10, 10);
+	}
+	if (!tall) {
+		chevron = QRectF(box.right() - pad - 10, box.center().y() - 5, 10, 10);
+		QRectF text = box.adjusted(pad, 0, -(pad + 18), 0);
+		p.setFont(uiFont(12, 600));
+		p.setPen(color::textTertiary);
+		const int titleW = QFontMetrics(uiFont(12, 600)).horizontalAdvance(title_);
+		p.drawText(text, Qt::AlignLeft | Qt::AlignVCenter, title_);
+		if (!value_.isEmpty()) {
+			// The value gets what is left of the row and is cut with an ellipsis rather than overlapping.
+			QRectF valueBox = text.adjusted(titleW + 10, 0, 0, 0);
+			p.setPen(color::cream);
+			const QString shown =
+				QFontMetrics(uiFont(12, 600)).elidedText(value_, Qt::ElideRight, int(valueBox.width()));
+			p.drawText(valueBox, Qt::AlignRight | Qt::AlignVCenter, shown);
+		}
 	}
 	p.setPen(QPen(color::textSecondary, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
 	QPainterPath path;

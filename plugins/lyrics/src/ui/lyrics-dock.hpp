@@ -46,6 +46,8 @@ public:
 	~LyricsDock() override;
 
 	void runHotkey(int index); // 0 show/hide, 1 next, 2 previous
+	// The source clicked in the Sources list: bring this panel forward, ready with its words box.
+	void bringForward();
 
 protected:
 	bool eventFilter(QObject *watched, QEvent *event) override;

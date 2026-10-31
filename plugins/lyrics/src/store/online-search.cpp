@@ -138,20 +138,23 @@ void OnlineSearch::search(const QString &query)
 
 void OnlineSearch::fetchWords(const OnlineSong &song)
 {
-	// Every spelling worth trying, on both sites, until one has words: the title as listed, then without
-	// "(Live)" and "feat. ...", with and without the singer.
+	// The bigger song book is asked first, with the title as listed then tidied and the whole "singer song"
+	// line as well as the title alone; the smaller site follows with both spellings. One succeeds to words.
 	const std::string clean = cleanSongTitle(song.title);
 	std::vector<WordsTry> tries;
-	tries.push_back({true, song.artist, song.title});
-	if (clean != song.title)
-		tries.push_back({true, song.artist, clean});
-	for (const std::string &text : {song.artist + " " + song.title, song.artist + " " + clean, clean, song.title}) {
-		bool seen = false;
-		for (const WordsTry &t : tries)
-			seen = seen || (!t.ovh && t.text == text);
-		if (!seen)
-			tries.push_back({false, std::string(), text});
-	}
+	const auto add = [&](bool ovh, const std::string &artist, const std::string &text) {
+		for (const WordsTry &t : tries) {
+			if (t.ovh == ovh && t.artist == artist && t.text == text)
+				return;
+		}
+		tries.push_back({ovh, artist, text});
+	};
+	add(false, std::string(), song.artist + " " + song.title);
+	add(false, std::string(), song.artist + " " + clean);
+	add(false, std::string(), clean);
+	add(false, std::string(), song.title);
+	add(true, song.artist, song.title);
+	add(true, song.artist, clean);
 	tryWords(song, tries, 0, QStringLiteral("no words"));
 }
 

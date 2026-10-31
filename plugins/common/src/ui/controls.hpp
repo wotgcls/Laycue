@@ -82,11 +82,14 @@ public:
 
 	void setTitle(const QString &title);
 	void setValue(const QString &value);
-	void setOpen(bool open); // chevron points down when open, right when closed
+	void setBody(const QString &body); // a wrapped paragraph under the title; the row grows to carry it
+	void setOpen(bool open);           // chevron points down when open, right when closed
 	bool isOpen() const { return open_; }
 
 	QSize sizeHint() const override;
 	QSize minimumSizeHint() const override;
+	int heightForWidth(int width) const override;
+	bool hasHeightForWidth() const override { return !body_.isEmpty(); }
 
 signals:
 	void clicked();
@@ -102,6 +105,7 @@ protected:
 private:
 	QString title_;
 	QString value_;
+	QString body_; // when set, the row is a tall search result: the passage wrapped under the title
 	bool open_ = false;
 	bool hovered_ = false;
 	bool pressed_ = false;

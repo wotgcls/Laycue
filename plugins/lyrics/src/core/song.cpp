@@ -292,40 +292,60 @@ bool parseOpenLyrics(const std::string &xmlText, Song &out, std::string &error)
 
 namespace {
 
-// Whether a lyric line of any part (not just the first) contains the query, so a song can be found by the
-// words it sings. Case and punctuation don't matter (the query arrives as `simple()` already).
-bool inLyrics(const Song &song, const std::string &q)
+// Whether every word typed is somewhere in a song's title, singer or words it sings — so "grace unfailing"
+// still lands on its song even when the words don't stand next to each other, and the singer's name finds
+// the song the title doesn't name. Case and punctuation don't matter (both sides arrive as `simple()`).
+std::vector<std::string> queryWords(const std::string &q)
 {
-	if (q.empty())
-		return false;
-	for (const Section &section : song.sections) {
-		for (const std::string &line : section.lines) {
-			if (simple(line).find(q) != std::string::npos)
-				return true;
-		}
+	std::stringstream in(q);
+	std::vector<std::string> words;
+	std::string word;
+	while (in >> word)
+		words.push_back(word);
+	return words;
+}
+
+int wordsIn(const std::vector<std::string> &words, const std::string &hay)
+{
+	int found = 0;
+	for (const std::string &word : words) {
+		if (hay.find(word) != std::string::npos)
+			++found;
 	}
-	return false;
+	return found;
 }
 
 } // namespace
 
 std::vector<size_t> searchSongs(const std::vector<Song> &songs, const std::string &query, size_t limit)
 {
-	const std::string q = simple(query);
+	const std::vector<std::string> words = queryWords(simple(query));
 	std::vector<std::pair<int, size_t>> scored;
 	for (size_t i = 0; i < songs.size(); ++i) {
+		std::string sung;
+		for (const Section &section : songs[i].sections) {
+			for (const std::string &line : section.lines) {
+				if (!sung.empty())
+					sung += "  "; // a gap between lines, so words can't glue across a line's end
+				sung += simple(line);
+			}
+		}
 		const std::string title = simple(songs[i].title);
+		const std::string author = simple(songs[i].author);
 		int score = 0;
-		if (q.empty())
+		if (words.empty()) {
 			score = 1;
-		else if (title.rfind(q, 0) == 0)
-			score = 4;
-		else if (title.find(" " + q) != std::string::npos)
-			score = 3;
-		else if (title.find(q) != std::string::npos)
-			score = 2;
-		else if (inLyrics(songs[i], q))
-			score = 1;
+		} else {
+			const int inTitle = wordsIn(words, title);
+			const int inAuthor = wordsIn(words, author);
+			const int all = wordsIn(words, title + "  " + author + "  " + sung);
+			if (inTitle == int(words.size()))
+				score = title.rfind(words.front(), 0) == 0 ? 4 : 3;
+			else if (inTitle + inAuthor == int(words.size()))
+				score = 2;
+			else if (all == int(words.size()))
+				score = 1;
+		}
 		if (score > 0)
 			scored.push_back({score, i});
 	}
