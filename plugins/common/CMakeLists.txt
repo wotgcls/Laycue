@@ -30,6 +30,8 @@ target_sources(
     src/slides/slide-style.hpp
     src/slides/style-editor.cpp
     src/slides/style-editor.hpp
+    src/slides/theme-from-image.cpp
+    src/slides/theme-from-image.hpp
     src/ui/controls.cpp
     src/ui/controls.hpp
     src/ui/laycue-menu.cpp

@@ -1,5 +1,6 @@
 #include "slides/style-editor.hpp"
 
+#include "slides/theme-from-image.hpp"
 #include "ui/controls.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/text.hpp"
@@ -138,8 +139,15 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 			 lt("Laycue.Slides.FillGradient"), lt("Laycue.Slides.FillPicture"),
 			 lt("Laycue.Slides.FillMoving")});
 	connect(fill_, &Segmented::changed, this, [this](int index) {
-		if (index == int(Fill::Picture) && style_.picture.empty()) {
-			choosePicture(); // a picture fill needs a picture
+		if ((index == int(Fill::Picture) || index == int(Fill::Moving)) && style_.picture.empty()) {
+			// a picture fill needs a picture, and a moving glow takes its theme from one
+			const int previous = style_.fill;
+			style_.fill = index;
+			choosePicture();
+			if (style_.picture.empty()) { // cancelled: the choice goes back where it was
+				style_.fill = previous;
+				refresh();
+			}
 			return;
 		}
 		style_.fill = index;
@@ -173,6 +181,14 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 	auto *choose = button(pictureRow_, lt("Laycue.Slides.ChooseBackground"), "laycueSecondary");
 	connect(choose, &QAbstractButton::clicked, this, &StyleEditor::choosePicture);
 	picture->addWidget(choose);
+	auto *match = button(pictureRow_, lt("Laycue.Slides.MatchPicture"), "laycueSecondary");
+	connect(match, &QAbstractButton::clicked, this, [this]() {
+		// The picture's colours laid onto the moving glow: the theme is read out and the gradient's
+		// two colours, its third colour and the accent all follow the picture.
+		applyTheme(style_, themeFromImage(QString::fromStdString(style_.picture)));
+		emitChanged();
+	});
+	picture->addWidget(match);
 	pictureName_ = innerLabel(pictureRow_, QString(), 11, 400, color::textTertiary);
 	picture->addWidget(pictureName_, 1);
 	v->addWidget(pictureRow_);
@@ -196,8 +212,8 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 	// The thin line the templates put on the band (or a side rule): exactly as it comes, a gradient along it,
 	// the gradient with a quiet light that travels along it, or no line at all.
 	line_ = new Segmented(this);
-	line_->setItems({lt("Laycue.Slides.LineFlat"), lt("Laycue.Slides.LineGradient"),
-			 lt("Laycue.Slides.LineSweep"), lt("Laycue.Slides.LineNone")});
+	line_->setItems({lt("Laycue.Slides.LineFlat"), lt("Laycue.Slides.LineGradient"), lt("Laycue.Slides.LineSweep"),
+			 lt("Laycue.Slides.LineNone")});
 	connect(line_, &Segmented::changed, this, [this](int index) {
 		style_.line = index;
 		emitChanged();
@@ -331,7 +347,10 @@ void StyleEditor::choosePicture()
 		return;
 	}
 	style_.picture = file.toStdString();
-	style_.fill = int(Fill::Picture);
+	// The fill stays what the caller chose (Picture when picked from the row, or the moving glow when
+	// the switcher sent the user here). The picture's colours come with it: the theme is read out and
+	// laid on, so the slide and the picture were made for each other the moment it is chosen.
+	applyTheme(style_, themeFromImage(file));
 	emitChanged();
 }
 
@@ -372,7 +391,7 @@ void StyleEditor::refresh()
 			     fill == Fill::Moving);
 	colour2_->setVisible(fill == Fill::Gradient || fill == Fill::Moving);
 	colour3_->setVisible(fill == Fill::Moving);
-	pictureRow_->setVisible(fill == Fill::Picture);
+	pictureRow_->setVisible(fill == Fill::Picture || fill == Fill::Moving);
 	pictureName_->setText(QFileInfo(QString::fromStdString(style_.picture)).fileName());
 	text_->setColour(toQColor(style_.text));
 	accent_->setColour(toQColor(style_.accent));
