@@ -20,6 +20,7 @@ extern "C" const char *PLUGIN_VERSION;
 
 class QLabel;
 class QLineEdit;
+class QScrollArea;
 class QVBoxLayout;
 
 namespace laycue::ui {
@@ -44,6 +45,8 @@ public:
 	~ScriptureDock() override;
 
 	void runHotkey(int index); // 0 show/hide, 1 next, 2 previous
+	// The source clicked in the Sources list: bring this panel forward, ready with its type box.
+	void bringForward();
 
 private:
 	void build();
@@ -83,8 +86,9 @@ private:
 	QLabel *presence_ = nullptr;
 	QLabel *status_ = nullptr;
 	ReferenceBox *input_ = nullptr;
-	ui::Segmented *mode_ = nullptr;    // Reference / Search, above the type box
-	QLineEdit *searchInput_ = nullptr; // plain text, shown in Search mode
+	ui::Segmented *mode_ = nullptr;     // Reference / Search, above the type box
+	QLineEdit *searchInput_ = nullptr;  // plain text, shown in Search mode
+	QScrollArea *pageScroll_ = nullptr; // the whole page scrolls, so a long chapter reads through
 	QLabel *hint_ = nullptr;
 	QLabel *referenceLabel_ = nullptr; // "John 3:16 (KJV)" above the verses
 	QWidget *versesBox_ = nullptr;

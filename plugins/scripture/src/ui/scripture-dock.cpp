@@ -23,6 +23,7 @@
 
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QDockWidget>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
@@ -125,6 +126,7 @@ void ScriptureDock::build()
 	scroll->setWidgetResizable(true);
 	scroll->setFrameShape(QFrame::NoFrame);
 	scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	pageScroll_ = scroll; // so a rebuilt list can bring the verse on screen into view
 	contentLayout->addWidget(scroll);
 	toast_ = innerLabel(content, QString(), 12, 500, color::cream);
 	toast_->setStyleSheet(QStringLiteral("background: %1; color: %2; border-radius: 16px; padding: 8px 14px;")
@@ -520,7 +522,8 @@ void ScriptureDock::rebuildVerses()
 		for (const Reference &hit : searchResults_) {
 			const QString text = qs(bible_->verse(hit.book, hit.chapter, hit.verseFrom));
 			auto *row = new RowButton(versesBox_);
-			row->setTitle(qs(referenceLabel(hit)) + "  " + text);
+			row->setTitle(qs(referenceLabel(hit)));
+			row->setBody(text); // the row grows tall, so a sizable part of the verse shows at once
 			row->setToolTip(text);
 			connect(row, &RowButton::clicked, this, [this, hit]() { showVerse(hit); });
 			versesLayout_->addWidget(row);
@@ -534,11 +537,10 @@ void ScriptureDock::rebuildVerses()
 	Reference chapter = current_;
 	chapter.verseFrom = 0;
 	referenceLabel_->setText(qs(referenceLabel(chapter) + " \xC2\xB7 " + bible_->name));
-	// The verse on screen with a few around it, so the list stays short in a small panel.
+	// Every verse of the chapter, so the panel scrolls to the first or the last as freely as to the middle.
 	const int count = bible_->verseCount(current_.book, current_.chapter);
-	const int first = std::max(1, current_.verseFrom - 2);
-	const int last = std::min(count, first + 6);
-	for (int verse = first; verse <= last; ++verse) {
+	QWidget *onScreen = nullptr;
+	for (int verse = 1; verse <= count; ++verse) {
 		auto *row = new RowButton(versesBox_);
 		const QString text = qs(bible_->verse(current_.book, current_.chapter, verse));
 		// The verse on screen is marked in front, where a long verse can't push the mark out of sight.
@@ -555,6 +557,12 @@ void ScriptureDock::rebuildVerses()
 			showVerse(ref);
 		});
 		versesLayout_->addWidget(row);
+		if (here)
+			onScreen = row;
+	}
+	// The verse on screen leads the scroll, once the freshly built list has had its layout.
+	if (onScreen && pageScroll_) {
+		QTimer::singleShot(0, this, [this, onScreen]() { pageScroll_->ensureWidgetVisible(onScreen); });
 	}
 }
 
@@ -678,6 +686,28 @@ void ScriptureDock::showTemplates()
 	templates_->setCurrent(position);
 	packs_->blockSignals(false);
 	templates_->blockSignals(false);
+}
+
+void ScriptureDock::bringForward()
+{
+	// The panel lives in a dock OBS wraps it in: climb to it and hand it the keyboard, then put the type
+	// box in reach — the word search when Search mode is chosen, the reference otherwise.
+	for (QWidget *host = parentWidget(); host; host = host->parentWidget()) {
+		if (auto *floating = qobject_cast<QDockWidget *>(host)) {
+			floating->show();
+			floating->raise();
+			break;
+		}
+	}
+	show();
+	raise();
+	activateWindow();
+	if (searchMode_ && searchInput_) {
+		searchInput_->setFocus();
+		searchInput_->selectAll();
+	} else if (input_) {
+		input_->focusBook(); // the panel knows which of its three edits should carry the caret
+	}
 }
 
 void ScriptureDock::updateStatus()
