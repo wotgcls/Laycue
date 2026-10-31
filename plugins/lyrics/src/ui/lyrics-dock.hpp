@@ -28,6 +28,7 @@ namespace laycue::ui {
 class ActionButton;
 class RowButton;
 class Segmented;
+class Switch;
 } // namespace laycue::ui
 
 namespace laycue::slides {
