@@ -120,6 +120,12 @@ std::map<std::string, std::string> &nameKeys()
 	return keys;
 }
 
+std::map<std::string, std::function<void()>> &reveals()
+{
+	static std::map<std::string, std::function<void()>> map; // source id -> bring the panel forward
+	return map;
+}
+
 std::string str(const char *s)
 {
 	return s ? std::string(s) : std::string();
@@ -339,6 +345,35 @@ void render(void *data, gs_effect_t *effect)
 	}
 }
 
+static bool openPanel(obs_properties_t *, obs_property_t *, void *data)
+{
+	auto *s = static_cast<SlideSource *>(data);
+	const char *id = s && s->source ? obs_source_get_id(s->source) : nullptr;
+	if (!id)
+		return false;
+	const auto bring = reveals().find(id);
+	if (bring != reveals().end() && bring->second)
+		bring->second();
+	return true;
+}
+
+// What a double click on the source in the Sources list opens: one clear button that brings the panel
+// forward, since the source itself is driven from its panel and has no settings of its own.
+obs_properties_t *getProperties(void *data)
+{
+	obs_properties_t *props = obs_properties_create();
+	auto *s = static_cast<SlideSource *>(data);
+	const char *id = s && s->source ? obs_source_get_id(s->source) : nullptr;
+	const auto bring = id ? reveals().find(id) : reveals().end();
+	if (bring != reveals().end() && bring->second) {
+		const auto name = nameKeys().find(id);
+		std::string label = name != nameKeys().end() ? obs_module_text(name->second.c_str()) : "Laycue";
+		label += " panel"; // e.g. "Laycue Lyrics panel"
+		obs_properties_add_button(props, "laycue_open_panel", label.c_str(), openPanel);
+	}
+	return props;
+}
+
 } // namespace
 
 void registerSlideSource(const char *id, const char *nameKey)
@@ -357,12 +392,19 @@ void registerSlideSource(const char *id, const char *nameKey)
 	info.destroy = destroy;
 	info.update = update;
 	info.get_defaults = getDefaults;
+	info.get_properties = getProperties;
 	info.get_width = getWidth;
 	info.get_height = getHeight;
 	info.video_tick = tick;
 	info.video_render = render;
 	info.icon_type = OBS_ICON_TYPE_TEXT;
 	obs_register_source(&info);
+}
+
+void registerSourceReveal(const char *id, const std::function<void()> &bringForward)
+{
+	if (bringForward)
+		reveals()[id] = bringForward;
 }
 
 } // namespace laycue::slides

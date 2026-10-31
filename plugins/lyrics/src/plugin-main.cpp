@@ -51,6 +51,8 @@ bool obs_module_load(void)
 		auto *dock = new laycue::lyrics::LyricsDock(mainWindow);
 		if (obs_frontend_add_dock_by_id(kDockId, obs_module_text("Laycue.Lyrics.DockTitle"), dock)) {
 			g_dock = dock;
+			// The source in the Sources list opens this panel: one button brings it forward.
+			laycue::slides::registerSourceReveal("laycue_lyrics", [dock] { dock->bringForward(); });
 			laycue::ui::addToLaycueMenu(dock, QString::fromUtf8(obs_module_text("Laycue.MenuTitle")),
 						    QString::fromUtf8(obs_module_text("Laycue.Lyrics.MenuItem")));
 			g_hotkeys = std::make_unique<laycue::HotkeySet>(

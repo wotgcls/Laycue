@@ -3,6 +3,7 @@
 // so verses and lines never jump.
 #pragma once
 
+#include <functional>
 #include <string>
 
 namespace laycue::slides {
@@ -17,5 +18,9 @@ constexpr const char *shown = "shown"; // false: fades out
 
 // Call once from obs_module_load. `nameKey` is the locale key for the name in OBS's Sources list.
 void registerSlideSource(const char *id, const char *nameKey);
+
+// Call after the panel is added: `bringForward` raises the panel and puts its entry control in reach, wired
+// to the source's properties window, so a source in the Sources list opens the place it is driven from.
+void registerSourceReveal(const char *id, const std::function<void()> &bringForward);
 
 } // namespace laycue::slides
