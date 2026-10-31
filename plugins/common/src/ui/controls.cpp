@@ -260,13 +260,15 @@ void RowButton::setValue(const QString &value)
 }
 
 // A search result with room to read: the reference on its own line, the passage wrapped under it (three lines
-// at most). The layout takes the height from heightForWidth.
+// at most). The layout takes the height from heightForWidth, and the size hint carries the same height so a
+// plain box layout (which may not ask for a height-for-width) still gives the row its room.
 void RowButton::setBody(const QString &body)
 {
 	body_ = body.left(200) + (body.size() > 200 ? QStringLiteral("…") : QString());
 	QSizePolicy policy = sizePolicy();
 	policy.setHeightForWidth(true);
 	setSizePolicy(policy);
+	updateGeometry(); // the row just grew: ask the layout for the taller height
 	update();
 }
 
@@ -278,7 +280,13 @@ void RowButton::setOpen(bool open)
 
 QSize RowButton::sizeHint() const
 {
-	return {200, size::controlHeight};
+	if (body_.isEmpty())
+		return {200, size::controlHeight};
+	// The tall height at a typical panel width: the title line, three lines of the passage at most, the padding.
+	const QFontMetrics fm(uiFont(12, 500));
+	const int wrapWidth = std::max(40, 300 - 24 - 30);
+	const QRect wrapped = fm.boundingRect(QRect(0, 0, wrapWidth, 3 * fm.lineSpacing()), Qt::TextWordWrap, body_);
+	return {200, 7 + 16 + 3 + std::min(wrapped.height(), 3 * fm.lineSpacing()) + 7};
 }
 
 QSize RowButton::minimumSizeHint() const
