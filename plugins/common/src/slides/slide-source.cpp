@@ -369,7 +369,7 @@ obs_properties_t *getProperties(void *data)
 		const auto name = nameKeys().find(id);
 		std::string label = name != nameKeys().end() ? obs_module_text(name->second.c_str()) : "Laycue";
 		label += " panel"; // e.g. "Laycue Lyrics panel"
-		obs_properties_add_button(props, "laycue_open_panel", label.c_str(), openPanel);
+		obs_properties_add_button2(props, "laycue_open_panel", label.c_str(), openPanel, s);
 	}
 	return props;
 }
