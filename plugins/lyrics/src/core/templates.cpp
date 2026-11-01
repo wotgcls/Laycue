@@ -28,6 +28,13 @@ slides::SlideStyle style(Layout layout, Fill fill, uint32_t background, uint32_t
 	return s;
 }
 
+slides::SlideStyle fadedBox()
+{
+	slides::SlideStyle s = style(Layout::Card, Fill::SeeThrough, 0x000000, 0x000000, 0xFFFFFF, 0xE0A91E);
+	s.line = int(slides::AccentLine::None);
+	return s;
+}
+
 } // namespace
 
 const char *lyricsPackKey(int pack)
@@ -74,6 +81,9 @@ const std::vector<LyricsTemplate> &lyricsTemplates()
 		{"Laycue.Lyrics.T.Aurora", 3,
 		 style(Layout::LowerThird, Fill::Moving, 0x1A0B4A, 0xC2185B, 0xFFFFFF, 0xFFD54F, Align::Centre,
 		       Font::Modern, Decor::None, 0x3D5AFE)},
+		// Added after the others so saved looks keep their places: a see-through dark box with soft corners and
+		// no edge line, the words centred in it.
+		{"Laycue.Lyrics.T.FadedBox", 0, fadedBox()},
 	};
 	return all;
 }

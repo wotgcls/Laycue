@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <sstream>
 
 namespace laycue::lyrics {
@@ -172,9 +173,15 @@ std::string songText(const Song &song)
 	return out;
 }
 
+int clampLinesPerSlide(int lines)
+{
+	return lines >= 3 ? 3 : 2;
+}
+
 Song parseSongFile(const std::string &text, const std::string &fallbackTitle)
 {
 	std::string title = fallbackTitle, author, body;
+	int lines = 2;
 	bool header = true;
 	for (const std::string &raw : splitLines(text)) {
 		const std::string line = trim(raw);
@@ -188,13 +195,19 @@ Song parseSongFile(const std::string &text, const std::string &fallbackTitle)
 				author = trim(line.substr(7));
 				continue;
 			}
+			if (l.rfind("lines:", 0) == 0) {
+				lines = clampLinesPerSlide(std::atoi(trim(line.substr(6)).c_str()));
+				continue;
+			}
 			if (line.empty())
 				continue;
 			header = false;
 		}
 		body += raw + "\n";
 	}
-	return parseSongText(title, author, body);
+	Song song = parseSongText(title, author, body);
+	song.linesPerSlide = lines;
+	return song;
 }
 
 std::vector<LyricSlide> slidesFor(const Song &song, int linesPerSlide)

@@ -70,9 +70,8 @@ LyricsSettings loadSettings()
 		s.styles[i] = slides::readStyle(item);
 	}
 	s.lastSong = str(obs_data_get_string(data, "lastSong"));
-	s.showSongName = obs_data_has_user_value(data, "showSongName")
-				 ? obs_data_get_bool(data, "showSongName")
-				 : true; // absent = shown (the default)
+	s.showSongName = obs_data_has_user_value(data, "showSongName") ? obs_data_get_bool(data, "showSongName")
+								       : true; // absent = shown (the default)
 	return s;
 }
 
@@ -105,6 +104,8 @@ std::vector<Song> loadLibrary()
 						  str(obs_data_get_string(item, "author")),
 						  str(obs_data_get_string(item, "text")));
 			song.id = str(obs_data_get_string(item, "id"));
+			if (obs_data_has_user_value(item, "lines")) // absent in songs saved before: two lines
+				song.linesPerSlide = clampLinesPerSlide(int(obs_data_get_int(item, "lines")));
 			if (song.id.empty())
 				song.id = makeSongId(song.title, idsOf(songs));
 			if (!song.title.empty())
@@ -140,6 +141,7 @@ void saveLibrary(const std::vector<Song> &songs)
 		obs_data_set_string(item, "title", s.title.c_str());
 		obs_data_set_string(item, "author", s.author.c_str());
 		obs_data_set_string(item, "text", songText(s).c_str());
+		obs_data_set_int(item, "lines", s.linesPerSlide);
 		obs_data_array_push_back(array, item);
 	}
 	obs_data_set_array(data, "songs", array);

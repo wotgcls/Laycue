@@ -61,6 +61,7 @@ private:
 	void step(int direction);
 	void push(); // writes the current verse into the layer
 	void rebuildVerses();
+	void browseTo(const Reference &ref); // shows a typed reference in the list, without putting it up
 	void rebuildSaved();
 	void updateStatus();
 	void useTemplate(int index);
@@ -72,6 +73,7 @@ private:
 	VersionFile version_;
 	std::shared_ptr<const Bible> bible_;
 	Reference current_; // the verse on screen (or ready)
+	Reference viewing_; // the chapter the list shows, and the verse typed in the box (it follows the typing)
 	bool shown_ = false;
 	std::string sourceName_;
 	// A phrase typed in the box, shown as a list of the verses that hold it until one is picked.
@@ -86,9 +88,9 @@ private:
 	QLabel *presence_ = nullptr;
 	QLabel *status_ = nullptr;
 	ReferenceBox *input_ = nullptr;
-	ui::Segmented *mode_ = nullptr;     // Reference / Search, above the type box
-	QLineEdit *searchInput_ = nullptr;  // plain text, shown in Search mode
-	QScrollArea *pageScroll_ = nullptr; // the whole page scrolls, so a long chapter reads through
+	ui::Segmented *mode_ = nullptr;       // Reference / Search, above the type box
+	QLineEdit *searchInput_ = nullptr;    // plain text, shown in Search mode
+	QScrollArea *versesScroll_ = nullptr; // the chapter scrolls inside the card; the box and buttons stay put
 	QLabel *hint_ = nullptr;
 	QLabel *referenceLabel_ = nullptr; // "John 3:16 (KJV)" above the verses
 	QWidget *versesBox_ = nullptr;

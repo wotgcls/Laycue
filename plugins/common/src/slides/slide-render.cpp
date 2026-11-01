@@ -182,7 +182,7 @@ void drawCaption(QPainter &p, const QRectF &box, const QString &caption, double 
 
 // Paints the style's background into `area` (clipped to `shape` when given).
 void paintFill(QPainter &p, const QRectF &area, const QPainterPath &shape, const SlideStyle &s, const QImage &picture,
-	       bool fadeTop = true)
+	       double fadeTo = 0.32)
 {
 	p.save();
 	if (!shape.isEmpty())
@@ -224,8 +224,8 @@ void paintFill(QPainter &p, const QRectF &area, const QPainterPath &shape, const
 	if (shape.isEmpty() && area.height() < viewport.height() * 0.5) {
 		const bool toBottom = area.bottom() >= viewport.bottom() - 0.5;
 		QLinearGradient blend(QPointF(0, area.top()), QPointF(0, area.bottom()));
-		blend.setColorAt(0.00, QColor(0, 0, 0, fadeTop ? 0 : 255));
-		blend.setColorAt(fadeTop ? 0.32 : 0.01, QColor(0, 0, 0, 255));
+		blend.setColorAt(0.00, QColor(0, 0, 0, fadeTo > 0.0 ? 0 : 255));
+		blend.setColorAt(std::clamp(fadeTo, 0.01, 0.5), QColor(0, 0, 0, 255));
 		blend.setColorAt(0.88, QColor(0, 0, 0, 255));
 		blend.setColorAt(1.00, QColor(0, 0, 0, toBottom ? 255 : 0));
 		p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
@@ -1364,10 +1364,17 @@ QImage renderSlide(const SlideRequest &r)
 		// The band runs to the bottom of the frame: the gradient fills the lower edge of the screen instead
 		// of stopping short of it, and the words stay where they were, balanced above that edge.
 		const QRectF band(g.area.left(), g.area.top(), g.area.width(), H - g.area.top());
-		// Under a line the band is solid right up to it, so the line is its clean top edge, not a stripe
-		// floating over a fade. With no line the top melts into the video instead.
+		// With a line, the band's colour already rises out of the video above it and is solid by the time it
+		// reaches the line, so the line sits inside the fade instead of being the edge of a hard box. With no
+		// line the band's own top melts away instead.
 		const bool line = !bare && s.line != int(AccentLine::None);
-		paintFill(p, band, QPainterPath(), s, r.picture, !line);
+		if (line) {
+			const double rise = 0.10 * H;
+			const QRectF tall = band.adjusted(0, -rise, 0, 0);
+			paintFill(p, tall, QPainterPath(), s, r.picture, rise / tall.height());
+		} else {
+			paintFill(p, band, QPainterPath(), s, r.picture);
+		}
 		if (!bare)
 			drawAccent(p, QRectF(0, g.area.top(), W, 5 * k), s.line, accent);
 		drawText(p, g.text, text, words, textColour, k, bare, s.align);

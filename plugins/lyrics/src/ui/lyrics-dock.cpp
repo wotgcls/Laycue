@@ -411,6 +411,13 @@ QWidget *LyricsDock::buildEditor()
 		lt("Laycue.Lyrics.WordsHint").replace(QStringLiteral("\\n"), QStringLiteral("\n")));
 	v->addWidget(editText_, 1);
 	v->addWidget(innerLabel(page, lt("Laycue.Lyrics.WordsHelp"), 11, 400, color::textTertiary));
+	// How the pasted words go up: two lines at a time, or three.
+	v->addWidget(innerLabel(page, lt("Laycue.Lyrics.LinesPerSlide"), 12, 600, color::textSecondary));
+	editLines_ = new Segmented(page);
+	editLines_->setItems({lt("Laycue.Lyrics.TwoLines"), lt("Laycue.Lyrics.ThreeLines")});
+	editLines_->setCurrent(0);
+	editLines_->setAccessibleName(lt("Laycue.Lyrics.LinesPerSlide"));
+	v->addWidget(editLines_);
 	auto *row = new QHBoxLayout();
 	row->setSpacing(size::gapSmall);
 	auto *saveButton = button(page, lt("Laycue.Lyrics.Save"), "laycuePrimary");
@@ -633,7 +640,7 @@ void LyricsDock::openSong(size_t index)
 		return;
 	const Song &song = songs_[index];
 	songId_ = song.id;
-	slides_ = slidesFor(song, 2);
+	slides_ = slidesFor(song, song.linesPerSlide);
 	slide_ = slides_.empty() ? -1 : 0;
 	settings_.lastSong = song.id;
 	saveSettings(settings_);
@@ -782,11 +789,13 @@ void LyricsDock::edit(bool newSong)
 		editTitle_->clear();
 		editAuthor_->clear();
 		editText_->clear();
+		editLines_->setCurrent(0);
 	} else {
 		const Song &song = songs_[size_t(index)];
 		editTitle_->setText(qs(song.title));
 		editAuthor_->setText(qs(song.author));
 		editText_->setPlainText(qs(songText(song)));
+		editLines_->setCurrent(song.linesPerSlide >= 3 ? 1 : 0);
 	}
 	deleteButton_->setVisible(!editingNew_);
 	stack_->setCurrentIndex(1);
@@ -801,6 +810,7 @@ void LyricsDock::saveEdit()
 		return;
 	}
 	Song song = parseSongText(title, editAuthor_->text().toStdString(), editText_->toPlainText().toStdString());
+	song.linesPerSlide = editLines_->current() == 1 ? 3 : 2;
 	if (song.sections.empty()) {
 		toast(lt("Laycue.Lyrics.NeedWords"));
 		return;

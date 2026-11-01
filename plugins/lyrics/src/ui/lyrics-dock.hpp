@@ -104,14 +104,15 @@ private:
 	QScrollArea *slidesScroll_ = nullptr; // the song's lines: a set height with its own scrolling
 	ui::ActionButton *showButton_ = nullptr;
 	ui::Switch *songNameSwitch_ = nullptr; // the song's name rides with the lyrics, or it does not
-	ui::Segmented *packs_ = nullptr;     // Classic / Modern / Sanctuary
-	ui::Segmented *templates_ = nullptr; // the templates of the chosen pack
-	std::vector<int> packMembers_;       // their positions in lyricsTemplates()
+	ui::Segmented *packs_ = nullptr;       // Classic / Modern / Sanctuary
+	ui::Segmented *templates_ = nullptr;   // the templates of the chosen pack
+	std::vector<int> packMembers_;         // their positions in lyricsTemplates()
 	slides::StyleEditor *editor_ = nullptr;
 	ui::RowButton *editRow_ = nullptr;
 	QLineEdit *editTitle_ = nullptr;
 	QLineEdit *editAuthor_ = nullptr;
 	QPlainTextEdit *editText_ = nullptr;
+	ui::Segmented *editLines_ = nullptr; // 2 or 3 lines on each slide
 	ui::ActionButton *deleteButton_ = nullptr;
 	QLabel *toast_ = nullptr;
 	QTimer toastTimer_;

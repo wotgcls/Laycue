@@ -47,31 +47,37 @@ protected:
 
 class StageSplitter : public QSplitter {
 public:
-	StageSplitter(QWidget *natural, QWidget *parent) : QSplitter(Qt::Vertical, parent), natural_(natural)
+	StageSplitter(QWidget *natural, double maxShare, QWidget *parent)
+		: QSplitter(Qt::Vertical, parent),
+		  natural_(natural),
+		  maxShare_(maxShare)
 	{
 		setChildrenCollapsible(false);
 		setHandleWidth(12);
+		connect(this, &QSplitter::splitterMoved, this, [this]() { userMoved_ = true; });
 	}
 
 protected:
 	QSplitterHandle *createHandle() override { return new GripHandle(orientation(), this); }
 
-	// The first time it has a size, the top gets the height it needs (up to two thirds), the rest goes below.
+	// The top gets the height it needs (up to its share), the rest goes below.
 	void resizeEvent(QResizeEvent *event) override
 	{
 		QSplitter::resizeEvent(event);
-		if (placed_ || height() < 80 || count() < 2)
+		// Until the bar is dragged by hand, the split follows the panel's size (a panel often starts small and
+		// is then given its real height); after that it is the operator's.
+		if (userMoved_ || height() < 80 || count() < 2)
 			return;
-		placed_ = true;
 		const int total = height() - handleWidth();
-		const int want =
-			std::clamp(natural_ ? natural_->sizeHint().height() + 4 : total / 2, 80, total * 2 / 3);
+		const int most = std::max(80, int(total * maxShare_));
+		const int want = std::clamp(natural_ ? natural_->sizeHint().height() + 4 : total / 2, 80, most);
 		setSizes({want, std::max(80, total - want)});
 	}
 
 private:
 	QWidget *natural_;
-	bool placed_ = false;
+	double maxShare_;
+	bool userMoved_ = false;
 };
 
 QScrollArea *scrollFor(QWidget *inside, QWidget *parent)
@@ -88,9 +94,9 @@ QScrollArea *scrollFor(QWidget *inside, QWidget *parent)
 
 } // namespace
 
-QSplitter *stageSplitter(QWidget *top, QWidget *bottom, QWidget *parent, bool scrollBottom)
+QSplitter *stageSplitter(QWidget *top, QWidget *bottom, QWidget *parent, bool scrollBottom, double maxTopShare)
 {
-	auto *split = new StageSplitter(top, parent);
+	auto *split = new StageSplitter(top, std::clamp(maxTopShare, 0.2, 0.9), parent);
 	split->addWidget(scrollFor(top, split));
 	split->addWidget(scrollBottom ? static_cast<QWidget *>(scrollFor(bottom, split)) : bottom);
 	split->setStretchFactor(0, 0);

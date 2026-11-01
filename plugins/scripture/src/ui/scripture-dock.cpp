@@ -13,6 +13,7 @@
 #include "ui/pages/helpers.hpp"
 #include "ui/presence-text.hpp"
 #include "ui/reference-box.hpp"
+#include "ui/stage-splitter.hpp"
 #include "ui/style.hpp"
 #include "ui/text.hpp"
 #include "ui/tokens.hpp"
@@ -109,6 +110,18 @@ ScriptureDock::ScriptureDock(QWidget *parent) : QWidget(parent)
 
 ScriptureDock::~ScriptureDock() = default;
 
+namespace {
+
+// The verse list asks for room for about six verses, and stretches into any room the panel has beyond that.
+class TallScroll : public QScrollArea {
+public:
+	using QScrollArea::QScrollArea;
+	QSize sizeHint() const override { return QSize(320, 260); }
+	QSize minimumSizeHint() const override { return QSize(200, 132); } // it shrinks before the buttons go
+};
+
+} // namespace
+
 void ScriptureDock::build()
 {
 	auto *outer = new QVBoxLayout(this);
@@ -121,24 +134,21 @@ void ScriptureDock::build()
 	auto *contentLayout = new QVBoxLayout(content);
 	contentLayout->setContentsMargins(0, 0, 0, 0);
 	contentLayout->setSpacing(0);
-	contentLayout->addWidget(packHeader(content)); // stays on top while the page scrolls
-	auto *scroll = new QScrollArea(content);
-	scroll->setWidgetResizable(true);
-	scroll->setFrameShape(QFrame::NoFrame);
-	scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	pageScroll_ = scroll; // so a rebuilt list can bring the verse on screen into view
-	contentLayout->addWidget(scroll);
+	contentLayout->addWidget(packHeader(content)); // stays on top
 	toast_ = innerLabel(content, QString(), 12, 500, color::cream);
 	toast_->setStyleSheet(QStringLiteral("background: %1; color: %2; border-radius: 16px; padding: 8px 14px;")
 				      .arg(hex(color::control), hex(color::cream)));
 	toast_->hide();
 	contentLayout->addWidget(toast_, 0, Qt::AlignHCenter);
 
-	auto *page = new QWidget(scroll);
-	scroll->setWidget(page);
-	auto *v = new QVBoxLayout(page);
-	v->setContentsMargins(8, 8, 8, 12);
+	// Two parts with a bar between them, like the other panels: on top the version, the type box, the chapter
+	// (scrolling inside its own box) and Show / Hide, all in one view; below, the looks and saved verses. Drag the
+	// bar down to see more of the chapter.
+	auto *top = new QWidget(content);
+	auto *v = new QVBoxLayout(top);
+	v->setContentsMargins(8, 8, 8, 4);
 	v->setSpacing(size::gapSmall + 2);
+	QWidget *page = top;
 
 	auto *header = new QHBoxLayout();
 	header->setSpacing(size::gapSmall);
@@ -210,11 +220,20 @@ void ScriptureDock::build()
 
 	referenceLabel_ = innerLabel(stage, QString(), 12, 700, color::overlay);
 	s->addWidget(referenceLabel_);
-	versesBox_ = new QWidget(stage);
+	versesBox_ = new QWidget();
 	versesLayout_ = new QVBoxLayout(versesBox_);
-	versesLayout_->setContentsMargins(0, 0, 0, 0);
+	versesLayout_->setContentsMargins(0, 0, 4, 0);
 	versesLayout_->setSpacing(4);
-	s->addWidget(versesBox_);
+	versesLayout_->addStretch(1);
+	versesScroll_ = new TallScroll(stage);
+	versesScroll_->setWidgetResizable(true);
+	versesScroll_->setFrameShape(QFrame::NoFrame);
+	versesScroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	versesScroll_->setWidget(versesBox_);
+	versesScroll_->viewport()->setAutoFillBackground(false);
+	versesBox_->setAutoFillBackground(false);
+	versesScroll_->setMinimumHeight(132); // about three verses at the least
+	s->addWidget(versesScroll_, 1);       // takes whatever height the card is given
 
 	auto *buttons = new QHBoxLayout();
 	buttons->setSpacing(size::gapSmall);
@@ -233,7 +252,15 @@ void ScriptureDock::build()
 	connect(next, &QAbstractButton::clicked, this, [this]() { step(1); });
 	buttons->addWidget(next);
 	s->addLayout(buttons);
-	v->addWidget(stage);
+	v->addWidget(stage, 1);
+
+	auto *bottom = new QWidget(content);
+	v = new QVBoxLayout(bottom);
+	v->setContentsMargins(8, 4, 8, 12);
+	v->setSpacing(size::gapSmall + 2);
+	page = bottom;
+	// The verses come first: the top part opens at most of the panel's height, the looks below it.
+	contentLayout->addWidget(stageSplitter(top, bottom, content, true, 0.85), 1);
 
 	// How it looks on screen.
 	v->addWidget(label(page, lt("Laycue.Scripture.Look"), 11, 600, color::textTertiary));
@@ -351,6 +378,7 @@ void ScriptureDock::typed()
 		hint_->setText(lt("Laycue.Scripture.HintBook").arg(qs(book)));
 	} else if (parseReference(text, ref) && ref.valid()) {
 		hint_->setText(lt("Laycue.Scripture.HintGo").arg(qs(referenceLabel(ref))));
+		browseTo(ref); // the list goes there as it is typed; Enter puts it up
 	} else {
 		hint_->setText(text.empty() ? QString() : lt("Laycue.Scripture.HintSearch").arg(qs(text)));
 	}
@@ -413,15 +441,12 @@ void ScriptureDock::showVerse(const Reference &ref)
 {
 	if (!searchMode_)
 		searching_ = false; // in reference mode, a picked result is the ordinary chapter list again
-	const bool sameChapter = ref.book == current_.book && ref.chapter == current_.chapter;
 	current_ = ref;
 	current_.verseTo = 0;
+	viewing_ = current_;
 	input_->setReference(current_); // the box shows what is on screen
 	push();
-	if (!sameChapter)
-		rebuildVerses();
-	else
-		rebuildVerses(); // the "On screen" mark moves
+	rebuildVerses(); // the chapter, or just the "On screen" mark, moves
 	updateStatus();
 }
 
@@ -510,6 +535,7 @@ void ScriptureDock::runHotkey(int index)
 void ScriptureDock::rebuildVerses()
 {
 	clear(versesLayout_);
+	versesLayout_->addStretch(1); // the rows sit at the top of the box
 	if (searching_) {
 		// What the phrase found, the verse itself as the row's title.
 		referenceLabel_->setText(
@@ -517,8 +543,8 @@ void ScriptureDock::rebuildVerses()
 		if (!bible_)
 			return;
 		if (searchResults_.empty())
-			versesLayout_->addWidget(
-				label(versesBox_, lt("Laycue.Scripture.SearchEmpty"), 11, 400, color::textTertiary));
+			versesLayout_->insertWidget(0, label(versesBox_, lt("Laycue.Scripture.SearchEmpty"), 11, 400,
+							     color::textTertiary));
 		for (const Reference &hit : searchResults_) {
 			const QString text = qs(bible_->verse(hit.book, hit.chapter, hit.verseFrom));
 			auto *row = new RowButton(versesBox_);
@@ -526,44 +552,65 @@ void ScriptureDock::rebuildVerses()
 			row->setBody(text); // the row grows tall, so a sizable part of the verse shows at once
 			row->setToolTip(text);
 			connect(row, &RowButton::clicked, this, [this, hit]() { showVerse(hit); });
-			versesLayout_->addWidget(row);
+			versesLayout_->insertWidget(versesLayout_->count() - 1, row);
 		}
 		return;
 	}
-	if (!bible_ || !current_.valid()) {
+	if (!bible_ || !viewing_.valid()) {
 		referenceLabel_->setText(QString());
 		return;
 	}
-	Reference chapter = current_;
+	Reference chapter = viewing_;
 	chapter.verseFrom = 0;
 	referenceLabel_->setText(qs(referenceLabel(chapter) + " \xC2\xB7 " + bible_->name));
-	// Every verse of the chapter, so the panel scrolls to the first or the last as freely as to the middle.
-	const int count = bible_->verseCount(current_.book, current_.chapter);
-	QWidget *onScreen = nullptr;
+	// Every verse of the chapter, so the list scrolls to the first or the last as freely as to the middle.
+	const int count = bible_->verseCount(viewing_.book, viewing_.chapter);
+	const bool liveChapter = viewing_.book == current_.book && viewing_.chapter == current_.chapter;
+	const int typedVerse = std::max(1, viewing_.verseFrom);
+	QWidget *lead = nullptr;
 	for (int verse = 1; verse <= count; ++verse) {
 		auto *row = new RowButton(versesBox_);
-		const QString text = qs(bible_->verse(current_.book, current_.chapter, verse));
-		// The verse on screen is marked in front, where a long verse can't push the mark out of sight.
-		const bool here = verse == current_.verseFrom;
-		const QString mark = here ? (shown_ ? QStringLiteral("\u25CF ") : QStringLiteral("\u25CB "))
-					  : QString();
+		const QString text = qs(bible_->verse(viewing_.book, viewing_.chapter, verse));
+		// The verse on screen is marked in front (where a long verse can't push the mark out of sight), and
+		// the verse typed in the box, when it is another one, gets an arrow: Enter puts that one up.
+		const bool here = liveChapter && verse == current_.verseFrom;
+		const bool typed = verse == typedVerse && !here;
+		const QString mark = here    ? (shown_ ? QStringLiteral("\u25CF ") : QStringLiteral("\u25CB "))
+				     : typed ? QStringLiteral("\u25B6 ")
+					     : QString();
 		row->setTitle(QStringLiteral("%1%2  %3").arg(mark).arg(verse).arg(text));
 		if (here)
 			row->setAccessibleName(shown_ ? lt("Laycue.Scripture.OnScreen") : lt("Laycue.Scripture.Ready"));
 		row->setToolTip(text);
 		connect(row, &RowButton::clicked, this, [this, verse]() {
-			Reference ref = current_;
+			Reference ref = viewing_;
 			ref.verseFrom = verse;
 			showVerse(ref);
 		});
-		versesLayout_->addWidget(row);
-		if (here)
-			onScreen = row;
+		versesLayout_->insertWidget(versesLayout_->count() - 1, row);
+		if (verse == typedVerse || (here && !lead))
+			lead = row;
 	}
-	// The verse on screen leads the scroll, once the freshly built list has had its layout.
-	if (onScreen && pageScroll_) {
-		QTimer::singleShot(0, this, [this, onScreen]() { pageScroll_->ensureWidgetVisible(onScreen); });
+	// The typed verse (or the one on screen) leads the list, near its top, once the new rows have their layout.
+	if (lead && versesScroll_) {
+		QTimer::singleShot(0, this, [this, lead]() {
+			versesScroll_->ensureWidgetVisible(lead, 0, versesScroll_->viewport()->height() / 3);
+		});
 	}
+}
+
+void ScriptureDock::browseTo(const Reference &ref)
+{
+	if (!bible_ || searchMode_ || bible_->verseCount(ref.book, ref.chapter) < 1)
+		return;
+	const bool same = ref.book == viewing_.book && ref.chapter == viewing_.chapter &&
+			  std::max(1, ref.verseFrom) == std::max(1, viewing_.verseFrom);
+	if (same && !searching_)
+		return;
+	searching_ = false;
+	viewing_ = ref;
+	viewing_.verseTo = 0;
+	rebuildVerses();
 }
 
 void ScriptureDock::rebuildSaved()

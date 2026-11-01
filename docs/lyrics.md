@@ -50,8 +50,8 @@ Code: `core/online.*` (the address, turning an answer into a song, choosing usef
 
 ## Templates and how they look
 
-Lyrics has twelve templates in four packs (the same themes as Scripture's). **Classic**: **Black**, **White** (a solid
-band), **Faded** (see-through) and **No background** (the words alone, outlined so they read over video). **Modern**:
+Lyrics has thirteen templates in four packs (the same themes as Scripture's). **Classic**: **Black**, **White** (a solid
+band), **Faded** (see-through), **No background** and **Faded box** (a see-through dark box, no edge line) (the words alone, outlined so they read over video). **Modern**:
 **Rule** and **Clean**. **Sanctuary**: **Night** and **Parchment**. **Worship**: **Notes**, **Equaliser** and **Record**
 (a moving music picture beside the words) and **Aurora** (moving colours). **Edit this look** changes any of them, as in
 Scripture: where on screen, what is behind the words (none, colour, faded, gradient, picture), the colours, the text
@@ -63,3 +63,8 @@ size, the text alignment, the font and whether songs **Fade** or **Cut** between
 
 Code: `plugins/lyrics/src/core/song.*` (parts, slides, search, OpenLyrics, tested in `tests/test-lyrics.cpp`),
 `store/` (library), `ui/` (the panel).
+
+## Lines on each slide
+
+Each song goes up two lines at a time, or three. Choose **2 lines** or **3 lines** under the words when you add,
+paste or edit a song; the choice is saved with that song (a song file can say `Lines: 3` at the top).

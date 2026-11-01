@@ -7,7 +7,9 @@
 namespace laycue::ui {
 
 // `top` scrolls on its own if it is made shorter than it needs; so does `bottom` when `scrollBottom` is set (leave it
-// off when the bottom already scrolls inside).
-QSplitter *stageSplitter(QWidget *top, QWidget *bottom, QWidget *parent, bool scrollBottom = false);
+// off when the bottom already scrolls inside). At first the top gets the height it asks for, up to `maxTopShare` of
+// the whole.
+QSplitter *stageSplitter(QWidget *top, QWidget *bottom, QWidget *parent, bool scrollBottom = false,
+			 double maxTopShare = 2.0 / 3.0);
 
 } // namespace laycue::ui

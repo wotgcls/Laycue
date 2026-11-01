@@ -95,11 +95,13 @@ TEST_CASE("slides: Scripture has 17 templates in four packs and keeps the first 
 		CHECK(hasKey(ini, scripturePackKey(pack)));
 }
 
-TEST_CASE("slides: Lyrics has 12 templates in four packs")
+TEST_CASE("slides: Lyrics has 13 templates in four packs")
 {
 	using namespace laycue::lyrics;
 	const auto &all = lyricsTemplates();
-	CHECK_EQ(int(all.size()), 12);
+	CHECK_EQ(int(all.size()), 13);
+	CHECK_EQ(all[12].style.layout, int(Layout::Card)); // Faded box: a see-through box, no edge line
+	CHECK_EQ(all[12].style.fill, int(Fill::SeeThrough));
 	CHECK_EQ(all[0].style.fill, int(Fill::Solid)); // Black, White, Faded and None keep their places
 	CHECK_EQ(all[3].style.fill, int(Fill::None));
 	const std::string ini = readLocale("lyrics");
@@ -111,9 +113,9 @@ TEST_CASE("slides: Lyrics has 12 templates in four packs")
 		CHECK(copy == t.style);
 		CHECK(hasKey(ini, t.nameKey));
 	}
-	CHECK_EQ(int(names.size()), 12);
+	CHECK_EQ(int(names.size()), 13);
 	for (int pack = 0; pack < kLyricsPackCount; ++pack) {
-		CHECK_EQ(int(templatesOfPack(pack).size()), pack == 0 || pack == 3 ? 4 : 2);
+		CHECK_EQ(int(templatesOfPack(pack).size()), pack == 0 ? 5 : pack == 3 ? 4 : 2);
 		CHECK(hasKey(ini, lyricsPackKey(pack)));
 	}
 }
