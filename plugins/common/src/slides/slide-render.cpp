@@ -96,6 +96,19 @@ Qt::Alignment captionAlign(int align)
 QFont fitFont(const QString &text, const QRectF &box, double maxPx, double minPx, int weight, int align)
 {
 	const int flags = int(horizontal(align) | Qt::AlignVCenter | Qt::TextWordWrap);
+	// Song lines are written one per line: first try sizes (down to two thirds) at which none of them breaks.
+	const QStringList lines = text.split(QLatin1Char('\n'));
+	if (lines.size() > 1) {
+		for (double px = maxPx; px > std::max(minPx, maxPx * 0.66); px -= 2.0) {
+			const QFont f = fontOf(px, weight);
+			const QFontMetricsF fm(f);
+			bool whole = fm.lineSpacing() * lines.size() <= box.height();
+			for (const QString &line : lines)
+				whole = whole && fm.horizontalAdvance(line) <= box.width();
+			if (whole)
+				return f;
+		}
+	}
 	for (double px = maxPx; px > minPx; px -= 2.0) {
 		const QFont f = fontOf(px, weight);
 		const QRectF need = QFontMetricsF(f).boundingRect(box, flags, text);
@@ -105,12 +118,37 @@ QFont fitFont(const QString &text, const QRectF &box, double maxPx, double minPx
 	return fontOf(minPx, weight);
 }
 
-// Words with a soft shadow, and an outline when nothing is behind them, so they read on any video.
-void drawText(QPainter &p, const QRectF &box, const QString &text, const QFont &font, const QColor &colour,
-	      double scale, bool outline, int align)
+// The narrowest box (same height, same number of lines) the wrapped words fit in, kept to the side the words
+// are aligned to: the lines come out even, so a verse never ends on one lonely word.
+QRectF balancedBox(const QString &text, const QRectF &box, const QFont &font, int flags, int align)
+{
+	const QFontMetricsF fm(font);
+	const double height = fm.boundingRect(box, flags, text).height();
+	if (height < fm.lineSpacing() * 1.5)
+		return box; // one line: nothing to balance
+	double lo = box.width() * 0.5, hi = box.width();
+	for (int i = 0; i < 12; ++i) {
+		const double mid = (lo + hi) / 2.0;
+		if (fm.boundingRect(QRectF(0, 0, mid, box.height()), flags, text).height() <= height + 0.5)
+			hi = mid;
+		else
+			lo = mid;
+	}
+	const double w = std::min(box.width(), hi + 2.0);
+	const double x = align == int(Align::Left)    ? box.left()
+			 : align == int(Align::Right) ? box.right() - w
+						      : box.center().x() - w / 2.0;
+	return QRectF(x, box.top(), w, box.height());
+}
+
+// Words with a soft shadow, and an outline when nothing is behind them, so they read on any video. Returns where
+// the words landed.
+QRectF drawText(QPainter &p, const QRectF &area, const QString &text, const QFont &font, const QColor &colour,
+		double scale, bool outline, int align)
 {
 	p.setFont(font);
 	const int flags = int(horizontal(align) | Qt::AlignVCenter | Qt::TextWordWrap);
+	const QRectF box = balancedBox(text, area, font, flags, align);
 	const QColor shade = colour.lightness() > 128 ? QColor(0, 0, 0) : QColor(255, 255, 255);
 	if (outline) {
 		QColor o = shade;
@@ -127,6 +165,7 @@ void drawText(QPainter &p, const QRectF &box, const QString &text, const QFont &
 	}
 	p.setPen(colour);
 	p.drawText(box, flags, text);
+	return QFontMetricsF(font).boundingRect(box, flags, text);
 }
 
 void drawCaption(QPainter &p, const QRectF &box, const QString &caption, double px, const QColor &colour,
@@ -142,7 +181,8 @@ void drawCaption(QPainter &p, const QRectF &box, const QString &caption, double 
 }
 
 // Paints the style's background into `area` (clipped to `shape` when given).
-void paintFill(QPainter &p, const QRectF &area, const QPainterPath &shape, const SlideStyle &s, const QImage &picture)
+void paintFill(QPainter &p, const QRectF &area, const QPainterPath &shape, const SlideStyle &s, const QImage &picture,
+	       bool fadeTop = true)
 {
 	p.save();
 	if (!shape.isEmpty())
@@ -184,8 +224,8 @@ void paintFill(QPainter &p, const QRectF &area, const QPainterPath &shape, const
 	if (shape.isEmpty() && area.height() < viewport.height() * 0.5) {
 		const bool toBottom = area.bottom() >= viewport.bottom() - 0.5;
 		QLinearGradient blend(QPointF(0, area.top()), QPointF(0, area.bottom()));
-		blend.setColorAt(0.00, QColor(0, 0, 0, 0));
-		blend.setColorAt(0.32, QColor(0, 0, 0, 255));
+		blend.setColorAt(0.00, QColor(0, 0, 0, fadeTop ? 0 : 255));
+		blend.setColorAt(fadeTop ? 0.32 : 0.01, QColor(0, 0, 0, 255));
 		blend.setColorAt(0.88, QColor(0, 0, 0, 255));
 		blend.setColorAt(1.00, QColor(0, 0, 0, toBottom ? 255 : 0));
 		p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
@@ -341,7 +381,7 @@ Geometry geometryOf(const SlideStyle &s, bool hasCaption, int W, int H)
 	case Layout::Quote: {
 		g.area = QRectF(W * 0.12, H * 0.56, W * 0.76, H * 0.36);
 		g.radius = 28 * k;
-		const double room = (hasCaption ? 70 : 30) * k;
+		const double room = (hasCaption ? 92 : 30) * k;
 		g.text = QRectF(g.area.left() + 80 * k, g.area.top() + 50 * k, g.area.width() - 160 * k,
 				g.area.height() - 50 * k - room);
 		g.caption = QRectF(g.area.left() + 80 * k, g.area.bottom() - 70 * k, g.area.width() - 160 * k, 44 * k);
@@ -361,8 +401,8 @@ Geometry geometryOf(const SlideStyle &s, bool hasCaption, int W, int H)
 		g.caption = QRectF(x, y, W * 0.17, h);
 		g.area = QRectF(g.caption.right(), y, W * 0.94 - g.caption.right(), h);
 		g.text = g.area.adjusted(34 * k, 16 * k, -34 * k, -16 * k);
-		g.maxPx = 40 * k * size;
-		g.minPx = 16 * k;
+		g.maxPx = 52 * k * size;
+		g.minPx = 18 * k;
 		break;
 	}
 	case Layout::Torn: {
@@ -371,8 +411,8 @@ Geometry geometryOf(const SlideStyle &s, bool hasCaption, int W, int H)
 		g.caption = QRectF(W * 0.04, g.area.top() + pad + 10 * k, W * 0.24, g.area.height() - 2 * pad - 10 * k);
 		g.text = QRectF(W * 0.31 + 30 * k, g.caption.top() + 16 * k, W * 0.62 - 60 * k,
 				g.caption.height() - 32 * k);
-		g.maxPx = 34 * k * size;
-		g.minPx = 14 * k;
+		g.maxPx = 46 * k * size;
+		g.minPx = 18 * k;
 		g.weight = 700;
 		placeDecor(g, s, g.area, g.area.height() * 0.7, W * 0.012, true);
 		break;
@@ -1298,19 +1338,24 @@ QImage renderSlide(const SlideRequest &r)
 		QPainterPath path;
 		path.addRoundedRect(g.area, g.radius, g.radius);
 		paintFill(p, g.area, path, s, r.picture);
-		// The large opening quotation mark, half above the words.
-		QFont mark = fontOf(190 * k, 700);
-		p.setFont(mark);
+		const QRectF placed = drawText(p, g.text, text, words, textColour, k, bare, s.align);
+		// The large opening quotation mark, just above and before the first word (after the last one when
+		// the words sit on the right), never outside the card.
+		p.setFont(fontOf(150 * k, 700));
 		QColor markColour = accent;
 		markColour.setAlpha(bare ? 255 : 230);
 		p.setPen(markColour);
-		const QRectF markBox(g.area.left() + 26 * k, g.area.top() - 54 * k, 150 * k, 170 * k);
-		if (s.align != int(Align::Right))
-			p.drawText(markBox, Qt::AlignLeft | Qt::AlignTop, QString(QChar(0x201C)));
-		else
-			p.drawText(QRectF(g.area.right() - 176 * k, markBox.top(), 150 * k, markBox.height()),
-				   Qt::AlignRight | Qt::AlignTop, QString(QChar(0x201D)));
-		drawText(p, g.text, text, words, textColour, k, bare, s.align);
+		const double markW = 110 * k, markH = 130 * k;
+		const double top = std::max(g.area.top() - 40 * k, placed.top() - 92 * k);
+		if (s.align != int(Align::Right)) {
+			const double left = std::max(g.area.left() + 12 * k, placed.left() - markW + 10 * k);
+			p.drawText(QRectF(left, top, markW, markH), Qt::AlignLeft | Qt::AlignTop,
+				   QString(QChar(0x201C)));
+		} else {
+			const double left = std::min(g.area.right() - 12 * k - markW, placed.right() - 10 * k);
+			p.drawText(QRectF(left, top, markW, markH), Qt::AlignRight | Qt::AlignTop,
+				   QString(QChar(0x201D)));
+		}
 		drawCaption(p, g.caption, r.caption, 32 * k, accent, horizontal(s.align), k, bare);
 		break;
 	}
@@ -1319,11 +1364,14 @@ QImage renderSlide(const SlideRequest &r)
 		// The band runs to the bottom of the frame: the gradient fills the lower edge of the screen instead
 		// of stopping short of it, and the words stay where they were, balanced above that edge.
 		const QRectF band(g.area.left(), g.area.top(), g.area.width(), H - g.area.top());
-		paintFill(p, band, QPainterPath(), s, r.picture);
+		// Under a line the band is solid right up to it, so the line is its clean top edge, not a stripe
+		// floating over a fade. With no line the top melts into the video instead.
+		const bool line = !bare && s.line != int(AccentLine::None);
+		paintFill(p, band, QPainterPath(), s, r.picture, !line);
 		if (!bare)
 			drawAccent(p, QRectF(0, g.area.top(), W, 5 * k), s.line, accent);
 		drawText(p, g.text, text, words, textColour, k, bare, s.align);
-		drawCaption(p, g.caption, r.caption, 28 * k, accent, captionAlign(s.align), k, bare);
+		drawCaption(p, g.caption, r.caption, 32 * k, accent, captionAlign(s.align), k, bare);
 		break;
 	}
 	}
