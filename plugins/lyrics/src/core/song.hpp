@@ -19,7 +19,7 @@ struct Song {
 	std::string title;
 	std::string author;
 	std::vector<Section> sections;
-	int linesPerSlide = 2; // how many lines go up at once: 2 or 3, chosen per song
+	int linesPerSlide = 2; // how many lines go up at once (1 to 6), chosen per song
 	bool operator==(const Song &o) const
 	{
 		return id == o.id && title == o.title && author == o.author && sections == o.sections &&
@@ -43,10 +43,10 @@ std::string songText(const Song &song);
 // Every part cut into slides of `linesPerSlide` lines (a last odd line gets its own slide).
 std::vector<LyricSlide> slidesFor(const Song &song, int linesPerSlide = 2);
 
-// 2 or 3: what a song may use as lines per slide (anything else becomes the nearer of the two).
+// 1 to 6: what a song may use as lines per slide (anything else becomes the nearer end).
 int clampLinesPerSlide(int lines);
 
-// A song file in Laycue's text form: optional "Title:", "Author:" and "Lines:" (2 or 3) lines at the top, then the
+// A song file in Laycue's text form: optional "Title:", "Author:" and "Lines:" (1 to 6) lines at the top, then the
 // song.
 // `fallbackTitle` (the file's name) is used when there is no Title line.
 Song parseSongFile(const std::string &text, const std::string &fallbackTitle);

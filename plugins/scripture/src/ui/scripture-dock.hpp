@@ -31,7 +31,8 @@ class ActionButton;
 
 namespace laycue::slides {
 class StyleEditor;
-}
+class QuickBar;
+} // namespace laycue::slides
 
 namespace laycue::scripture {
 
@@ -96,6 +97,9 @@ private:
 	QWidget *versesBox_ = nullptr;
 	QVBoxLayout *versesLayout_ = nullptr;
 	ui::ActionButton *showButton_ = nullptr;
+	slides::QuickBar *quick_ = nullptr;               // full screen / lower third, background
+	void applyQuick(const slides::SlideStyle &style); // a quick-strip change to the look in use
+	void refreshQuick();
 	ui::Segmented *packs_ = nullptr;     // Classic / Modern / Sanctuary
 	ui::Segmented *templates_ = nullptr; // the templates of the chosen pack
 	std::vector<int> packMembers_;       // their positions in scriptureTemplates()

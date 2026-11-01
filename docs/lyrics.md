@@ -67,7 +67,9 @@ size, the text alignment, the font and whether songs **Fade** or **Cut** between
 Code: `plugins/lyrics/src/core/song.*` (parts, slides, search, OpenLyrics, tested in `tests/test-lyrics.cpp`),
 `store/` (library), `ui/` (the panel).
 
-## Lines on each slide
+## The quick strip
 
-Each song goes up two lines at a time, or three. Choose **2 lines** or **3 lines** under the words when you add,
-paste or edit a song; the choice is saved with that song (a song file can say `Lines: 3` at the top).
+Above **Show on screen**: **Lines on each slide** (1 to 6, saved with the song; a song file can say `Lines: 3` at the
+top, and the song page has the same choice), **Mode** (**Full** screen or **Lower third**) and **Background** (**On**,
+**Off**, and its colour). They change the look in use at once, without opening the look editor. The panel's top part
+(song box, your songs, the song's lines, the strip, Show / Hide) fits in one view; drag the bar under it for more room.

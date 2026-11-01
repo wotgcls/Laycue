@@ -5,6 +5,7 @@
 #include "store/online-search.hpp"
 #include "core/templates.hpp"
 #include "slides/slide-render.hpp"
+#include "slides/quick-bar.hpp"
 #include "slides/style-editor.hpp"
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
@@ -13,6 +14,7 @@
 #include "ui/pack-switcher.hpp"
 #include "ui/pages/helpers.hpp"
 #include "ui/presence-text.hpp"
+#include "ui/stage-splitter.hpp"
 #include "ui/style.hpp"
 #include "ui/text.hpp"
 #include "ui/tokens.hpp"
@@ -69,39 +71,22 @@ std::vector<std::string> idsOf(const std::vector<Song> &songs)
 	return ids;
 }
 
-// A thin bar under a scroll area: drag it up or down to change that area's height.
-class HeightGrip : public QWidget {
+// A scroll area that asks for a modest height and may shrink further, so the buttons under it stay in view; it
+// stretches into any room the panel has beyond that.
+class ShortScroll : public QScrollArea {
 public:
-	HeightGrip(QScrollArea *target, QWidget *parent) : QWidget(parent), target_(target)
+	ShortScroll(int wanted, QWidget *parent) : QScrollArea(parent), wanted_(wanted)
 	{
-		setFixedHeight(14);
-		setCursor(Qt::SizeVerCursor);
-		setToolTip(QStringLiteral("Drag to make the song taller or shorter"));
+		setWidgetResizable(true);
+		setFrameShape(QFrame::NoFrame);
+		setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+		viewport()->setAutoFillBackground(false);
 	}
-
-protected:
-	void mousePressEvent(QMouseEvent *event) override
-	{
-		startY_ = event->globalPosition().y();
-		startHeight_ = target_->height();
-	}
-	void mouseMoveEvent(QMouseEvent *event) override
-	{
-		const int height = startHeight_ + int(event->globalPosition().y() - startY_);
-		target_->setFixedHeight(std::clamp(height, 90, 900));
-	}
-	void paintEvent(QPaintEvent *) override
-	{
-		QPainter p(this);
-		p.setRenderHint(QPainter::Antialiasing, true);
-		p.setPen(QPen(color::textTertiary, 3, Qt::SolidLine, Qt::RoundCap));
-		p.drawLine(width() / 2 - 18, height() / 2, width() / 2 + 18, height() / 2);
-	}
+	QSize sizeHint() const override { return QSize(320, wanted_); }
+	QSize minimumSizeHint() const override { return QSize(200, 96); }
 
 private:
-	QScrollArea *target_;
-	double startY_ = 0;
-	int startHeight_ = 0;
+	int wanted_;
 };
 
 QScrollArea *scrolling(QWidget *parent, QWidget *&page)
@@ -201,10 +186,15 @@ LyricsDock::~LyricsDock() = default;
 
 QWidget *LyricsDock::buildMain()
 {
-	QWidget *page = nullptr;
-	QScrollArea *scroll = scrolling(this, page);
-	auto *v = new QVBoxLayout(page);
-	v->setContentsMargins(8, 8, 8, 12);
+	// Two parts with a bar between them, like Scripture: on top the song box, your songs, the song's lines, the quick
+	// strip and Show / Hide, all in one view; below, the song buttons and the looks. Drag the bar to change the split.
+	auto *main = new QWidget(this);
+	auto *mainLayout = new QVBoxLayout(main);
+	mainLayout->setContentsMargins(0, 0, 0, 0);
+	auto *top = new QWidget(main);
+	QWidget *page = top;
+	auto *v = new QVBoxLayout(top);
+	v->setContentsMargins(8, 8, 8, 4);
 	v->setSpacing(size::gapSmall + 2);
 
 	auto *header = new QHBoxLayout();
@@ -239,11 +229,15 @@ QWidget *LyricsDock::buildMain()
 			searchOnline(); // not in your songs: look online
 	});
 	s->addWidget(search_);
-	resultsBox_ = new QWidget(stage);
+	// Your songs (or what the box found) in a short list of their own.
+	resultsBox_ = new QWidget();
 	resultsLayout_ = new QVBoxLayout(resultsBox_);
-	resultsLayout_->setContentsMargins(0, 0, 0, 0);
+	resultsLayout_->setContentsMargins(0, 0, 4, 0);
 	resultsLayout_->setSpacing(4);
-	s->addWidget(resultsBox_);
+	resultsBox_->setAutoFillBackground(false);
+	auto *resultsScroll = new ShortScroll(118, stage);
+	resultsScroll->setWidget(resultsBox_);
+	s->addWidget(resultsScroll);
 
 	songTitle_ = innerLabel(stage, QString(), 12, 700, color::overlay);
 	s->addWidget(songTitle_);
@@ -253,16 +247,40 @@ QWidget *LyricsDock::buildMain()
 	slidesLayout_ = new QVBoxLayout(slidesBox);
 	slidesLayout_->setContentsMargins(0, 0, 4, 0);
 	slidesLayout_->setSpacing(4);
-	slidesScroll_ = new QScrollArea(stage);
-	slidesScroll_->setWidgetResizable(true);
-	slidesScroll_->setFrameShape(QFrame::NoFrame);
-	slidesScroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	slidesScroll_ = new ShortScroll(150, stage);
 	slidesScroll_->setWidget(slidesBox);
-	slidesScroll_->setFixedHeight(260);
-	slidesScroll_->viewport()->setAutoFillBackground(false);
 	slidesBox->setAutoFillBackground(false);
-	s->addWidget(slidesScroll_);
-	s->addWidget(new HeightGrip(slidesScroll_, stage));
+	s->addWidget(slidesScroll_, 1); // the lines take whatever height the card is given
+
+	// The quick strip: what changes mid-song without opening the look editor.
+	quick_ = new slides::QuickBar(true, stage);
+	connect(quick_, &slides::QuickBar::linesChosen, this, [this](int lines) {
+		const int index = songIndex();
+		if (index < 0)
+			return;
+		Song &song = songs_[size_t(index)];
+		const int before = song.linesPerSlide;
+		song.linesPerSlide = clampLinesPerSlide(lines);
+		saveLibrary(songs_);
+		// Stay at about the same place in the song.
+		const int at = slide_ < 0 ? 0 : slide_ * before / song.linesPerSlide;
+		slides_ = slidesFor(song, song.linesPerSlide);
+		slide_ = slides_.empty() ? -1 : std::min(at, int(slides_.size()) - 1);
+		rebuildSlides();
+		push();
+	});
+	connect(quick_, &slides::QuickBar::fullScreenChosen, this, [this](bool full) {
+		applyQuick(slides::withFullScreen(settings_.styles[size_t(settings_.templateIndex)], full,
+						  lyricsTemplates()[size_t(settings_.templateIndex)].style));
+	});
+	connect(quick_, &slides::QuickBar::backgroundChosen, this, [this](bool on) {
+		applyQuick(slides::withBackground(settings_.styles[size_t(settings_.templateIndex)], on,
+						  lyricsTemplates()[size_t(settings_.templateIndex)].style));
+	});
+	connect(quick_, &slides::QuickBar::colourChosen, this, [this](uint32_t rgb) {
+		applyQuick(slides::withColour(settings_.styles[size_t(settings_.templateIndex)], rgb));
+	});
+	s->addWidget(quick_);
 
 	auto *buttons = new QHBoxLayout();
 	buttons->setSpacing(size::gapSmall);
@@ -299,7 +317,14 @@ QWidget *LyricsDock::buildMain()
 	nameRow->addWidget(innerLabel(stage, lt("Laycue.Lyrics.SongNameSwitch"), 11, 500, color::textSecondary));
 	nameRow->addStretch(1);
 	s->addLayout(nameRow);
-	v->addWidget(stage);
+	v->addWidget(stage, 1);
+
+	auto *bottom = new QWidget(main);
+	page = bottom;
+	v = new QVBoxLayout(bottom);
+	v->setContentsMargins(8, 4, 8, 12);
+	v->setSpacing(size::gapSmall + 2);
+	mainLayout->addWidget(stageSplitter(top, bottom, main, true, 0.85), 1);
 
 	// The song itself: write a new one, change this one, or bring one in from a file.
 	auto *songRow = new QHBoxLayout();
@@ -350,6 +375,7 @@ QWidget *LyricsDock::buildMain()
 		settings_.styles[size_t(settings_.templateIndex)] = style;
 		saveSettings(settings_);
 		push();
+		refreshQuick();
 	});
 	connect(editor_, &slides::StyleEditor::resetRequested, this, [this]() {
 		settings_.styles[size_t(settings_.templateIndex)] =
@@ -357,6 +383,7 @@ QWidget *LyricsDock::buildMain()
 		editor_->setStyle(settings_.styles[size_t(settings_.templateIndex)]);
 		saveSettings(settings_);
 		push();
+		refreshQuick();
 	});
 	connect(editRow_, &RowButton::clicked, this, [this]() {
 		editor_->setVisible(!editor_->isVisible());
@@ -377,12 +404,14 @@ QWidget *LyricsDock::buildMain()
 		editor_->setStyle(mine);
 		saveSettings(settings_);
 		push();
+		refreshQuick();
 		toast(lt("Laycue.Lyrics.ScriptureBackgroundUsed"));
 	});
 	v->addWidget(matchScripture);
 	v->addWidget(new UpdateCard(updater_, page));
 	v->addStretch(1);
-	return scroll;
+	refreshQuick();
+	return main;
 }
 
 QWidget *LyricsDock::buildEditor()
@@ -414,8 +443,9 @@ QWidget *LyricsDock::buildEditor()
 	// How the pasted words go up: two lines at a time, or three.
 	v->addWidget(innerLabel(page, lt("Laycue.Lyrics.LinesPerSlide"), 12, 600, color::textSecondary));
 	editLines_ = new Segmented(page);
-	editLines_->setItems({lt("Laycue.Lyrics.TwoLines"), lt("Laycue.Lyrics.ThreeLines")});
-	editLines_->setCurrent(0);
+	editLines_->setItems({QStringLiteral("1"), QStringLiteral("2"), QStringLiteral("3"), QStringLiteral("4"),
+			      QStringLiteral("5"), QStringLiteral("6")});
+	editLines_->setCurrent(1);
 	editLines_->setAccessibleName(lt("Laycue.Lyrics.LinesPerSlide"));
 	v->addWidget(editLines_);
 	auto *row = new QHBoxLayout();
@@ -650,6 +680,7 @@ void LyricsDock::openSong(size_t index)
 	rebuildSlides();
 	push(); // a song opened while lyrics are up replaces what is on screen
 	updateStatus();
+	refreshQuick();
 }
 
 int LyricsDock::songIndex() const
@@ -789,13 +820,13 @@ void LyricsDock::edit(bool newSong)
 		editTitle_->clear();
 		editAuthor_->clear();
 		editText_->clear();
-		editLines_->setCurrent(0);
+		editLines_->setCurrent(1); // two lines
 	} else {
 		const Song &song = songs_[size_t(index)];
 		editTitle_->setText(qs(song.title));
 		editAuthor_->setText(qs(song.author));
 		editText_->setPlainText(qs(songText(song)));
-		editLines_->setCurrent(song.linesPerSlide >= 3 ? 1 : 0);
+		editLines_->setCurrent(clampLinesPerSlide(song.linesPerSlide) - 1);
 	}
 	deleteButton_->setVisible(!editingNew_);
 	stack_->setCurrentIndex(1);
@@ -810,7 +841,7 @@ void LyricsDock::saveEdit()
 		return;
 	}
 	Song song = parseSongText(title, editAuthor_->text().toStdString(), editText_->toPlainText().toStdString());
-	song.linesPerSlide = editLines_->current() == 1 ? 3 : 2;
+	song.linesPerSlide = clampLinesPerSlide(editLines_->current() + 1);
 	if (song.sections.empty()) {
 		toast(lt("Laycue.Lyrics.NeedWords"));
 		return;
@@ -886,6 +917,25 @@ void LyricsDock::useTemplate(int index)
 	showTemplates();
 	saveSettings(settings_);
 	push();
+	refreshQuick();
+}
+
+void LyricsDock::applyQuick(const slides::SlideStyle &style)
+{
+	settings_.styles[size_t(settings_.templateIndex)] = style;
+	editor_->setStyle(style);
+	saveSettings(settings_);
+	push();
+	refreshQuick();
+}
+
+void LyricsDock::refreshQuick()
+{
+	if (!quick_)
+		return;
+	const int index = songIndex();
+	quick_->setState(settings_.styles[size_t(settings_.templateIndex)],
+			 index < 0 ? 2 : songs_[size_t(index)].linesPerSlide);
 }
 
 // Shows the pack the chosen template belongs to, and that pack's templates.

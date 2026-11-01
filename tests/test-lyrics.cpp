@@ -207,7 +207,7 @@ TEST_CASE("lyrics: song titles lose the parts sites spell differently")
 	CHECK_EQ(cleanSongTitle("(Intro)"), std::string("(Intro)")); // nothing left: keep it as it was
 }
 
-TEST_CASE("lyrics: a song chooses two or three lines on each slide")
+TEST_CASE("lyrics: a song chooses how many lines go on each slide")
 {
 	const Song three = parseSongFile("Title: Doxology\nLines: 3\n\nPraise God from whom\nall blessings flow\n"
 					 "praise Him all creatures\nhere below\n",
@@ -217,6 +217,7 @@ TEST_CASE("lyrics: a song chooses two or three lines on each slide")
 	CHECK_EQ(int(slides.size()), 2);
 	CHECK_EQ(slides[0].text, std::string("Praise God from whom\nall blessings flow\npraise Him all creatures"));
 	CHECK_EQ(parseSongFile("Just a line\n", "My Song").linesPerSlide, 2); // no Lines: two
-	CHECK_EQ(clampLinesPerSlide(7), 3);
-	CHECK_EQ(clampLinesPerSlide(0), 2);
+	CHECK_EQ(clampLinesPerSlide(7), 6);
+	CHECK_EQ(clampLinesPerSlide(0), 1);
+	CHECK_EQ(clampLinesPerSlide(4), 4);
 }

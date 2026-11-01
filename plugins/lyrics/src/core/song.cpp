@@ -175,7 +175,7 @@ std::string songText(const Song &song)
 
 int clampLinesPerSlide(int lines)
 {
-	return lines >= 3 ? 3 : 2;
+	return std::clamp(lines, 1, 6);
 }
 
 Song parseSongFile(const std::string &text, const std::string &fallbackTitle)

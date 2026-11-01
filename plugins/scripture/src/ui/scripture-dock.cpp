@@ -6,6 +6,7 @@
 #include "obs/scene-presence.hpp"
 #include "slides/slide-control.hpp"
 #include "slides/slide-render.hpp"
+#include "slides/quick-bar.hpp"
 #include "slides/style-editor.hpp"
 #include "ui/brand-mark.hpp"
 #include "ui/controls.hpp"
@@ -235,6 +236,21 @@ void ScriptureDock::build()
 	versesScroll_->setMinimumHeight(132); // about three verses at the least
 	s->addWidget(versesScroll_, 1);       // takes whatever height the card is given
 
+	// The quick strip: full screen or lower third, and the background, without opening the look editor.
+	quick_ = new slides::QuickBar(false, stage);
+	connect(quick_, &slides::QuickBar::fullScreenChosen, this, [this](bool full) {
+		applyQuick(slides::withFullScreen(settings_.styles[size_t(settings_.templateIndex)], full,
+						  scriptureTemplates()[size_t(settings_.templateIndex)].style));
+	});
+	connect(quick_, &slides::QuickBar::backgroundChosen, this, [this](bool on) {
+		applyQuick(slides::withBackground(settings_.styles[size_t(settings_.templateIndex)], on,
+						  scriptureTemplates()[size_t(settings_.templateIndex)].style));
+	});
+	connect(quick_, &slides::QuickBar::colourChosen, this, [this](uint32_t rgb) {
+		applyQuick(slides::withColour(settings_.styles[size_t(settings_.templateIndex)], rgb));
+	});
+	s->addWidget(quick_);
+
 	auto *buttons = new QHBoxLayout();
 	buttons->setSpacing(size::gapSmall);
 	auto *previous = button(stage, QStringLiteral("◀"), "laycueSecondary");
@@ -299,6 +315,7 @@ void ScriptureDock::build()
 		settings_.styles[size_t(settings_.templateIndex)] = style;
 		save();
 		push();
+		refreshQuick();
 	});
 	connect(editor_, &slides::StyleEditor::resetRequested, this, [this]() {
 		settings_.styles[size_t(settings_.templateIndex)] =
@@ -306,6 +323,7 @@ void ScriptureDock::build()
 		editor_->setStyle(settings_.styles[size_t(settings_.templateIndex)]);
 		save();
 		push();
+		refreshQuick();
 	});
 	connect(editRow_, &RowButton::clicked, this, [this]() {
 		editor_->setVisible(!editor_->isVisible());
@@ -341,6 +359,7 @@ void ScriptureDock::build()
 	rebuildSaved();
 	v->addWidget(new UpdateCard(updater_, page));
 	v->addStretch(1);
+	refreshQuick();
 }
 
 // ---- Typing ------------------------------------------------------------------------------------------------
@@ -711,6 +730,22 @@ void ScriptureDock::useTemplate(int index)
 	showTemplates();
 	save();
 	push();
+	refreshQuick();
+}
+
+void ScriptureDock::applyQuick(const slides::SlideStyle &style)
+{
+	settings_.styles[size_t(settings_.templateIndex)] = style;
+	editor_->setStyle(style);
+	save();
+	push();
+	refreshQuick();
+}
+
+void ScriptureDock::refreshQuick()
+{
+	if (quick_)
+		quick_->setState(settings_.styles[size_t(settings_.templateIndex)], 0);
 }
 
 // Shows the pack the chosen template belongs to, and that pack's templates.

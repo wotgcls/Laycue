@@ -68,3 +68,10 @@ so they are the same in every scene collection.
 Code: `plugins/scripture/src/core` (books, references, the typing rules and the XML reader, all tested in
 `tests/test-scripture.cpp`), `store/` (settings and versions), `ui/` (the panel). The on-screen part is shared
 with Lyrics: `plugins/common/src/slides`.
+
+## One view, and the quick strip
+
+The version, the reference box, the chapter (scrolling inside its own box) and **Show on screen** with ◀ ▶ stay in
+one view; the looks and saved verses sit below a bar you can drag. Typing a reference moves the list to it as you
+type (the verse gets an arrow) without changing what is on screen; **Enter** shows it. Above Show, the quick strip
+switches **Full** screen / **Lower third** and the **Background** on, off or to another colour.

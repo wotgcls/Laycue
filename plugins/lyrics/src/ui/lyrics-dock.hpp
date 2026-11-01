@@ -33,7 +33,8 @@ class Switch;
 
 namespace laycue::slides {
 class StyleEditor;
-}
+class QuickBar;
+} // namespace laycue::slides
 
 namespace laycue::lyrics {
 
@@ -101,7 +102,7 @@ private:
 	QWidget *resultsBox_ = nullptr;
 	QLabel *songTitle_ = nullptr;
 	QVBoxLayout *slidesLayout_ = nullptr;
-	QScrollArea *slidesScroll_ = nullptr; // the song's lines: a set height with its own scrolling
+	QScrollArea *slidesScroll_ = nullptr; // the song's lines, scrolling inside the card
 	ui::ActionButton *showButton_ = nullptr;
 	ui::Switch *songNameSwitch_ = nullptr; // the song's name rides with the lyrics, or it does not
 	ui::Segmented *packs_ = nullptr;       // Classic / Modern / Sanctuary
@@ -112,7 +113,10 @@ private:
 	QLineEdit *editTitle_ = nullptr;
 	QLineEdit *editAuthor_ = nullptr;
 	QPlainTextEdit *editText_ = nullptr;
-	ui::Segmented *editLines_ = nullptr; // 2 or 3 lines on each slide
+	ui::Segmented *editLines_ = nullptr;              // 1 to 6 lines on each slide
+	slides::QuickBar *quick_ = nullptr;               // lines, full screen / lower third, background
+	void applyQuick(const slides::SlideStyle &style); // a quick-strip change to the look in use
+	void refreshQuick();
 	ui::ActionButton *deleteButton_ = nullptr;
 	QLabel *toast_ = nullptr;
 	QTimer toastTimer_;
