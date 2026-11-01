@@ -178,7 +178,7 @@ TEST_CASE("scripture: a phrase search finds the verses that hold it, in Bible or
 	CHECK(mine.size() == 1);
 	CHECK(mine[0].book == 19 && mine[0].chapter == 23 && mine[0].verseFrom == 1);
 	CHECK_EQ(searchBible(b, "world").size(), size_t(1));
-	CHECK(searchBible(b, "a").empty());  // too short to be a phrase
+	CHECK(searchBible(b, "a").empty()); // too short to be a phrase
 	CHECK(searchBible(b, "   ").empty());
 	CHECK(searchBible(b, "nowhere at all in it").empty());
 	CHECK_EQ(searchBible(b, "he").size(), size_t(3)); // The, He and the each hold it

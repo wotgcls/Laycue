@@ -206,7 +206,7 @@ private:
 	bool watchdogFired_ = false;                             // a failure was acted on; re-arms when it recovers
 	std::chrono::steady_clock::time_point watchdogCooldown_; // no second fire straight after the first
 	std::string watchdogKey_;                                // what is being watched, so a change resets it
-	std::string lastLive_;            // the scene that was live at the last refresh
+	std::string lastLive_;                                   // the scene that was live at the last refresh
 	std::string previousLive_;        // what was live before the current pushback (for Unpin)
 	bool repairChecked_ = false;      // pushback scenes have been checked since the collection loaded
 	std::string lastPreview_;         // OBS's preview scene as last seen (studio mode)

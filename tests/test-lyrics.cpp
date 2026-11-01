@@ -94,7 +94,7 @@ TEST_CASE("lyrics: typing a song name finds it")
 	CHECK_EQ(names("grace"), std::string("Grace Alone|Amazing Grace|")); // starts with it first
 	CHECK_EQ(names("well"), std::string("It Is Well with My Soul|"));
 	CHECK_EQ(names("holy holy"), std::string("Holy, Holy, Holy|"));
-	CHECK_EQ(names("cleft"), std::string("Rock of Ages|")); // by its first line
+	CHECK_EQ(names("cleft"), std::string("Rock of Ages|"));  // by its first line
 	CHECK_EQ(names("shelter"), std::string("Grace Alone|")); // by a line deep in the song
 	CHECK_EQ(names("zzz"), std::string());
 	CHECK_EQ(searchSongs(songs, "", 3).size(), size_t(3));

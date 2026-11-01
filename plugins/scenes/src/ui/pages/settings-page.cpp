@@ -167,14 +167,11 @@ void SettingsPage::build()
 	{
 		// --- Failover: the stream is never empty because a source died (setup: hidden while locked) ---
 		QVBoxLayout *v = group(editLayout, editHost_, lt("Laycue.Settings.Failover"));
-		v->addWidget(
-			innerLabel(editHost_, lt("Laycue.Settings.FailoverIntro"), 11, 400, color::textTertiary));
+		v->addWidget(innerLabel(editHost_, lt("Laycue.Settings.FailoverIntro"), 11, 400, color::textTertiary));
 		v->addWidget(row(
 			editHost_, lt("Laycue.Settings.FailoverOn"), QString(),
 			makeSwitch(nullptr, lt("Laycue.Settings.FailoverOn"), config.settings.failoverOn,
-				   [this](bool on) {
-					   app_.modify([&](Config &c) { c.settings.failoverOn = on; });
-				   })));
+				   [this](bool on) { app_.modify([&](Config &c) { c.settings.failoverOn = on; }); })));
 		v->addWidget(divider(editHost_));
 
 		// The feed to watch, with the shots that exist named for the shot to go live. One walk over
@@ -223,8 +220,8 @@ void SettingsPage::build()
 				c.settings.failoverSourceName = name;
 			});
 		});
-		v->addWidget(row(editHost_, lt("Laycue.Settings.FailoverWatch"),
-				 lt("Laycue.Settings.FailoverWatchSub"), watchBox));
+		v->addWidget(row(editHost_, lt("Laycue.Settings.FailoverWatch"), lt("Laycue.Settings.FailoverWatchSub"),
+				 watchBox));
 		v->addWidget(divider(editHost_));
 
 		auto *shotBox = new QComboBox(editHost_);
@@ -366,11 +363,10 @@ void SettingsPage::build()
 
 	// --- Updates ---
 	page->addWidget(label(this, lt("Laycue.Update.Heading").toUpper(), 11, 700, color::textTertiary));
-	page->addWidget(row(this, lt("Laycue.Settings.AutoUpdate"), lt("Laycue.Settings.AutoUpdateSub"),
-			    makeSwitch(nullptr, lt("Laycue.Settings.AutoUpdate"), config.settings.autoUpdate,
-				       [this](bool on) {
-					       app_.modify([&](Config &c) { c.settings.autoUpdate = on; });
-				       })));
+	page->addWidget(
+		row(this, lt("Laycue.Settings.AutoUpdate"), lt("Laycue.Settings.AutoUpdateSub"),
+		    makeSwitch(nullptr, lt("Laycue.Settings.AutoUpdate"), config.settings.autoUpdate,
+			       [this](bool on) { app_.modify([&](Config &c) { c.settings.autoUpdate = on; }); })));
 	page->addWidget(new UpdateCard(updater_, this));
 	if (config.settings.autoUpdate)
 		updater_.check(); // the page opening is a good moment to look again

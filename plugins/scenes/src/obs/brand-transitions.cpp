@@ -43,7 +43,7 @@ constexpr const char *kUseColour = "use_colour";
 struct Transition {
 	obs_source_t *source = nullptr;
 	Kind kind = Kind::Push;
-	bool useColour = false; // brand colours and the logo show only when this is on
+	bool useColour = false;        // brand colours and the logo show only when this is on
 	uint32_t colour1 = 0xFF8A2BE2; // OBS colours are 0xAABBGGRR
 	uint32_t colour2 = 0xFF1A0A2E;
 	std::string logoPath;
@@ -335,7 +335,7 @@ void renderFrame(void *data, gs_texture_t *a, gs_texture_t *b, float progress, u
 		// The old shot rushes toward you; the new one settles out of it. Colours add a wash and the logo.
 		const float wash = t->useColour ? (progress < 0.5f ? ease(stage(progress, 0.15f, 0.5f))
 								   : 1.0f - ease(stage(progress, 0.5f, 0.85f)))
-					       : 0.0f;
+						: 0.0f;
 		if (progress < 0.5f) {
 			const float s = 1.0f + 0.6f * ease(progress * 2.0f);
 			drawTexture(a, W / 2.0f * (1.0f - s), H / 2.0f * (1.0f - s), s, s, cx, cy);

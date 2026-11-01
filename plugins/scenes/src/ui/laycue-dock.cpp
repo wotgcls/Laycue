@@ -1058,8 +1058,7 @@ void LaycueDock::pollWatchdog()
 		watchdogLast_ = std::chrono::steady_clock::now();
 		watchdogHasPicture_ = true;
 		watchdog_.push(sampleOf(picture));
-	} else if (watchdogHasPicture_ &&
-		   std::chrono::steady_clock::now() - watchdogLast_ > std::chrono::seconds(2)) {
+	} else if (watchdogHasPicture_ && std::chrono::steady_clock::now() - watchdogLast_ > std::chrono::seconds(2)) {
 		watchdogLast_ = std::chrono::steady_clock::now();
 		watchdog_.push(WatchdogSample{}); // no picture at all: the source is gone silent
 	}
@@ -1091,8 +1090,8 @@ void LaycueDock::pollWatchdog()
 		watchdogCooldown_ = std::chrono::steady_clock::now() + std::chrono::seconds(kWatchdogCooldownS);
 		obs_log(LOG_WARNING, "Fail-over: %s went blank or froze, so %s went live",
 			settings.failoverSourceName.c_str(), settings.failoverShotName.c_str());
-		showToast(text("Laycue.FailoverFired").arg(fromStd(settings.failoverSourceName),
-							   fromStd(settings.failoverShotName)));
+		showToast(text("Laycue.FailoverFired")
+				  .arg(fromStd(settings.failoverSourceName), fromStd(settings.failoverShotName)));
 	}
 }
 
