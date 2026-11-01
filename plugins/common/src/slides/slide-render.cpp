@@ -178,14 +178,16 @@ void paintFill(QPainter &p, const QRectF &area, const QPainterPath &shape, const
 	}
 	p.restore();
 	// A straight band (no shape, under half the screen tall) blends into what is behind it: its top takes
-	// a third of the band to rise and its tail fades off, so no border line shows.
+	// a third of the band to rise and its tail fades off, so no border line shows. A band that runs to the
+	// bottom of the frame keeps its colour all the way down — the frame edge is already a clean ending.
 	const QRectF viewport = p.viewport();
 	if (shape.isEmpty() && area.height() < viewport.height() * 0.5) {
+		const bool toBottom = area.bottom() >= viewport.bottom() - 0.5;
 		QLinearGradient blend(QPointF(0, area.top()), QPointF(0, area.bottom()));
 		blend.setColorAt(0.00, QColor(0, 0, 0, 0));
 		blend.setColorAt(0.32, QColor(0, 0, 0, 255));
 		blend.setColorAt(0.88, QColor(0, 0, 0, 255));
-		blend.setColorAt(1.00, QColor(0, 0, 0, 0));
+		blend.setColorAt(1.00, QColor(0, 0, 0, toBottom ? 255 : 0));
 		p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
 		p.fillRect(area, blend);
 		p.setCompositionMode(QPainter::CompositionMode_SourceOver);
@@ -1314,7 +1316,10 @@ QImage renderSlide(const SlideRequest &r)
 	}
 	case Layout::LowerThird:
 	default: {
-		paintFill(p, g.area, QPainterPath(), s, r.picture);
+		// The band runs to the bottom of the frame: the gradient fills the lower edge of the screen instead
+		// of stopping short of it, and the words stay where they were, balanced above that edge.
+		const QRectF band(g.area.left(), g.area.top(), g.area.width(), H - g.area.top());
+		paintFill(p, band, QPainterPath(), s, r.picture);
 		if (!bare)
 			drawAccent(p, QRectF(0, g.area.top(), W, 5 * k), s.line, accent);
 		drawText(p, g.text, text, words, textColour, k, bare, s.align);

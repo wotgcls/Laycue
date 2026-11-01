@@ -1,5 +1,28 @@
 - **Fixed from 0.2.5:** OBS closed about a second into launching — the Scripture panel touched one of its parts
   before it was built. It never reaches that point now.
+- Lower thirds: the gradient now **runs to the bottom edge of the frame** instead of stopping a little short
+  and fading into black, so the band reads as one balanced piece from the accent line down.
+- Scripture search: each result is a taller row that shows a **chunk of the verse itself**, not just the
+  reference — the full text still rides along as the tool tip.
+- Scripture's chapter list now carries **every verse of the chapter**, and the panel scrolls: to the first or
+  the last verse as easily as to the middle; it always settles on the verse on screen.
+- The golden line eases **quietly away at both ends** instead of stopping dead, and the sweep's shine is wider
+  and softer — a gentle gleam rather than a hard flash. Both Scriptures and Lyrics, every template with a line.
+- **Lyrics search that answers:** typing several words now finds the song even when the words don't stand
+  together, and searching by the singer's name works; a listing without its words goes to fetch them from the
+  bigger song book first, so picking a result no longer ends in "no words".
+- **Your songs stay in sight:** with nothing typed the panel lists every song you've saved — the one on screen
+  marked — instead of letting the list slip away when a song is open.
+- **Click a Laycue source in the Sources list** and its panel comes to the front, its box ready for the next
+  words — the panel is where every Laycue source is driven from, now one step away.
+- Straight bands and the sunrise card **end on a smooth fade** now, so no border line cuts across the picture.
+- The accent line's ends **follow a slow curve through many shades**, so there is no corner to point at —
+  the fade and the middle brightening both read as one smooth sweep now.
+- **Themes from pictures:** choosing a background picture reads its colours and lays them onto the slide —
+  the gradient, the moving glow's third colour, the accent and the words all follow the picture, adapted to
+  broadcast depth (dark enough for readable words, rich enough to be really there). "Match this picture"
+  re-reads the colours any time, on the picture fill or the moving glow. A picture with no colour worth
+  reading keeps Laycue's own deep blue and gold.
 - **The big one: Laycue's own transitions are in, and you can add them right from the panel.**
 
 - Go Live can use nine native Laycue transitions (Push, Brand Wipe, Zoom Through, Split Doors, Logo Sting, Card
