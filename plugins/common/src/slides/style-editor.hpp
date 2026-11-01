@@ -67,6 +67,7 @@ private:
 	SlideStyle style_;
 	ui::Segmented *layout_ = nullptr;  // Bar, Card, Full, Tab
 	ui::Segmented *layout2_ = nullptr; // Rule, Quote, Split, Torn
+	ui::Segmented *layout3_ = nullptr; // Strips, Ribbon, Laurel
 	ui::Segmented *fill_ = nullptr;
 	ui::Segmented *case_ = nullptr;
 	ui::Segmented *align_ = nullptr;

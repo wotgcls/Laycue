@@ -50,8 +50,11 @@ Code: `core/online.*` (the address, turning an answer into a song, choosing usef
 
 ## Templates and how they look
 
-Lyrics has thirteen templates in four packs (the same themes as Scripture's). **Classic**: **Black**, **White** (a solid
-band), **Faded** (see-through), **No background** and **Faded box** (a see-through dark box, no edge line) (the words alone, outlined so they read over video). **Modern**:
+Lyrics has seventeen templates in four packs (the same themes as Scripture's). **Classic**: **Black**, **White** (a solid
+band), **Faded** (see-through), **No background** (the words alone, outlined so they read over video) and **Faded box**
+(a see-through dark box, no edge line). Broadcast lyric looks: **White bars** and **Subtitles** (Modern: every line on
+a bar of its own, in wide capitals), **Neon** (Worship: a slim purple band with glowing swooshes) and **Golden**
+(Worship: a golden band with soft bokeh and laurel branches). **Modern**:
 **Rule** and **Clean**. **Sanctuary**: **Night** and **Parchment**. **Worship**: **Notes**, **Equaliser** and **Record**
 (a moving music picture beside the words) and **Aurora** (moving colours). **Edit this look** changes any of them, as in
 Scripture: where on screen, what is behind the words (none, colour, faded, gradient, picture), the colours, the text

@@ -92,15 +92,23 @@ Qt::Alignment captionAlign(int align)
 	return align == int(Align::Left) ? Qt::AlignLeft : Qt::AlignRight;
 }
 
-// The biggest size (down to minPx) at which the text, wrapped, fits the box.
-QFont fitFont(const QString &text, const QRectF &box, double maxPx, double minPx, int weight, int align)
+// Capitals set wide, the way broadcast lyric bars are lettered.
+QFont spaced(QFont f, double percent)
+{
+	f.setLetterSpacing(QFont::PercentageSpacing, percent);
+	return f;
+}
+
+// The biggest size (down to minPx) at which the text, wrapped, fits the box (letters set `spacing` percent apart).
+QFont fitFont(const QString &text, const QRectF &box, double maxPx, double minPx, int weight, int align,
+	      double spacing = 100.0)
 {
 	const int flags = int(horizontal(align) | Qt::AlignVCenter | Qt::TextWordWrap);
 	// Song lines are written one per line: first try sizes (down to two thirds) at which none of them breaks.
 	const QStringList lines = text.split(QLatin1Char('\n'));
 	if (lines.size() > 1) {
 		for (double px = maxPx; px > std::max(minPx, maxPx * 0.66); px -= 2.0) {
-			const QFont f = fontOf(px, weight);
+			const QFont f = spaced(fontOf(px, weight), spacing);
 			const QFontMetricsF fm(f);
 			bool whole = fm.lineSpacing() * lines.size() <= box.height();
 			for (const QString &line : lines)
@@ -110,12 +118,12 @@ QFont fitFont(const QString &text, const QRectF &box, double maxPx, double minPx
 		}
 	}
 	for (double px = maxPx; px > minPx; px -= 2.0) {
-		const QFont f = fontOf(px, weight);
+		const QFont f = spaced(fontOf(px, weight), spacing);
 		const QRectF need = QFontMetricsF(f).boundingRect(box, flags, text);
 		if (need.height() <= box.height() && need.width() <= box.width() + 1.0)
 			return f;
 	}
-	return fontOf(minPx, weight);
+	return spaced(fontOf(minPx, weight), spacing);
 }
 
 // The narrowest box (same height, same number of lines) the wrapped words fit in, kept to the side the words
@@ -323,6 +331,175 @@ void placeDecor(Geometry &g, const SlideStyle &s, const QRectF &container, doubl
 	}
 }
 
+// ---- Strips, Ribbon and Laurel ---------------------------------------------------------------------------------
+
+// The words as lines no wider than `width`: written lines are kept, and a line that is too long is broken between
+// words.
+QStringList wrapLines(const QString &text, const QFontMetricsF &fm, double width)
+{
+	QStringList out;
+	for (const QString &written : text.split(QLatin1Char('\n'))) {
+		const QStringList words = written.simplified().split(QLatin1Char(' '), Qt::SkipEmptyParts);
+		QString line;
+		for (const QString &word : words) {
+			const QString tried = line.isEmpty() ? word : line + QLatin1Char(' ') + word;
+			if (!line.isEmpty() && fm.horizontalAdvance(tried) > width) {
+				out << line;
+				line = word;
+			} else {
+				line = tried;
+			}
+		}
+		if (!line.isEmpty())
+			out << line;
+	}
+	return out;
+}
+
+// One bar per line, stacked up from the bottom: all the same width (the widest line's), the words centred in them.
+// The song name or reference sits small above the top bar.
+void drawStrips(QPainter &p, const Geometry &g, const SlideStyle &s, const QString &text, const QString &caption,
+		const QImage &picture, double k)
+{
+	const bool bare = s.fill == int(Fill::None);
+	const QColor textColour = rgb(s.text), accent = rgb(s.accent);
+	const double padX = 34 * k, padY = 9 * k, gap = 10 * k;
+	const double room = g.area.width() - 2 * padX;
+	// The biggest size at which the lines, each on its bar, fit the room (at most four bars).
+	double px = g.maxPx;
+	QFont font;
+	QStringList lines;
+	for (;; px -= 2.0) {
+		font = spaced(fontOf(px, g.weight), 112);
+		const QFontMetricsF fm(font);
+		lines = wrapLines(text, fm, room);
+		const double barH = fm.height() + 2 * padY;
+		if (px <= g.minPx || (lines.size() <= 4 && lines.size() * (barH + gap) <= g.area.height()))
+			break;
+	}
+	const QFontMetricsF fm(font);
+	double widest = 0;
+	for (const QString &line : lines)
+		widest = std::max(widest, fm.horizontalAdvance(line));
+	const double barW = std::min(g.area.width(), widest + 2 * padX);
+	const double barH = fm.height() + 2 * padY;
+	const double x = s.align == int(Align::Left)    ? g.area.left()
+			 : s.align == int(Align::Right) ? g.area.right() - barW
+							: g.area.center().x() - barW / 2.0;
+	double y = g.area.bottom() - lines.size() * barH - (lines.size() - 1) * gap;
+	if (!caption.isEmpty()) {
+		const QRectF capBox(x, y - 40 * k, barW, 34 * k);
+		drawCaption(p, capBox, caption, 24 * k, accent, horizontal(s.align), k, true);
+	}
+	for (const QString &line : lines) {
+		const QRectF bar(x, y, barW, barH);
+		if (!bare) {
+			QPainterPath path;
+			path.addRect(bar);
+			paintFill(p, bar, path, s, picture);
+		}
+		p.setFont(font);
+		if (bare) {
+			drawText(p, bar, line, font, textColour, k, true, int(Align::Centre));
+		} else {
+			p.setPen(textColour);
+			p.drawText(bar, Qt::AlignCenter, line);
+		}
+		y += barH + gap;
+	}
+}
+
+// A glowing curve: wide faint strokes under a thin bright one.
+void glowStroke(QPainter &p, const QPainterPath &path, const QColor &colour, double width)
+{
+	for (const double w : {width * 7, width * 4, width * 2}) {
+		QColor c = colour;
+		c.setAlpha(w > width * 5 ? 28 : w > width * 3 ? 60 : 130);
+		p.strokePath(path, QPen(c, w, Qt::SolidLine, Qt::RoundCap));
+	}
+	p.strokePath(path, QPen(lighter(colour), width, Qt::SolidLine, Qt::RoundCap));
+}
+
+// The swooshes of the Ribbon: a few arcs that sweep up out of each end of the band.
+void drawSwooshes(QPainter &p, const QRectF &band, double W, double k, const QColor &a, const QColor &b)
+{
+	p.save();
+	for (int side = 0; side < 2; ++side) {
+		const double dir = side == 0 ? 1.0 : -1.0;
+		const double x0 = side == 0 ? 0.0 : W;
+		for (int i = 0; i < 3; ++i) {
+			QPainterPath path;
+			const double lift = (46 + i * 26) * k, reach = W * (0.10 + i * 0.03);
+			path.moveTo(x0, band.bottom() - (10 + i * 12) * k);
+			path.cubicTo(x0 + dir * reach * 0.35, band.top() - lift, x0 + dir * reach * 0.75,
+				     band.top() - lift * 0.4, x0 + dir * reach, band.top() + band.height() * 0.35);
+			glowStroke(p, path, i == 1 ? b : a, (i == 0 ? 3.0 : 2.0) * k);
+		}
+	}
+	p.restore();
+}
+
+// Soft circles of light (bokeh), the same every frame, thickest over the band and rising a little above it.
+void drawBokeh(QPainter &p, const QRectF &band, double k, const QColor &a, const QColor &b)
+{
+	p.save();
+	uint32_t seed = 12345u;
+	auto next = [&seed]() {
+		seed = seed * 1664525u + 1013904223u;
+		return double((seed >> 8) & 0xFFFF) / 65535.0;
+	};
+	for (int i = 0; i < 70; ++i) {
+		const double cx = band.left() + next() * band.width();
+		// Most sit on the band; some float above its middle, like light rising.
+		const double above = next();
+		const double middle = 1.0 - std::abs(cx - band.center().x()) / (band.width() / 2.0);
+		const double cy =
+			band.bottom() - next() * band.height() - (above > 0.6 ? above * 120 * k * middle : 0.0);
+		const double r = (14 + next() * 46) * k;
+		QColor c = blendColour(a, b, next());
+		QRadialGradient glow(QPointF(cx, cy), r);
+		c.setAlpha(int(70 + next() * 90));
+		glow.setColorAt(0, c);
+		glow.setColorAt(0.7, QColor(c.red(), c.green(), c.blue(), c.alpha() / 2));
+		glow.setColorAt(1, QColor(c.red(), c.green(), c.blue(), 0));
+		p.setPen(Qt::NoPen);
+		p.setBrush(glow);
+		p.drawEllipse(QPointF(cx, cy), r, r);
+	}
+	p.restore();
+}
+
+// A laurel branch: a curved stem with paired leaves, opening away from the words. `mirror` flips it for the right.
+void drawLaurel(QPainter &p, const QPointF &base, double size, bool mirror, const QColor &colour)
+{
+	p.save();
+	p.translate(base);
+	if (mirror)
+		p.scale(-1, 1);
+	QPainterPath stem;
+	stem.moveTo(0, 0);
+	stem.quadTo(-size * 0.55, -size * 0.25, -size * 0.45, -size);
+	p.setPen(QPen(colour, std::max(1.5, size * 0.035), Qt::SolidLine, Qt::RoundCap));
+	p.setBrush(Qt::NoBrush);
+	p.drawPath(stem);
+	p.setPen(Qt::NoPen);
+	p.setBrush(colour);
+	for (int i = 1; i <= 6; ++i) {
+		const double t = i / 7.0;
+		const QPointF at = stem.pointAtPercent(t);
+		const double angle = stem.angleAtPercent(t);
+		const double leaf = size * (0.30 - t * 0.10);
+		for (const double side : {-1.0, 1.0}) {
+			p.save();
+			p.translate(at);
+			p.rotate(-angle + side * 50);
+			p.drawEllipse(QRectF(0, -leaf * 0.22, leaf, leaf * 0.44));
+			p.restore();
+		}
+	}
+	p.restore();
+}
+
 Geometry geometryOf(const SlideStyle &s, bool hasCaption, int W, int H)
 {
 	Geometry g;
@@ -415,6 +592,31 @@ Geometry geometryOf(const SlideStyle &s, bool hasCaption, int W, int H)
 		g.minPx = 18 * k;
 		g.weight = 700;
 		placeDecor(g, s, g.area, g.area.height() * 0.7, W * 0.012, true);
+		break;
+	}
+	case Layout::Strips: {
+		// The bars are measured from the words when drawn; this is the room they may take.
+		g.area = QRectF(W * 0.08, H * 0.62, W * 0.84, H * 0.32);
+		g.text = g.area;
+		g.maxPx = 46 * k * size;
+		g.minPx = 18 * k;
+		g.weight = 800;
+		break;
+	}
+	case Layout::Ribbon: {
+		g.area = QRectF(0, H * 0.885, W, H * 0.115);
+		g.text = g.area.adjusted(W * 0.19, 8 * k, -W * 0.19, -8 * k);
+		g.maxPx = 40 * k * size;
+		g.minPx = 16 * k;
+		g.weight = 800;
+		break;
+	}
+	case Layout::Laurel: {
+		g.area = QRectF(0, H * 0.85, W, H * 0.15);
+		g.text = g.area.adjusted(W * 0.22, 14 * k, -W * 0.22, -14 * k);
+		g.maxPx = 38 * k * size;
+		g.minPx = 16 * k;
+		g.weight = 700;
 		break;
 	}
 	case Layout::LowerThird:
@@ -1357,6 +1559,40 @@ QImage renderSlide(const SlideRequest &r)
 				   QString(QChar(0x201D)));
 		}
 		drawCaption(p, g.caption, r.caption, 32 * k, accent, horizontal(s.align), k, bare);
+		break;
+	}
+	case Layout::Strips: {
+		drawStrips(p, g, s, text, r.caption, r.picture, k);
+		break;
+	}
+	case Layout::Ribbon: {
+		QPainterPath shape;
+		shape.addRect(g.area);
+		paintFill(p, g.area, shape, s, r.picture);
+		if (!bare) {
+			p.fillRect(QRectF(0, g.area.top(), W, 3 * k), lighter(rgb(s.color3)));
+			drawSwooshes(p, g.area, W, k, accent, rgb(s.color3));
+		}
+		const QString caps = text.toUpper();
+		const QFont f = fitFont(caps, g.text, g.maxPx, g.minPx, g.weight, int(Align::Centre), 108);
+		drawText(p, g.text, caps, f, textColour, k, bare, int(Align::Centre));
+		break;
+	}
+	case Layout::Laurel: {
+		QPainterPath shape;
+		shape.addRect(g.area);
+		paintFill(p, g.area, shape, s, r.picture);
+		if (!bare)
+			drawBokeh(p, g.area, k, rgb(s.color2), accent);
+		const QString caps = text.toUpper();
+		const QFont f = fitFont(caps, g.text, g.maxPx, g.minPx, g.weight, int(Align::Centre), 108);
+		const QRectF placed = drawText(p, g.text, caps, f, textColour, k, bare, int(Align::Centre));
+		const double leaf = g.area.height() * 0.62;
+		const double baseY = g.area.center().y() + leaf * 0.48;
+		QColor laurel = textColour;
+		laurel.setAlpha(235);
+		drawLaurel(p, QPointF(placed.left() - 26 * k, baseY), leaf, false, laurel);
+		drawLaurel(p, QPointF(placed.right() + 26 * k, baseY), leaf, true, laurel);
 		break;
 	}
 	case Layout::LowerThird:

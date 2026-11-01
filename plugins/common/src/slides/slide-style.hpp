@@ -10,9 +10,23 @@ namespace laycue::slides {
 // Where the slide sits and how it is built. Tab: a band with the reference in a tab above its corner. Rule: words
 // beside a thick line. Quote: centred words with a large quotation mark. Split: a small square (the looping picture),
 // a block with the reference and a block with the words, side by side. Torn: a band with a torn top edge, the
-// reference in large letters on the left and the words in a dark box on the right.
-enum class Layout { LowerThird = 0, Card = 1, FullScreen = 2, Tab = 3, Rule = 4, Quote = 5, Split = 6, Torn = 7 };
-constexpr int kLayoutCount = 8;
+// reference in large letters on the left and the words in a dark box on the right. Strips: every line on a bar of its
+// own (white bars with dark capitals, or black subtitle boxes). Ribbon: a slim band at the very bottom with glowing
+// swooshes at its ends. Laurel: a slim band with soft rising bokeh and a laurel branch on each side of the words.
+enum class Layout {
+	LowerThird = 0,
+	Card = 1,
+	FullScreen = 2,
+	Tab = 3,
+	Rule = 4,
+	Quote = 5,
+	Split = 6,
+	Torn = 7,
+	Strips = 8,
+	Ribbon = 9,
+	Laurel = 10
+};
+constexpr int kLayoutCount = 11;
 // Moving: the two colours and the accent drift slowly past each other in a soft glow that rises from the bottom.
 enum class Fill { None = 0, Solid = 1, SeeThrough = 2, Gradient = 3, Picture = 4, Moving = 5 };
 constexpr int kFillCount = 6;

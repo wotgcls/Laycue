@@ -28,6 +28,12 @@ slides::SlideStyle style(Layout layout, Fill fill, uint32_t background, uint32_t
 	return s;
 }
 
+slides::SlideStyle caps(slides::SlideStyle s)
+{
+	s.textCase = int(slides::TextCase::Upper);
+	return s;
+}
+
 slides::SlideStyle fadedBox()
 {
 	slides::SlideStyle s = style(Layout::Card, Fill::SeeThrough, 0x000000, 0x000000, 0xFFFFFF, 0xE0A91E);
@@ -84,6 +90,20 @@ const std::vector<LyricsTemplate> &lyricsTemplates()
 		// Added after the others so saved looks keep their places: a see-through dark box with soft corners and
 		// no edge line, the words centred in it.
 		{"Laycue.Lyrics.T.FadedBox", 0, fadedBox()},
+		// Broadcast lyric bars: every line on its own bar, in wide capitals.
+		{"Laycue.Lyrics.T.WhiteBars", 1,
+		 caps(style(Layout::Strips, Fill::Solid, 0xFFFFFF, 0xFFFFFF, 0x111111, 0xFFFFFF, Align::Centre,
+			    Font::Archivo))},
+		{"Laycue.Lyrics.T.Subtitles", 1,
+		 caps(style(Layout::Strips, Fill::Solid, 0x000000, 0x000000, 0xFFFFFF, 0xFFFFFF, Align::Centre,
+			    Font::Clean))},
+		// A slim purple band with glowing swooshes, and a golden one with bokeh and laurel branches.
+		{"Laycue.Lyrics.T.Neon", 3,
+		 caps(style(Layout::Ribbon, Fill::Gradient, 0x14052E, 0x3B0A6E, 0xFFFFFF, 0xB44CFF, Align::Centre,
+			    Font::Modern, Decor::None, 0xFF4FD8))},
+		{"Laycue.Lyrics.T.Golden", 3,
+		 caps(style(Layout::Laurel, Fill::Gradient, 0x7A4A0C, 0xD08A1E, 0xFFFFFF, 0xFFD27A, Align::Centre,
+			    Font::Classic))},
 	};
 	return all;
 }

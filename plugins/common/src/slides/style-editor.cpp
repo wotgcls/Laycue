@@ -132,6 +132,13 @@ StyleEditor::StyleEditor(const Options &options, QWidget *parent) : QWidget(pare
 		emitChanged();
 	});
 	v->addWidget(layout2_);
+	layout3_ = new Segmented(this);
+	layout3_->setItems({lt("Laycue.Slides.Strips"), lt("Laycue.Slides.Ribbon"), lt("Laycue.Slides.Laurel")});
+	connect(layout3_, &Segmented::changed, this, [this](int index) {
+		style_.layout = 8 + index;
+		emitChanged();
+	});
+	v->addWidget(layout3_);
 
 	v->addWidget(innerLabel(this, lt("Laycue.Slides.Behind"), 11, 600, color::textTertiary));
 	fill_ = new Segmented(this);
@@ -357,7 +364,8 @@ void StyleEditor::choosePicture()
 void StyleEditor::refresh()
 {
 	layout_->setCurrent(style_.layout < 4 ? style_.layout : -1);
-	layout2_->setCurrent(style_.layout >= 4 ? style_.layout - 4 : -1);
+	layout2_->setCurrent(style_.layout >= 4 && style_.layout < 8 ? style_.layout - 4 : -1);
+	layout3_->setCurrent(style_.layout >= 8 ? style_.layout - 8 : -1);
 	fill_->setCurrent(style_.fill);
 	if (case_)
 		case_->setCurrent(style_.textCase);
